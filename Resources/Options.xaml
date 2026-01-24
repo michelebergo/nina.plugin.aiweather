@@ -1,0 +1,148 @@
+<ResourceDictionary x:Class="AIWeather.Options"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:AIWeather"
+                    xmlns:conv="clr-namespace:AIWeather.Converters">
+
+    <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+    
+    <!-- Options View Template - must use key pattern: <PluginName>_Options -->
+    <DataTemplate x:Key="AI Weather_Options">
+        <StackPanel Orientation="Vertical" Margin="10" DataContext="{Binding}">
+
+            <!-- Analysis Provider -->
+            <TextBlock Text="Analysis Provider:" Margin="0,0,0,2"/>
+            <ComboBox ItemsSource="{Binding ProviderOptions}"
+                      DisplayMemberPath="Name"
+                      SelectedValuePath="Id"
+                      SelectedValue="{Binding AnalysisProvider, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      Width="300" HorizontalAlignment="Left"/>
+            
+            <!-- Check Interval -->
+            <TextBlock Text="Check Interval (minutes):" Margin="0,0,0,2"/>
+            <TextBox Text="{Binding CheckIntervalMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                     Width="100" HorizontalAlignment="Left"/>
+            
+            <!-- Cloud Coverage Threshold -->
+            <TextBlock Text="Cloud Coverage Threshold (%):" Margin="0,10,0,2"/>
+            <TextBox Text="{Binding CloudCoverageThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                     Width="100" HorizontalAlignment="Left"/>
+            
+            <!-- GitHub Models Token -->
+            <StackPanel Margin="0,10,0,0"
+                        Visibility="{Binding IsGitHubModelsProvider, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="GitHub Personal Access Token:" Margin="0,0,0,2"/>
+                <StackPanel Orientation="Horizontal">
+                    <PasswordBox Width="360"
+                                 HorizontalAlignment="Left"
+                                 Loaded="GitHubTokenBox_Loaded"
+                                 PasswordChanged="GitHubTokenBox_PasswordChanged"/>
+                    <Button Content="Try"
+                            Margin="8,0,0,0"
+                            Padding="10,2"
+                            Click="TryToken_Click"/>
+                </StackPanel>
+                <TextBlock Text="{Binding GitHubTokenStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+            </StackPanel>
+
+            <!-- OpenAI Key -->
+            <StackPanel Margin="0,10,0,0"
+                        Visibility="{Binding IsOpenAIProvider, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="OpenAI API Key:" Margin="0,0,0,2"/>
+                <StackPanel Orientation="Horizontal">
+                    <PasswordBox Width="360"
+                                 HorizontalAlignment="Left"
+                                 Loaded="OpenAIKeyBox_Loaded"
+                                 PasswordChanged="OpenAIKeyBox_PasswordChanged"/>
+                    <Button Content="Try"
+                            Margin="8,0,0,0"
+                            Padding="10,2"
+                            Click="TryOpenAIKey_Click"/>
+                </StackPanel>
+                <TextBlock Text="{Binding OpenAIKeyStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="Used with https://api.openai.com" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+            </StackPanel>
+
+            <!-- Gemini Key -->
+            <StackPanel Margin="0,10,0,0"
+                        Visibility="{Binding IsGeminiProvider, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="Google Gemini API Key:" Margin="0,0,0,2"/>
+                <StackPanel Orientation="Horizontal">
+                    <PasswordBox Width="360"
+                                 HorizontalAlignment="Left"
+                                 Loaded="GeminiKeyBox_Loaded"
+                                 PasswordChanged="GeminiKeyBox_PasswordChanged"/>
+                    <Button Content="Try"
+                            Margin="8,0,0,0"
+                            Padding="10,2"
+                            Click="TryGeminiKey_Click"/>
+                </StackPanel>
+                <TextBlock Text="{Binding GeminiKeyStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="Used with Generative Language API" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+            </StackPanel>
+
+            <!-- Anthropic Key -->
+            <StackPanel Margin="0,10,0,0"
+                        Visibility="{Binding IsAnthropicProvider, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="Anthropic API Key:" Margin="0,0,0,2"/>
+                <StackPanel Orientation="Horizontal">
+                    <PasswordBox Width="360"
+                                 HorizontalAlignment="Left"
+                                 Loaded="AnthropicKeyBox_Loaded"
+                                 PasswordChanged="AnthropicKeyBox_PasswordChanged"/>
+                    <Button Content="Try"
+                            Margin="8,0,0,0"
+                            Padding="10,2"
+                            Click="TryAnthropicKey_Click"/>
+                </StackPanel>
+                <TextBlock Text="{Binding AnthropicKeyStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="Used with https://api.anthropic.com" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+            </StackPanel>
+            
+                <!-- Model Selection (non-local providers) -->
+                <StackPanel Margin="0,10,0,0"
+                    Visibility="{Binding IsNonLocalProvider, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="AI Model:" Margin="0,0,0,2"/>
+                <StackPanel Orientation="Horizontal">
+                    <ComboBox x:Name="ModelComboBox"
+                          ItemsSource="{Binding AvailableModels}"
+                          SelectedItem="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          IsEditable="True"
+                          Width="300"
+                          HorizontalAlignment="Left"
+                          Loaded="ModelComboBox_Loaded"/>
+                    <Button Content="Refresh"
+                        Margin="8,0,0,0"
+                        Padding="10,2"
+                        Click="RefreshModels_Click"
+                        Visibility="{Binding IsGitHubModelsProvider, Converter={StaticResource BoolToVisibility}}"/>
+                </StackPanel>
+
+                <TextBlock Text="{Binding ModelsStatus}"
+                       Margin="0,4,0,0"
+                       FontSize="10"
+                       Foreground="#AAAAAA"
+                       Visibility="{Binding IsGitHubModelsProvider, Converter={StaticResource BoolToVisibility}}"/>
+                </StackPanel>
+            
+            <!-- Description Section -->
+            <TextBlock Text="Description" FontWeight="Bold" Margin="0,20,0,10"/>
+            <TextBlock Text="All Sky Camera Weather Monitor" Margin="0,0,0,5"/>
+            <TextBlock Text="Monitor weather conditions using an all-sky camera with AI-powered analysis:" Margin="0,5,0,5" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left"/>
+            
+            <StackPanel Margin="15,5,0,0">
+                <TextBlock Text="○   RTSP stream capture from all-sky cameras" Margin="0,2"/>
+                <TextBlock Text="○   AI-powered weather analysis using GitHub Models (Claude, GPT-4, Gemini)" Margin="0,2"/>
+                <TextBlock Text="○   Offline fallback using local image processing" Margin="0,2"/>
+                <TextBlock Text="○   Automatic imaging pause/resume based on weather conditions" Margin="0,2"/>
+                <TextBlock Text="○   Live preview with real-time analysis" Margin="0,2"/>
+                <TextBlock Text="○   Configurable cloud coverage thresholds" Margin="0,2"/>
+                <TextBlock Text="○   Periodic monitoring at customizable intervals" Margin="0,2"/>
+            </StackPanel>
+            
+            <TextBlock Text="The plugin integrates with NINA's safety monitor system to automatically protect your equipment from adverse weather conditions by analyzing all-sky camera images in real-time." 
+                       Margin="0,10,0,0" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left" FontSize="11" Foreground="#AAAAAA"/>
+        </StackPanel>
+    </DataTemplate>
+    
+</ResourceDictionary>

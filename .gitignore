@@ -1,0 +1,37 @@
+# Build outputs
+bin/
+obj/
+*.user
+*.suo
+*.dll
+*.pdb
+*.exe
+
+# Visual Studio
+.vs/
+*.csproj.user
+*.vbproj.user
+
+# NuGet
+packages/
+*.nupkg
+
+# NINA Plugin specific
+*.zip
+publish/
+
+# Rider
+.idea/
+
+# Temporary files
+*.tmp
+*.log
+*.cache
+
+# OS specific
+Thumbs.db
+.DS_Store
+
+# User settings (containing API keys)
+user_settings.json
+appsettings.local.json

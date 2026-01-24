@@ -1,0 +1,94 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>AIWeather</RootNamespace>
+    <AssemblyName>NINA.Plugin.AIWeather</AssemblyName>
+    <AssemblyTitle>AI Weather</AssemblyTitle>
+    <Description>AI-powered all-sky camera weather monitoring for NINA</Description>
+    <Company></Company>
+    <Product>NINA.Plugins</Product>
+    <Copyright>Copyright © 2026</Copyright>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <PlatformTarget>x64</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <PublishReadyToRun>false</PublishReadyToRun>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- NINA SDK - You'll need to reference the actual NINA assemblies from your NINA installation -->
+    <Reference Include="System.ComponentModel.Composition">
+      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\System.ComponentModel.Composition.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="NINA.Core">
+      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="NINA.Astrometry">
+      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.Astrometry.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="NINA.Equipment">
+      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.Equipment.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="NINA.WPF.Base">
+      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.WPF.Base.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="NINA.Plugin">
+      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.Plugin.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="NINA.Profile">
+      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.Profile.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="NINA.Image">
+      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.Image.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="CommunityToolkit.Mvvm">
+      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\CommunityToolkit.Mvvm.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- RTSP Stream Capture -->
+    <PackageReference Include="FFMediaToolkit" Version="4.4.0" />
+    <PackageReference Include="Emgu.CV" Version="4.8.1.5350" />
+    <PackageReference Include="Emgu.CV.runtime.windows" Version="4.8.1.5350" />
+    
+    <!-- LibVLCSharp for live RTSP video streaming -->
+    <PackageReference Include="LibVLCSharp" Version="3.9.0" />
+    <PackageReference Include="LibVLCSharp.WPF" Version="3.9.0" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.21" />
+    
+    <!-- AI/ML for image analysis -->
+    <PackageReference Include="Microsoft.ML" Version="3.0.1" />
+    <PackageReference Include="Microsoft.ML.ImageAnalytics" Version="3.0.1" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.17.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.Managed" Version="1.17.0" />
+    
+    <!-- GitHub Models - Claude, OpenAI, Gemini via OpenAI SDK -->
+    <PackageReference Include="OpenAI" Version="2.1.0" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
+    
+    <!-- Utilities -->
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+    <PackageReference Include="System.Text.Json" Version="9.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="ai_weather_logo.png" />
+  </ItemGroup>
+
+</Project>
