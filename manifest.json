@@ -1,7 +1,7 @@
 {
   "Identifier": "NINA.Plugin.AIWeather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.0.0.0",
+  "Version": "1.1.0.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Your Name",
   "Homepage": "",
@@ -24,6 +24,18 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.1.0",
+      "Date": "2026-01-31",
+      "Changes": [
+        "Added HTTP Image Download mode (INDICamera) support",
+        "Added Folder Watch mode for monitoring local image directories",
+        "Fixed background monitoring persistence for HTTP and Folder modes",
+        "Implemented image persistence and UI state restoration when navigating between pages",
+        "Enhanced logging with detailed capture mode information",
+        "Fixed Play/Stop button visibility for all capture modes"
+      ]
+    },
     {
       "Version": "1.0.0",
       "Date": "2026-01-24",

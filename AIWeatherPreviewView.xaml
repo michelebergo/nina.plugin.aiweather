@@ -461,9 +461,36 @@
                         <DataGridTemplateColumn Header="" Width="44">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                        <Button Style="{StaticResource PlayIconButtonStyle}"
-                                            Command="{Binding DataContext.StartStopMonitoringCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            Margin="2,0"/>
+                                    <Grid>
+                                        <!-- Play button (visible when not running) -->
+                                        <Button Command="{Binding DataContext.StartStopMonitoringCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                Margin="2,0">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource PlayIconButtonStyle}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                        <!-- Stop button (visible when running) -->
+                                        <Button Command="{Binding DataContext.StartStopMonitoringCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                Margin="2,0">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource StopIconButtonStyle}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </Grid>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>

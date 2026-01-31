@@ -14,12 +14,9 @@ using AIWeather.Services;
 namespace AIWeather.Equipment
 {
     /// <summary>
-    /// All Sky Camera Safety Monitor
-    /// Integrates with NINA's safety monitoring system to automatically pause/stop imaging
-    /// when weather conditions become unsafe
+    /// All Sky Camera Weather Monitor
+    /// Monitors weather conditions and writes status to file
     /// </summary>
-    [Export(typeof(ISafetyMonitor))]
-    [PartCreationPolicy(CreationPolicy.Shared)]
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public class AIWeatherSafetyMonitor : BaseINPC, ISafetyMonitor
     {
@@ -27,11 +24,11 @@ namespace AIWeather.Equipment
         private IWeatherAnalysisService _analysisService;
         private Timer? _monitoringTimer;
         private WeatherAnalysisResult? _lastResult;
+        private Bitmap? _lastImage;
         private bool _isMonitoring = false;
         private CancellationTokenSource? _cts;
         private readonly SemaphoreSlim _checkGate = new SemaphoreSlim(1, 1);
 
-        [ImportingConstructor]
         public AIWeatherSafetyMonitor()
         {
             _captureService = new UnifiedCaptureService(cameraMediator: null);
@@ -135,11 +132,14 @@ namespace AIWeather.Equipment
 
                 if (captureMode == CaptureMode.RTSPStream)
                 {
-                    // RTSP mode - Allow connection for manual "Refresh" button
-                    // Periodic monitoring will be skipped in PerformWeatherCheckAsync
-                    Logger.Info($"Safety Monitor - RTSP mode. Periodic background checks disabled.");
-                    Logger.Info($"Safety Monitor - Use 'Refresh' button for manual analysis or switch to HTTP/Folder mode for auto-monitoring.");
-                    success = true; // Allow connection
+                    // RTSP mode
+                    var rtspUrl = Properties.Settings.Default.RtspUrl;
+                    var username = Properties.Settings.Default.RtspUsername;
+                    var password = Properties.Settings.Default.RtspPassword;
+
+                    Logger.Info($"Safety Monitor - RTSP URL: '{rtspUrl}'");
+                    _captureService.ConfigureRTSP(rtspUrl ?? "", username, password);
+                    success = !string.IsNullOrWhiteSpace(rtspUrl);
                 }
                 else if (captureMode == CaptureMode.INDICamera)
                 {
@@ -334,20 +334,9 @@ namespace AIWeather.Equipment
 
                 Bitmap? frame = null;
 
-                // Capture image based on mode
-                if (captureMode == CaptureMode.RTSPStream)
-                {
-                    // RTSP mode - skip capture to avoid conflicts with live preview
-                    Logger.Warning("⚠ Safety Monitor - RTSP periodic checks skipped (conflicts with live preview)");
-                    Logger.Info("💡 Tip: Use HTTP or Folder mode for automatic periodic monitoring");
-                    return; // Exit without performing check
-                }
-                else
-                {
-                    Logger.Info($"📥 Capturing image from {captureMode} source...");
-                    // Use unified service for HTTP/Folder modes
-                    frame = await _captureService.CaptureImageAsync(cancellationToken);
-                }
+                // Capture image from all modes
+                Logger.Info($"📥 Capturing image from {captureMode} source...");
+                frame = await _captureService.CaptureImageAsync(cancellationToken);
 
                 if (frame == null)
                 {
@@ -361,6 +350,10 @@ namespace AIWeather.Equipment
                 var result = await _analysisService.AnalyzeImageAsync(frame, cancellationToken);
                 _lastResult = result;
 
+                // Store a copy of the image for UI restoration
+                _lastImage?.Dispose();
+                _lastImage = new Bitmap(frame);
+
                 // Log the results
                 Logger.Info($"Weather Analysis - Condition: {result.Condition}, " +
                           $"Cloud Coverage: {result.CloudCoverage:F1}%, " +
@@ -369,6 +362,9 @@ namespace AIWeather.Equipment
 
                 // Raise property changed to notify NINA of safety status change
                 RaisePropertyChanged(nameof(IsSafe));
+
+                // Write safety status to file if enabled
+                WriteSafetyStatusFile(result);
 
                 // Save frame for debugging/logging (optional)
                 var imagePath = Path.Combine(
@@ -404,12 +400,57 @@ namespace AIWeather.Equipment
         public WeatherAnalysisResult? GetLatestResult() => _lastResult;
 
         /// <summary>
+        /// Get the latest captured image
+        /// </summary>
+        public Bitmap? GetLatestImage() => _lastImage != null ? new Bitmap(_lastImage) : null;
+
+        /// <summary>
         /// Force an immediate weather check
         /// </summary>
         public async Task<WeatherAnalysisResult?> ForceCheckAsync(CancellationToken cancellationToken = default)
         {
             await PerformWeatherCheckAsync(cancellationToken);
             return _lastResult;
+        }
+
+        /// <summary>
+        /// Write safety status to file if enabled
+        /// </summary>
+        private void WriteSafetyStatusFile(WeatherAnalysisResult result)
+        {
+            try
+            {
+                if (!Properties.Settings.Default.WriteSafetyStatusFile)
+                {
+                    return;
+                }
+
+                var filePath = Properties.Settings.Default.SafetyStatusFilePath;
+                if (string.IsNullOrWhiteSpace(filePath))
+                {
+                    Logger.Warning("Safety status file writing is enabled but no file path is configured");
+                    return;
+                }
+
+                // Determine safety status
+                var threshold = Properties.Settings.Default.CloudCoverageThreshold;
+                var isSafe = result.IsSafeForImaging &&
+                            result.CloudCoverage < threshold &&
+                            !result.RainDetected &&
+                            !result.FogDetected;
+
+                var status = isSafe ? "SAFE" : "UNSAFE";
+
+                // Write to file
+                var content = $"{status}\nTimestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\nCondition: {result.Condition}\nCloud Coverage: {result.CloudCoverage:F1}%\nConfidence: {result.Confidence:F1}%\nRain: {result.RainDetected}\nFog: {result.FogDetected}\nDescription: {result.Description}";
+
+                File.WriteAllText(filePath, content);
+                Logger.Debug($"Safety status written to file: {filePath} - Status: {status}");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Error writing safety status file: {ex.Message}", ex);
+            }
         }
     }
 }

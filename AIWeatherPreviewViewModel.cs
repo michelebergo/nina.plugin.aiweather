@@ -2,6 +2,7 @@ using AIWeather.Equipment;
 using AIWeather.Models;
 using AIWeather.Services;
 using NINA.Core.Utility;
+using NINA.Equipment.Interfaces;
 using NINA.Equipment.Interfaces.ViewModel;
 using NINA.Equipment.Interfaces.Mediator;
 using NINA.Profile.Interfaces;
@@ -27,6 +28,7 @@ namespace AIWeather
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public class AIWeatherPreviewViewModel : DockableVM
     {
+        private static AIWeatherSafetyMonitor? _sharedSafetyMonitor;
         private readonly AIWeatherSafetyMonitor _safetyMonitor;
         private BitmapImage? _currentImage;
         private WeatherAnalysisResult? _currentAnalysis;
@@ -71,7 +73,12 @@ namespace AIWeather
         [ImportingConstructor]
         public AIWeatherPreviewViewModel(IProfileService profileService, ICameraMediator cameraMediator) : base(profileService)
         {
-            _safetyMonitor = new AIWeatherSafetyMonitor();
+            // Use shared static instance to persist across navigation
+            if (_sharedSafetyMonitor == null)
+            {
+                _sharedSafetyMonitor = new AIWeatherSafetyMonitor();
+            }
+            _safetyMonitor = _sharedSafetyMonitor;
             
             this.Title = "AI Weather Monitor";
             
@@ -183,7 +190,10 @@ namespace AIWeather
             RaisePropertyChanged(nameof(IsNonRtspMode));
             RaisePropertyChanged(nameof(IsFolderMode));
             RaisePropertyChanged(nameof(IsUrlMode));
-            
+
+            // Restore state if SafetyMonitor is already running
+            RestoreMonitoringState();
+
             // Subscribe to safety monitor updates
             _safetyMonitor.PropertyChanged += (s, e) =>
             {
@@ -246,7 +256,18 @@ namespace AIWeather
         {
             try
             {
-                // Stop anything currently running so switching modes is predictable.
+                // Check if SafetyMonitor is connected - if so, we're restoring state, not changing modes
+                // Don't reset everything if background monitoring is still active
+                if (_safetyMonitor.Connected)
+                {
+                    Logger.Info($"Capture mode event fired but SafetyMonitor is connected - keeping monitoring active");
+                    SyncPrimarySourceFromSettings();
+                    return;
+                }
+
+                Logger.Info($"Capture mode changed - stopping UI components");
+
+                // Stop UI components (video stream, refresh timer)
                 var view = GetVideoView();
                 if (view != null)
                 {
@@ -254,7 +275,6 @@ namespace AIWeather
                 }
 
                 _refreshTimer.Stop();
-                _safetyMonitor.Disconnect();
                 IsConnected = false;
                 IsRunning = false;
                 CurrentImage = null;
@@ -492,6 +512,34 @@ namespace AIWeather
             var minutes = GetCheckIntervalMinutesClamped();
             _refreshTimer.Interval = TimeSpan.FromMinutes(minutes);
             RaisePropertyChanged(nameof(AiSettingsSummary));
+        }
+
+        private void RestoreMonitoringState()
+        {
+            // Check if the shared SafetyMonitor is already connected and monitoring
+            if (_safetyMonitor.Connected)
+            {
+                AddLog("✓ Monitoring state restored - monitoring is active");
+
+                // Restore connection state
+                IsConnected = true;
+                IsRunning = true;
+
+                // Restore source running state
+                if (Sources.Count > 0)
+                {
+                    Sources[0].IsRunning = true;
+                }
+
+                // Apply refresh interval and start timer
+                ApplyRefreshIntervalFromSettings();
+                _refreshTimer.Start();
+
+                // Load latest analysis results and update UI
+                _ = UpdateFromLatestResultAsync(loadImage: true);
+
+                StatusMessage = "Monitoring active";
+            }
         }
 
         private async Task<bool> ToggleConnectionAsync()
@@ -995,10 +1043,39 @@ namespace AIWeather
                         if (connected)
                         {
                             IsConnected = true;
-                            // NOTE: In RTSP mode, periodic checks are disabled to avoid conflicts.
-                            // User should use the manual "Refresh" button to analyze frames.
-                            AddLog($"✓ AI analysis connected (manual refresh mode)");
-                            AddLog($"💡 Tip: Click 'Refresh' to analyze current frame");
+                            var intervalMinutes = GetCheckIntervalMinutesClamped();
+                            AddLog($"✓ AI analysis connected - automatic monitoring enabled");
+                            AddLog($"📊 Weather analysis will run automatically every {intervalMinutes} minute(s)");
+
+                            // Trigger immediate first analysis
+                            StatusMessage = "Running initial analysis...";
+                            _ = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    await Task.Delay(2000); // Give RTSP stream a moment to stabilize
+                                    Logger.Info("Triggering immediate first analysis for RTSP mode");
+                                    var result = await _safetyMonitor.ForceCheckAsync();
+                                    if (result != null)
+                                    {
+                                        RunOnUiThread(() =>
+                                        {
+                                            AddLog($"✓ First analysis complete: {result.Condition} (Cloud: {result.CloudCoverage:F0}%)");
+                                            StatusMessage = "Monitoring active";
+                                        });
+                                        await UpdateFromLatestResultAsync(loadImage: true);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.Error($"Error in initial analysis: {ex.Message}");
+                                }
+                            });
+
+                            // Start UI refresh timer to display latest results
+                            ApplyRefreshIntervalFromSettings();
+                            _refreshTimer.Start();
+                            Logger.Info($"UI refresh timer started with {intervalMinutes} minute interval");
                         }
                         else
                         {
@@ -1037,6 +1114,71 @@ namespace AIWeather
         {
             _view = view;
             AddLog("✓ AI Weather Monitor view initialized");
+
+            Logger.Info($"SetView called - IsRunning: {IsRunning}, Sources.Count: {Sources.Count}, CurrentCaptureMode: {CurrentCaptureMode}, IsNonRtspMode: {IsNonRtspMode}");
+
+            // If we're restoring state, handle mode-specific UI updates
+            if (IsRunning && Sources.Count > 0)
+            {
+                var source = Sources[0];
+                Logger.Info($"Source state - IsRunning: {source.IsRunning}, FullUrl: '{source.FullUrl}', CaptureMode: {source.CaptureMode}");
+
+                if (IsRtspMode && source.IsRunning && !string.IsNullOrWhiteSpace(source.FullUrl))
+                {
+                    // RTSP mode: restart the video stream
+                    AddLog("✓ Restarting RTSP video stream...");
+                    _view.StartStream(source.FullUrl, source.Username, source.Password);
+                }
+                else if (IsNonRtspMode)
+                {
+                    // HTTP and Folder modes: restore last image and results
+                    AddLog($"✓ Restoring monitoring display for {CurrentCaptureMode} mode...");
+                    Logger.Info($"Attempting to restore image for {CurrentCaptureMode} mode");
+
+                    // Get and display the latest captured image
+                    var latestImage = _safetyMonitor.GetLatestImage();
+                    Logger.Info($"GetLatestImage returned: {(latestImage != null ? $"image {latestImage.Width}x{latestImage.Height}" : "null")}");
+
+                    if (latestImage != null)
+                    {
+                        RunOnUiThread(() =>
+                        {
+                            try
+                            {
+                                var bitmapImage = new BitmapImage();
+                                using (var memory = new System.IO.MemoryStream())
+                                {
+                                    latestImage.Save(memory, System.Drawing.Imaging.ImageFormat.Png);
+                                    memory.Position = 0;
+                                    bitmapImage.BeginInit();
+                                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                                    bitmapImage.StreamSource = memory;
+                                    bitmapImage.EndInit();
+                                    bitmapImage.Freeze();
+                                }
+                                CurrentImage = bitmapImage;
+                                Logger.Info($"Successfully restored image for {CurrentCaptureMode} mode");
+                                latestImage.Dispose();
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Error($"Error restoring image for {CurrentCaptureMode}: {ex.Message}", ex);
+                            }
+                        });
+                    }
+                    else
+                    {
+                        Logger.Warning($"No image available to restore for {CurrentCaptureMode} mode");
+                    }
+
+                    // Update analysis results display
+                    _ = UpdateFromLatestResultAsync(loadImage: false);
+                }
+            }
+            else
+            {
+                Logger.Info($"Not restoring state - IsRunning: {IsRunning}, Sources.Count: {Sources.Count}");
+            }
         }
     }
 }
