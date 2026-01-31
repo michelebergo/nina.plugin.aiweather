@@ -3,6 +3,7 @@ using AIWeather.Models;
 using AIWeather.Services;
 using NINA.Core.Utility;
 using NINA.Equipment.Interfaces.ViewModel;
+using NINA.Equipment.Interfaces.Mediator;
 using NINA.Profile.Interfaces;
 using NINA.WPF.Base.ViewModel;
 using System;
@@ -11,6 +12,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel.Composition;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -29,12 +31,28 @@ namespace AIWeather
         private BitmapImage? _currentImage;
         private WeatherAnalysisResult? _currentAnalysis;
         private bool _isConnected;
+        private bool _isRunning = false;
         private string _statusMessage = "Ready";
         private string _activityLog = "AI Weather Monitor initialized...\n";
         private AIWeatherPreviewView? _view;
         private DispatcherTimer _refreshTimer;
         private readonly SemaphoreSlim _refreshGate = new SemaphoreSlim(1, 1);
         private CommunityToolkit.Mvvm.Input.RelayCommand? _saveImageCommand;
+
+        // Capture mode tracking
+        public Models.CaptureMode CurrentCaptureMode
+        {
+            get
+            {
+                var mode = Properties.Settings.Default.CaptureMode;
+                return (Models.CaptureMode)mode;
+            }
+        }
+
+        public bool IsRtspMode => CurrentCaptureMode == Models.CaptureMode.RTSPStream;
+        public bool IsNonRtspMode => CurrentCaptureMode != Models.CaptureMode.RTSPStream;
+        public bool IsFolderMode => CurrentCaptureMode == Models.CaptureMode.FolderWatch;
+        public bool IsUrlMode => CurrentCaptureMode != Models.CaptureMode.FolderWatch;
 
         private static Dispatcher? UiDispatcher => Application.Current?.Dispatcher;
 
@@ -51,7 +69,7 @@ namespace AIWeather
         }
 
         [ImportingConstructor]
-        public AIWeatherPreviewViewModel(IProfileService profileService) : base(profileService)
+        public AIWeatherPreviewViewModel(IProfileService profileService, ICameraMediator cameraMediator) : base(profileService)
         {
             _safetyMonitor = new AIWeatherSafetyMonitor();
             
@@ -63,7 +81,11 @@ namespace AIWeather
             {
                 Interval = TimeSpan.FromSeconds(5)
             };
-            _refreshTimer.Tick += async (s, e) => await UpdateFromLatestResultAsync(loadImage: true);
+            _refreshTimer.Tick += async (s, e) =>
+            {
+                Logger.Debug("🔔 UI Refresh timer tick - updating display from latest result");
+                await UpdateFromLatestResultAsync(loadImage: true);
+            };
             ApplyRefreshIntervalFromSettings();
 
             // Cloud + spark icon (AI)
@@ -84,9 +106,24 @@ namespace AIWeather
             }
             
             // Initialize Sources collection with one default camera
-            var savedUrl = Properties.Settings.Default.RtspUrl ?? "";
-            var protocol = "rtsp://";
+            var captureMode = (Models.CaptureMode)Properties.Settings.Default.CaptureMode;
+            var savedUrl = "";
+            var protocol = captureMode == Models.CaptureMode.RTSPStream ? "rtsp://" : "http://";
             var mediaUrl = "";
+            
+            // Get URL based on capture mode
+            if (captureMode == Models.CaptureMode.RTSPStream)
+            {
+                savedUrl = Properties.Settings.Default.RtspUrl ?? "";
+            }
+            else if (captureMode == Models.CaptureMode.INDICamera)
+            {
+                savedUrl = Properties.Settings.Default.INDIDeviceName ?? "";
+            }
+            else if (captureMode == Models.CaptureMode.FolderWatch)
+            {
+                savedUrl = Properties.Settings.Default.FolderPath ?? "";
+            }
             
             // Parse saved URL to extract protocol and media URL separately
             if (!string.IsNullOrEmpty(savedUrl))
@@ -94,16 +131,19 @@ namespace AIWeather
                 var protoIndex = savedUrl.IndexOf("://");
                 if (protoIndex > 0)
                 {
+                    // User provided full URL with protocol - use it
                     protocol = savedUrl.Substring(0, protoIndex + 3);
                     mediaUrl = savedUrl.Substring(protoIndex + 3);
                 }
                 else
                 {
+                    // No protocol in saved URL - treat entire string as media part
+                    // For HTTP mode, if it looks like IP/domain, it's probably http not https
                     mediaUrl = savedUrl;
                 }
             }
             
-            Logger.Info($"Initializing camera source - Saved URL: '{savedUrl}' -> Protocol: '{protocol}', MediaUrl: '{mediaUrl}'");
+            Logger.Info($"Initializing camera source - Mode: {captureMode}, Saved URL: '{savedUrl}' -> Protocol: '{protocol}', MediaUrl: '{mediaUrl}'");
             
             Sources = new ObservableCollection<CameraSource>
             {
@@ -120,6 +160,7 @@ namespace AIWeather
             _saveImageCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(SaveImage, () => HasImage);
             SaveImageCommand = _saveImageCommand;
             ConnectCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(async () => { await ToggleConnectionAsync(); });
+            StartStopMonitoringCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(async () => { await StartStopMonitoringAsync(); });
             AddSourceCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(AddSource);
             DeleteSourceCommand = new CommunityToolkit.Mvvm.Input.RelayCommand<CameraSource?>(source =>
             {
@@ -136,6 +177,13 @@ namespace AIWeather
                 }
             }, source => source != null);
             
+            // Raise property changed for capture mode visibility on initialization
+            RaisePropertyChanged(nameof(CurrentCaptureMode));
+            RaisePropertyChanged(nameof(IsRtspMode));
+            RaisePropertyChanged(nameof(IsNonRtspMode));
+            RaisePropertyChanged(nameof(IsFolderMode));
+            RaisePropertyChanged(nameof(IsUrlMode));
+            
             // Subscribe to safety monitor updates
             _safetyMonitor.PropertyChanged += (s, e) =>
             {
@@ -151,7 +199,13 @@ namespace AIWeather
                     || e.PropertyName == nameof(Properties.Settings.Default.SelectedModel)
                     || e.PropertyName == nameof(Properties.Settings.Default.CheckIntervalMinutes)
                     || e.PropertyName == nameof(Properties.Settings.Default.CloudCoverageThreshold)
-                    || e.PropertyName == nameof(Properties.Settings.Default.UseGitHubModels))
+                    || e.PropertyName == nameof(Properties.Settings.Default.UseGitHubModels)
+                    || e.PropertyName == nameof(Properties.Settings.Default.CaptureMode)
+                    || e.PropertyName == nameof(Properties.Settings.Default.RtspUrl)
+                    || e.PropertyName == nameof(Properties.Settings.Default.INDIDeviceName)
+                    || e.PropertyName == nameof(Properties.Settings.Default.FolderPath)
+                    || e.PropertyName == nameof(Properties.Settings.Default.RtspUsername)
+                    || e.PropertyName == nameof(Properties.Settings.Default.RtspPassword))
                 {
                     RunOnUiThread(() =>
                     {
@@ -159,11 +213,129 @@ namespace AIWeather
                         {
                             ApplyRefreshIntervalFromSettings();
                         }
+                        if (e.PropertyName == nameof(Properties.Settings.Default.CaptureMode))
+                        {
+                            RaisePropertyChanged(nameof(CurrentCaptureMode));
+                            RaisePropertyChanged(nameof(IsRtspMode));
+                            RaisePropertyChanged(nameof(IsNonRtspMode));
+                            RaisePropertyChanged(nameof(IsFolderMode));
+                            RaisePropertyChanged(nameof(IsUrlMode));
+
+                            // Mode changes should immediately reflect in the panel. Also, if something
+                            // is currently running (RTSP preview or periodic monitoring), stop it so the
+                            // user can switch cleanly.
+                            _ = HandleCaptureModeChangedAsync();
+                        }
+                        else if (e.PropertyName == nameof(Properties.Settings.Default.RtspUrl)
+                            || e.PropertyName == nameof(Properties.Settings.Default.INDIDeviceName)
+                            || e.PropertyName == nameof(Properties.Settings.Default.FolderPath)
+                            || e.PropertyName == nameof(Properties.Settings.Default.RtspUsername)
+                            || e.PropertyName == nameof(Properties.Settings.Default.RtspPassword))
+                        {
+                            // Options page changed one of the source settings; reflect it in the panel.
+                            SyncPrimarySourceFromSettings();
+                        }
                         RaisePropertyChanged(nameof(AnalysisMethod));
                         RaisePropertyChanged(nameof(AiSettingsSummary));
                     });
                 }
             };
+        }
+
+        private async Task HandleCaptureModeChangedAsync()
+        {
+            try
+            {
+                // Stop anything currently running so switching modes is predictable.
+                var view = GetVideoView();
+                if (view != null)
+                {
+                    await view.StopStreamAsync();
+                }
+
+                _refreshTimer.Stop();
+                _safetyMonitor.Disconnect();
+                IsConnected = false;
+                IsRunning = false;
+                CurrentImage = null;
+
+                foreach (var s in Sources)
+                {
+                    s.IsRunning = false;
+                    s.IsLoading = false;
+                }
+
+                SyncPrimarySourceFromSettings();
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Failed to handle capture mode change: {ex.Message}");
+            }
+        }
+
+        private void SyncPrimarySourceFromSettings()
+        {
+            if (Sources == null || Sources.Count == 0)
+            {
+                return;
+            }
+
+            var mode = CurrentCaptureMode;
+            var source = Sources[0];
+
+            // Always keep credentials in sync (used by RTSP and some cameras).
+            source.Username = Properties.Settings.Default.RtspUsername ?? string.Empty;
+            source.Password = Properties.Settings.Default.RtspPassword ?? string.Empty;
+
+            if (mode == Models.CaptureMode.RTSPStream)
+            {
+                var saved = Properties.Settings.Default.RtspUrl ?? string.Empty;
+                ApplySavedUrlToSource(source, saved, defaultProtocol: "rtsp://");
+                return;
+            }
+
+            if (mode == Models.CaptureMode.INDICamera)
+            {
+                // Historical naming: this stores the full URL (including protocol) for the non-RTSP mode.
+                var saved = Properties.Settings.Default.INDIDeviceName ?? string.Empty;
+                ApplySavedUrlToSource(source, saved, defaultProtocol: "https://");
+                return;
+            }
+
+            if (mode == Models.CaptureMode.FolderWatch)
+            {
+                // Folder mode: store path as-is in MediaUrl.
+                source.Protocol = "";
+                source.MediaUrl = Properties.Settings.Default.FolderPath ?? string.Empty;
+            }
+        }
+
+        private static void ApplySavedUrlToSource(CameraSource source, string savedValue, string defaultProtocol)
+        {
+            if (source == null)
+            {
+                return;
+            }
+
+            var protocol = defaultProtocol;
+            var media = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(savedValue))
+            {
+                var protoIndex = savedValue.IndexOf("://", StringComparison.Ordinal);
+                if (protoIndex > 0)
+                {
+                    protocol = savedValue.Substring(0, protoIndex + 3);
+                    media = savedValue.Substring(protoIndex + 3);
+                }
+                else
+                {
+                    media = savedValue;
+                }
+            }
+
+            source.Protocol = protocol;
+            source.MediaUrl = media;
         }
 
         // Camera Sources Management
@@ -176,6 +348,7 @@ namespace AIWeather
         public ICommand AddSourceCommand { get; }
         public ICommand DeleteSourceCommand { get; }
         public ICommand StartStreamCommand { get; }
+        public ICommand StartStopMonitoringCommand { get; }
 
         public string RtspUrl
         {
@@ -226,6 +399,16 @@ namespace AIWeather
             }
         }
 
+        public bool IsRunning
+        {
+            get => _isRunning;
+            set
+            {
+                _isRunning = value;
+                RaisePropertyChanged();
+            }
+        }
+
         public string ConnectionStatus => IsConnected ? "Connected" : "Disconnected";
 
         public string StatusMessage
@@ -249,7 +432,8 @@ namespace AIWeather
         }
 
         // Analysis properties
-        public bool IsSafe => _currentAnalysis?.IsSafeForImaging ?? false;
+        // Safety state comes from the safety monitor (optionally ASCOM-backed).
+        public bool IsSafe => _safetyMonitor?.IsSafe ?? (_currentAnalysis?.IsSafeForImaging ?? false);
         public string SafetyStatus => IsSafe ? "✅ SAFE" : "⛔ UNSAFE";
         public string WeatherCondition => _currentAnalysis?.Condition.ToString() ?? "Unknown";
         public double CloudCoverage => _currentAnalysis?.CloudCoverage ?? 0;
@@ -375,9 +559,11 @@ namespace AIWeather
             var result = _safetyMonitor.GetLatestResult();
             if (result == null)
             {
+                Logger.Debug("UpdateFromLatestResultAsync: No result available from SafetyMonitor");
                 return;
             }
 
+            Logger.Debug($"UpdateFromLatestResultAsync: Displaying result - {result.Condition}, {result.CloudCoverage:F1}% clouds");
             _currentAnalysis = result;
             LastUpdate = DateTime.Now;
 
@@ -417,6 +603,10 @@ namespace AIWeather
                 if (result == null)
                 {
                     AddLog("ERROR: Failed to capture frame");
+                    if (CurrentCaptureMode == Models.CaptureMode.RTSPStream)
+                    {
+                        AddLog("Tip: RTSP AI capture uses OpenCV/FFmpeg (not VLC). If your URL is just rtsp://IP it may show video but still return empty frames. Use the camera's full RTSP stream URL including the path (e.g. /stream, /live, /h264) and port if needed.");
+                    }
                     StatusMessage = "Failed to capture frame";
                     return false;
                 }
@@ -426,6 +616,9 @@ namespace AIWeather
                 CaptureTimestamp = DateTime.Now;
                 LastUpdate = DateTime.Now;
 
+                // Give a moment for the image to be saved to disk
+                await Task.Delay(500);
+                
                 // Load the most recent image
                 var imagePath = GetLatestCaptureImage();
                 if (!string.IsNullOrEmpty(imagePath) && File.Exists(imagePath))
@@ -440,6 +633,7 @@ namespace AIWeather
                 }
                 else
                 {
+                    Logger.Warning($"Image file not found. Looking in temp path, found: {imagePath ?? "null"}");
                     AddLog("WARNING: Image captured but not found");
                     StatusMessage = "Image captured but not found";
                 }
@@ -462,12 +656,102 @@ namespace AIWeather
             }
         }
 
+        // Start/Stop periodic monitoring for HTTP/Folder Watch modes
+        private async Task StartStopMonitoringAsync()
+        {
+            if (IsRunning)
+            {
+                // Stop monitoring
+                _refreshTimer.Stop();
+                _safetyMonitor.Disconnect();
+                IsConnected = false;
+                IsRunning = false;
+                
+                // Update all sources to show stopped
+                foreach (var source in Sources)
+                {
+                    source.IsRunning = false;
+                }
+                
+                AddLog("⏹ Monitoring stopped");
+                StatusMessage = "Monitoring stopped";
+            }
+            else
+            {
+                // Get the first source for configuration
+                var source = Sources.FirstOrDefault();
+                if (source == null)
+                {
+                    AddLog("ERROR: No camera source configured");
+                    return;
+                }
+                
+                Logger.Info($"Starting monitoring - Total sources: {Sources.Count}, Source URL: {source.FullUrl}, Source IsRunning (before): {source.IsRunning}");
+                
+                // Save settings based on capture mode
+                var captureMode = CurrentCaptureMode;
+                if (captureMode == Models.CaptureMode.INDICamera)
+                {
+                    // For HTTP downloads, use full URL with protocol
+                    Properties.Settings.Default.INDIDeviceName = source.FullUrl;
+                }
+                else if (captureMode == Models.CaptureMode.FolderWatch)
+                {
+                    // For folder watch, use raw path without protocol
+                    Properties.Settings.Default.FolderPath = source.MediaUrl;
+                }
+                
+                Properties.Settings.Default.RtspUsername = source.Username;
+                Properties.Settings.Default.RtspPassword = source.Password;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                
+                // Start monitoring
+                AddLog("▶ Starting periodic monitoring...");
+                StatusMessage = "Connecting...";
+                
+                var connected = await _safetyMonitor.Connect(CancellationToken.None);
+                if (connected)
+                {
+                    IsConnected = true;
+                    IsRunning = true;
+                    source.IsRunning = true;
+                    
+                    Logger.Info($"Monitoring started - IsRunning set to true for source. Mode: {captureMode}");
+                    AddLog($"✓ Monitoring started ({GetCheckIntervalMinutesClamped()} min intervals)");
+                    StatusMessage = "Capturing initial image...";
+                    
+                    // Do initial capture immediately
+                    await RefreshAsync();
+                    
+                    // Start periodic refresh timer for subsequent captures
+                    // The timer will call UpdateFromLatestResultAsync which fetches the latest analysis result
+                    ApplyRefreshIntervalFromSettings();
+                    var intervalMinutes = GetCheckIntervalMinutesClamped();
+                    Logger.Info($"Starting refresh timer with {intervalMinutes} minute interval");
+                    _refreshTimer.Start();
+                    AddLog($"📊 Periodic monitoring active - next update in {intervalMinutes} minute(s)");
+                    
+                    StatusMessage = "Monitoring active";
+                }
+                else
+                {
+                    AddLog("ERROR: Failed to connect");
+                    StatusMessage = "Connection failed";
+                    IsRunning = false;
+                    source.IsRunning = false;
+                }
+            }
+        }
+
         private async Task LoadImageAsync(string imagePath)
         {
             BitmapImage? bitmap = null;
 
             try
             {
+                Logger.Info($"LoadImageAsync: Attempting to load image from {imagePath}");
+                Logger.Info($"File exists: {File.Exists(imagePath)}, File size: {(File.Exists(imagePath) ? new FileInfo(imagePath).Length : 0)} bytes");
+                
                 bitmap = await Task.Run(() =>
                 {
                     var img = new BitmapImage();
@@ -478,15 +762,25 @@ namespace AIWeather
                     img.Freeze();
                     return img;
                 });
+                
+                Logger.Info($"Image loaded successfully: {bitmap.PixelWidth}x{bitmap.PixelHeight}");
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error loading image: {ex.Message}", ex);
+                Logger.Error($"Error loading image from {imagePath}: {ex.Message}", ex);
             }
 
             if (bitmap != null)
             {
-                RunOnUiThread(() => { CurrentImage = bitmap; });
+                RunOnUiThread(() => 
+                { 
+                    CurrentImage = bitmap;
+                    Logger.Info("CurrentImage property set on UI thread");
+                });
+            }
+            else
+            {
+                Logger.Warning("Bitmap is null, CurrentImage not set");
             }
         }
 
@@ -495,18 +789,28 @@ namespace AIWeather
             try
             {
                 var captureDir = Path.Combine(CoreUtil.APPLICATIONTEMPPATH, "AllSkyCameraPlugin");
+                Logger.Info($"Looking for images in: {captureDir}");
+                
                 if (!Directory.Exists(captureDir))
+                {
+                    Logger.Warning($"Capture directory does not exist: {captureDir}");
                     return null;
+                }
 
                 var files = Directory.GetFiles(captureDir, "capture_*.jpg");
+                Logger.Info($"Found {files.Length} capture files in directory");
+                
                 if (files.Length == 0)
                     return null;
 
                 Array.Sort(files);
-                return files[files.Length - 1]; // Return most recent
+                var latestFile = files[files.Length - 1];
+                Logger.Info($"Latest capture file: {latestFile}");
+                return latestFile;
             }
-            catch
+            catch (Exception ex)
             {
+                Logger.Error($"Error getting latest capture image: {ex.Message}", ex);
                 return null;
             }
         }
@@ -658,6 +962,19 @@ namespace AIWeather
                     Properties.Settings.Default.RtspPassword = source.Password;
                     CoreUtil.SaveSettings(Properties.Settings.Default);
 
+                    try
+                    {
+                        if (Uri.TryCreate(source.FullUrl, UriKind.Absolute, out var uri)
+                            && (string.IsNullOrWhiteSpace(uri.AbsolutePath) || uri.AbsolutePath == "/"))
+                        {
+                            AddLog("⚠ RTSP URL has no stream path. Live preview may still work, but AI frame capture often fails. Enter the full RTSP stream URL (include /stream or similar).");
+                        }
+                    }
+                    catch
+                    {
+                        // best-effort
+                    }
+
                     // Start live video stream via LibVLC
                     var view = GetVideoView();
                     if (view != null)
@@ -671,18 +988,17 @@ namespace AIWeather
                         AddLog($"✓ Live RTSP stream started: {source.MediaUrl}");
                         
                         // Also connect safety monitor for analysis
+                        AddLog($"📊 Connecting AI analysis for RTSP mode...");
+                        Logger.Info($"Attempting to connect safety monitor for AI analysis. Current mode: {CurrentCaptureMode}");
                         var connected = await _safetyMonitor.Connect(CancellationToken.None);
+                        Logger.Info($"Safety monitor Connect() returned: {connected}");
                         if (connected)
                         {
-                            // Start UI update timer (analysis itself is done by the safety monitor at the configured interval)
-                            ApplyRefreshIntervalFromSettings();
-                            _refreshTimer.Start();
-                            AddLog($"✓ AI analysis enabled ({GetCheckIntervalMinutesClamped()} min intervals)");
-
-                            // Best-effort: wait a moment for the first periodic check to finish, then update UI
-                            await Task.Delay(TimeSpan.FromSeconds(2));
-                            await UpdateFromLatestResultAsync(loadImage: true);
                             IsConnected = true;
+                            // NOTE: In RTSP mode, periodic checks are disabled to avoid conflicts.
+                            // User should use the manual "Refresh" button to analyze frames.
+                            AddLog($"✓ AI analysis connected (manual refresh mode)");
+                            AddLog($"💡 Tip: Click 'Refresh' to analyze current frame");
                         }
                         else
                         {
@@ -720,7 +1036,7 @@ namespace AIWeather
         public void SetView(AIWeatherPreviewView view)
         {
             _view = view;
-            AddLog("✓ Video view initialized");
+            AddLog("✓ AI Weather Monitor view initialized");
         }
     }
 }

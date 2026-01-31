@@ -41,5 +41,26 @@
     <Setting Name="AnthropicKey" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="CaptureMode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="INDIDeviceName" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="FolderPath" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="UseAscomSafetyMonitor" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="AscomSafetyMonitorProgId" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="WriteSafetyStatusFile" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="SafetyStatusFilePath" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\\Users\\miche\\Documents\\N.I.N.A\\sky_conditions.txt</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

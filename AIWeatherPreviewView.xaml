@@ -11,6 +11,8 @@
     <UserControl.Resources>
         <local:RunningToTextConverter x:Key="RunningToTextConverter"/>
         <local:RunningToColorConverter x:Key="RunningToColorConverter"/>
+        <local:FirstNonNullConverter x:Key="FirstNonNullConverter"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
 
         <!-- Compact DataGrid/editor styling (RTSP Client-like) -->
         <Style x:Key="CompactCellTextBoxStyle" TargetType="TextBox">
@@ -64,20 +66,29 @@
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
-        <Style x:Key="PlayStopIconButtonStyle" TargetType="Button" BasedOn="{StaticResource CompactIconButtonStyle}">
+        <Style x:Key="PlayIconButtonStyle" TargetType="Button" BasedOn="{StaticResource CompactIconButtonStyle}">
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border Background="{TemplateBinding Background}">
                             <Viewbox Width="14" Height="14" Stretch="Uniform">
-                                <Path x:Name="Glyph" Data="{StaticResource PlayTriangleGeometry}" Fill="{DynamicResource PrimaryBrush}"/>
+                                <Path Data="{StaticResource PlayTriangleGeometry}" Fill="{DynamicResource PrimaryBrush}"/>
                             </Viewbox>
                         </Border>
-                        <ControlTemplate.Triggers>
-                            <DataTrigger Binding="{Binding IsRunning}" Value="True">
-                                <Setter TargetName="Glyph" Property="Path.Data" Value="{StaticResource StopSquareGeometry}"/>
-                            </DataTrigger>
-                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="StopIconButtonStyle" TargetType="Button" BasedOn="{StaticResource CompactIconButtonStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}">
+                            <Viewbox Width="14" Height="14" Stretch="Uniform">
+                                <Path Data="{StaticResource StopSquareGeometry}" Fill="{DynamicResource PrimaryBrush}"/>
+                            </Viewbox>
+                        </Border>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -101,21 +112,22 @@
             <!-- Main Image Display - Left Side (like RTSP video player) -->
             <Border Grid.Column="0" Background="{x:Null}" Margin="5">
                 <Grid x:Name="VideoContainer" Background="Transparent" ClipToBounds="True">
-                    <!-- Video Panel for HwndHost -->
+                    <!-- Video Panel for HwndHost (RTSP mode only) -->
                     <Grid x:Name="VideoPanel"
-                            Visibility="Collapsed"
+                            Visibility="{Binding IsRtspMode, Converter={StaticResource BoolToVisibility}}"
                             Background="Transparent"
                             ClipToBounds="True"
                             SizeChanged="VideoPanel_SizeChanged"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"/>
                     
-                    <!-- Camera Image (fallback when not streaming) -->
+                    <!-- Camera Image (shows last captured image for non-RTSP modes or fallback) -->
                     <Image x:Name="CameraImage" 
                            Source="{Binding CurrentImage}" 
-                           Stretch="UniformToFill"
-                           HorizontalAlignment="Stretch"
-                           VerticalAlignment="Stretch"/>
+                           Stretch="Uniform"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+                    
                 </Grid>
             </Border>
             
@@ -190,7 +202,7 @@
             </Border>
         </Grid>
 
-        <!-- Camera Sources DataGrid (RTSP Plugin Style) -->
+        <!-- Camera Sources DataGrid (for all modes) -->
         <Border Grid.Row="1" Background="{x:Null}" BorderThickness="1" Margin="5">
             <Grid>
                 <Grid.RowDefinitions>
@@ -201,9 +213,11 @@
                 
                 <TextBlock Grid.Row="0" Text="Camera sources" FontWeight="Bold" FontSize="13" Margin="10,8,10,5" Foreground="{DynamicResource PrimaryBrush}"/>
                 
+                <!-- DataGrid for URL modes (RTSP and HTTP) -->
                 <DataGrid Grid.Row="1" 
-                          x:Name="SourcesDataGrid"
+                          x:Name="SourcesDataGridUrl"
                           ItemsSource="{Binding Sources}"
+                          Visibility="{Binding IsUrlMode, Converter={StaticResource BoolToVisibility}}"
                           AutoGenerateColumns="False"
                           CanUserAddRows="False"
                           CanUserDeleteRows="False"
@@ -223,7 +237,18 @@
                           Style="{StaticResource CompactDataGridStyle}">
                     
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Username" Width="120" Binding="{Binding Username, UpdateSourceTrigger=PropertyChanged}">
+                        <!-- Username - hidden in FolderWatch mode -->
+                        <DataGridTextColumn Binding="{Binding Username, UpdateSourceTrigger=PropertyChanged}">
+                            <DataGridTextColumn.Header>
+                                <TextBlock Text="Username" Visibility="{Binding DataContext.IsUrlMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"/>
+                            </DataGridTextColumn.Header>
+                            <DataGridTextColumn.Width>
+                                <Binding Path="DataContext.IsUrlMode" RelativeSource="{RelativeSource AncestorType=UserControl}">
+                                    <Binding.Converter>
+                                        <local:BoolToGridLengthConverter TrueValue="120" FalseValue="0"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </DataGridTextColumn.Width>
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="VerticalAlignment" Value="Center"/>
@@ -234,7 +259,19 @@
                                 <Style TargetType="TextBox" BasedOn="{StaticResource CompactCellTextBoxStyle}"/>
                             </DataGridTextColumn.EditingElementStyle>
                         </DataGridTextColumn>
-                        <DataGridTemplateColumn Header="Password" Width="120">
+                        
+                        <!-- Password - hidden in FolderWatch mode -->
+                        <DataGridTemplateColumn>
+                            <DataGridTemplateColumn.Header>
+                                <TextBlock Text="Password" Visibility="{Binding DataContext.IsUrlMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"/>
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.Width>
+                                <Binding Path="DataContext.IsUrlMode" RelativeSource="{RelativeSource AncestorType=UserControl}">
+                                    <Binding.Converter>
+                                        <local:BoolToGridLengthConverter TrueValue="120" FalseValue="0"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </DataGridTemplateColumn.Width>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="••••••" VerticalAlignment="Center" Padding="4,0"/>
@@ -249,7 +286,19 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridComboBoxColumn Header="Protocol" Width="100">
+                        
+                        <!-- Protocol - only visible in RTSP/HTTP modes, hidden in FolderWatch -->
+                        <DataGridComboBoxColumn>
+                            <DataGridComboBoxColumn.Header>
+                                <TextBlock Text="Protocol" Visibility="{Binding DataContext.IsUrlMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"/>
+                            </DataGridComboBoxColumn.Header>
+                            <DataGridComboBoxColumn.Width>
+                                <Binding Path="DataContext.IsUrlMode" RelativeSource="{RelativeSource AncestorType=UserControl}">
+                                    <Binding.Converter>
+                                        <local:BoolToGridLengthConverter TrueValue="100" FalseValue="0"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </DataGridComboBoxColumn.Width>
                             <DataGridComboBoxColumn.ElementStyle>
                                 <Style TargetType="ComboBox" BasedOn="{StaticResource CompactCellComboBoxStyle}">
                                     <Setter Property="ItemsSource" Value="{Binding DataContext.Protocols, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
@@ -263,7 +312,21 @@
                                 </Style>
                             </DataGridComboBoxColumn.EditingElementStyle>
                         </DataGridComboBoxColumn>
-                        <DataGridTextColumn Header="Media URL" Width="*" Binding="{Binding MediaUrl, UpdateSourceTrigger=PropertyChanged}">
+                        <DataGridTextColumn Width="*" Binding="{Binding MediaUrl, UpdateSourceTrigger=PropertyChanged}">
+                            <DataGridTextColumn.Header>
+                                <TextBlock>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Media URL"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DataContext.IsRtspMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False">
+                                                    <Setter Property="Text" Value="Image URL"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataGridTextColumn.Header>
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="VerticalAlignment" Value="Center"/>
@@ -277,9 +340,129 @@
                         <DataGridTemplateColumn Header="" Width="44">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Button Style="{StaticResource PlayStopIconButtonStyle}"
-                                            Command="{Binding DataContext.StartStreamCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"
+                                    <Grid>
+                                        <!-- RTSP mode: use StartStreamCommand -->
+                                        <!-- RTSP mode: show Play when not running, Stop when running -->
+                                        <Button Command="{Binding DataContext.StartStreamCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Margin="2,0">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource PlayIconButtonStyle}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.IsRtspMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True"/>
+                                                                <Condition Binding="{Binding IsRunning}" Value="False"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+
+                                        <Button Command="{Binding DataContext.StartStreamCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Margin="2,0">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource StopIconButtonStyle}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.IsRtspMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True"/>
+                                                                <Condition Binding="{Binding IsRunning}" Value="True"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                        <!-- Non-RTSP mode: use StartStopMonitoringCommand -->
+                                        <!-- Play button for HTTP/Folder (visible when not running) -->
+                                        <Button Command="{Binding DataContext.StartStopMonitoringCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                Margin="2,0">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource PlayIconButtonStyle}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.IsNonRtspMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True"/>
+                                                                <Condition Binding="{Binding IsRunning}" Value="False"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                        <!-- Stop button for HTTP/Folder (visible when running) -->
+                                        <Button Command="{Binding DataContext.StartStopMonitoringCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                Margin="2,0">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource StopIconButtonStyle}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding DataContext.IsNonRtspMode, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True"/>
+                                                                <Condition Binding="{Binding IsRunning}" Value="True"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+                
+                <!-- DataGrid for Folder mode (only shows folder path) -->
+                <DataGrid Grid.Row="1" 
+                          x:Name="SourcesDataGridFolder"
+                          ItemsSource="{Binding Sources}"
+                          Visibility="{Binding IsFolderMode, Converter={StaticResource BoolToVisibility}}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          CanUserReorderColumns="False"
+                          CanUserSortColumns="False"
+                          SelectionMode="Single"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column"
+                          Background="{x:Null}"
+                          RowBackground="{x:Null}"
+                          AlternatingRowBackground="{x:Null}"
+                          Foreground="{DynamicResource PrimaryBrush}"
+                          BorderThickness="0"
+                          Margin="10,0,10,5"
+                          MinHeight="80"
+                          MaxHeight="150"
+                          Style="{StaticResource CompactDataGridStyle}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Folder Path" Binding="{Binding MediaUrl}" Width="*" IsReadOnly="False">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="Padding" Value="4,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                            <DataGridTextColumn.EditingElementStyle>
+                                <Style TargetType="TextBox" BasedOn="{StaticResource CompactCellTextBoxStyle}"/>
+                            </DataGridTextColumn.EditingElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTemplateColumn Header="" Width="44">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                        <Button Style="{StaticResource PlayIconButtonStyle}"
+                                            Command="{Binding DataContext.StartStopMonitoringCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             Margin="2,0"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -289,7 +472,14 @@
                 
                 <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10,5,10,8">
                     <Button Content="+" Command="{Binding AddSourceCommand}" Width="30" Height="24" Margin="0,0,5,0" FontWeight="Bold" ToolTip="Add new camera source"/>
-                    <Button Content="−" Command="{Binding DeleteSourceCommand}" CommandParameter="{Binding SelectedItem, ElementName=SourcesDataGrid}" Width="30" Height="24" FontWeight="Bold" ToolTip="Delete selected source"/>
+                    <Button Content="−" Command="{Binding DeleteSourceCommand}" Width="30" Height="24" FontWeight="Bold" ToolTip="Delete selected source">
+                        <Button.CommandParameter>
+                            <MultiBinding Converter="{StaticResource FirstNonNullConverter}">
+                                <Binding ElementName="SourcesDataGridUrl" Path="SelectedItem"/>
+                                <Binding ElementName="SourcesDataGridFolder" Path="SelectedItem"/>
+                            </MultiBinding>
+                        </Button.CommandParameter>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>

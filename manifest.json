@@ -1,0 +1,45 @@
+{
+  "Identifier": "NINA.Plugin.AIWeather",
+  "Name": "AI Weather - All Sky Camera Monitor",
+  "Version": "1.0.0.0",
+  "MinimumApplicationVersion": "3.0.0.0",
+  "Author": "Your Name",
+  "Homepage": "",
+  "Repository": "",
+  "License": "",
+  "LicenseURL": "",
+  "Tags": [
+    "weather",
+    "safety",
+    "AI",
+    "camera",
+    "monitoring"
+  ],
+  "Description": {
+    "short": {
+      "EN": "AI-powered all-sky camera weather monitoring for automated imaging safety"
+    },
+    "long": {
+      "EN": "Monitors an all-sky camera via RTSP stream and uses AI to analyze weather conditions (clouds, rain, sky conditions). Integrates with NINA's safety system to automatically pause/stop imaging when conditions become unsafe. Supports GitHub Models (GPT-4o, Claude, Gemini) and local AI analysis."
+    }
+  },
+  "ChangeLog": [
+    {
+      "Version": "1.0.0",
+      "Date": "2026-01-24",
+      "Changes": [
+        "Initial release",
+        "RTSP stream monitoring",
+        "AI-powered weather analysis",
+        "Safety Monitor integration",
+        "GitHub Models support"
+      ]
+    }
+  ],
+  "Installer": {
+    "Type": "DLL",
+    "DLLs": [
+      "NINA.Plugin.AIWeather.dll"
+    ]
+  }
+}

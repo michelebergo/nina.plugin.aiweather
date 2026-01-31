@@ -4,6 +4,7 @@ using NINA.Profile.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +23,7 @@ namespace AIWeather.Equipment
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public class AIWeatherSafetyMonitor : BaseINPC, ISafetyMonitor
     {
-        private readonly RtspCaptureService _captureService;
+        private readonly UnifiedCaptureService _captureService;
         private IWeatherAnalysisService _analysisService;
         private Timer? _monitoringTimer;
         private WeatherAnalysisResult? _lastResult;
@@ -33,7 +34,7 @@ namespace AIWeather.Equipment
         [ImportingConstructor]
         public AIWeatherSafetyMonitor()
         {
-            _captureService = new RtspCaptureService();
+            _captureService = new UnifiedCaptureService(cameraMediator: null);
             _analysisService = new LocalWeatherAnalysisService();
             
             // Subscribe to settings changes
@@ -125,31 +126,48 @@ namespace AIWeather.Equipment
             {
                 Logger.Info("Connecting to All Sky Camera Safety Monitor");
 
-                // Reload settings from disk to ensure we have latest values
-                Properties.Settings.Default.Reload();
-                
-                // Initialize RTSP capture with credentials
-                var rtspUrl = Properties.Settings.Default.RtspUrl;
-                var username = Properties.Settings.Default.RtspUsername;
-                var password = Properties.Settings.Default.RtspPassword;
-                
-                Logger.Info($"Safety Monitor - RTSP URL from settings: '{rtspUrl}'");
-                Logger.Info($"Safety Monitor - Username: '{username}', Password length: {password?.Length ?? 0}");
-                Logger.Info($"Safety Monitor - Settings file location: {Properties.Settings.Default.SettingsKey}");
-                
-                // Build authenticated URL if credentials provided
-                var authenticatedUrl = BuildAuthenticatedUrl(rtspUrl, username, password);
-                Logger.Info($"Safety Monitor - Authenticated URL: '{RedactRtspUrl(authenticatedUrl)}'");
-                
-                var success = await _captureService.InitializeAsync(authenticatedUrl, token);
+                // Get capture mode from settings
+                var captureMode = (CaptureMode)Properties.Settings.Default.CaptureMode;
+                _captureService.CurrentMode = captureMode;
+                Logger.Info($"Safety Monitor - Capture Mode: {captureMode}");
+
+                bool success = false;
+
+                if (captureMode == CaptureMode.RTSPStream)
+                {
+                    // RTSP mode - Allow connection for manual "Refresh" button
+                    // Periodic monitoring will be skipped in PerformWeatherCheckAsync
+                    Logger.Info($"Safety Monitor - RTSP mode. Periodic background checks disabled.");
+                    Logger.Info($"Safety Monitor - Use 'Refresh' button for manual analysis or switch to HTTP/Folder mode for auto-monitoring.");
+                    success = true; // Allow connection
+                }
+                else if (captureMode == CaptureMode.INDICamera)
+                {
+                    // HTTP Image Download mode
+                    var imageUrl = Properties.Settings.Default.INDIDeviceName;
+                    var username = Properties.Settings.Default.RtspUsername;
+                    var password = Properties.Settings.Default.RtspPassword;
+                    
+                    Logger.Info($"Safety Monitor - HTTP Image URL: '{imageUrl}'");
+                    _captureService.ConfigureINDI(imageUrl ?? "", username, password);
+                    success = !string.IsNullOrWhiteSpace(imageUrl);
+                }
+                else if (captureMode == CaptureMode.FolderWatch)
+                {
+                    // Folder Watch mode
+                    var folderPath = Properties.Settings.Default.FolderPath;
+                    Logger.Info($"Safety Monitor - Folder Path: '{folderPath}'");
+                    _captureService.ConfigureFolderWatch(folderPath ?? "");
+                    success = !string.IsNullOrWhiteSpace(folderPath) && Directory.Exists(folderPath);
+                }
 
                 if (!success)
                 {
-                    Logger.Error($"Safety Monitor - Failed to connect to RTSP stream: {RedactRtspUrl(authenticatedUrl)}");
+                    Logger.Error($"Safety Monitor - Failed to configure {captureMode} mode");
                     return false;
                 }
 
-                // Initialize analysis service (ensure correct mode/token/model at connect time)
+                // Initialize analysis service
                 UpdateAnalysisService();
                 var analysisReady = await _analysisService.InitializeAsync(token);
                 if (!analysisReady)
@@ -163,7 +181,7 @@ namespace AIWeather.Equipment
                 StartPeriodicMonitoring();
 
                 Connected = true;
-                Logger.Info("All Sky Camera Safety Monitor connected");
+                Logger.Info($"All Sky Camera Safety Monitor connected using {captureMode} mode");
                 return true;
             }
             catch (Exception ex)
@@ -257,21 +275,44 @@ namespace AIWeather.Equipment
             var intervalMinutes = Properties.Settings.Default.CheckIntervalMinutes;
             var interval = TimeSpan.FromMinutes(intervalMinutes);
 
-            Logger.Info($"Starting periodic monitoring every {intervalMinutes} minutes");
+            var captureMode = (CaptureMode)Properties.Settings.Default.CaptureMode;
+            Logger.Info($"⏰ Starting periodic monitoring every {intervalMinutes} minutes (Mode: {captureMode})");
 
-            _monitoringTimer = new Timer(async _ =>
+            _monitoringTimer = new Timer(_ =>
             {
-                if (_cts?.Token.IsCancellationRequested ?? true) return;
+                var currentMode = (CaptureMode)Properties.Settings.Default.CaptureMode;
+                Logger.Info($"🔔 Timer fired! Interval: {intervalMinutes} min, Mode: {currentMode}");
+                
+                if (_cts?.Token.IsCancellationRequested ?? true)
+                {
+                    Logger.Warning("⚠ Timer fired but cancellation was requested - skipping");
+                    return;
+                }
 
                 try
                 {
-                    await PerformWeatherCheckAsync(_cts.Token);
+                    Logger.Info($"🚀 Launching weather check task from timer (Mode: {currentMode})...");
+                    Task.Run(async () =>
+                    {
+                        try
+                        {
+                            Logger.Info($"📸 Executing periodic weather check (Mode: {currentMode})...");
+                            await PerformWeatherCheckAsync(_cts.Token);
+                            Logger.Info($"✅ Weather check complete - next check in {intervalMinutes} min");
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error($"❌ Error in periodic weather check: {ex.Message}", ex);
+                        }
+                    });
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"Error during periodic weather check: {ex.Message}", ex);
+                    Logger.Error($"❌ Failed to start weather check task: {ex.Message}", ex);
                 }
             }, null, TimeSpan.Zero, interval);
+            
+            Logger.Info($"✅ Timer created and started - first check will run immediately");
         }
 
         private void StopPeriodicMonitoring()
@@ -288,15 +329,33 @@ namespace AIWeather.Equipment
             await _checkGate.WaitAsync(cancellationToken);
             try
             {
-                Logger.Debug("Performing weather check");
+                var captureMode = (CaptureMode)Properties.Settings.Default.CaptureMode;
+                Logger.Info($"🎯 PerformWeatherCheckAsync - Mode: {captureMode}");
 
-                // Capture frame from RTSP stream
-                var frame = await _captureService.CaptureFrameAsync(cancellationToken);
+                Bitmap? frame = null;
+
+                // Capture image based on mode
+                if (captureMode == CaptureMode.RTSPStream)
+                {
+                    // RTSP mode - skip capture to avoid conflicts with live preview
+                    Logger.Warning("⚠ Safety Monitor - RTSP periodic checks skipped (conflicts with live preview)");
+                    Logger.Info("💡 Tip: Use HTTP or Folder mode for automatic periodic monitoring");
+                    return; // Exit without performing check
+                }
+                else
+                {
+                    Logger.Info($"📥 Capturing image from {captureMode} source...");
+                    // Use unified service for HTTP/Folder modes
+                    frame = await _captureService.CaptureImageAsync(cancellationToken);
+                }
+
                 if (frame == null)
                 {
-                    Logger.Warning("Failed to capture frame from RTSP stream");
+                    Logger.Warning($"❌ Failed to capture image from {captureMode} source");
                     return;
                 }
+
+                Logger.Info($"✓ Image captured successfully from {captureMode}, size: {frame.Width}x{frame.Height}");
 
                 // Analyze the frame
                 var result = await _analysisService.AnalyzeImageAsync(frame, cancellationToken);
@@ -317,7 +376,8 @@ namespace AIWeather.Equipment
                     "AllSkyCameraPlugin",
                     $"capture_{DateTime.Now:yyyyMMdd_HHmmss}.jpg");
 
-                await _captureService.SaveFrameAsync(frame, imagePath, cancellationToken);
+                // Save image (HTTP/Folder modes only, RTSP handled above)
+                await _captureService.SaveImageAsync(frame, imagePath, cancellationToken);
 
                 frame.Dispose();
             }
@@ -350,66 +410,6 @@ namespace AIWeather.Equipment
         {
             await PerformWeatherCheckAsync(cancellationToken);
             return _lastResult;
-        }
-
-        /// <summary>
-        /// Build authenticated RTSP URL with embedded credentials
-        /// </summary>
-        private string BuildAuthenticatedUrl(string rtspUrl, string? username, string? password)
-        {
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-            {
-                Logger.Info($"BuildAuthenticatedUrl - No credentials provided, returning original URL: {RedactRtspUrl(rtspUrl)}");
-                return rtspUrl; // No authentication needed
-            }
-
-            try
-            {
-                var uri = new Uri(rtspUrl);
-                var authenticatedUri = new UriBuilder(uri)
-                {
-                    UserName = username,
-                    Password = password
-                };
-                var result = authenticatedUri.ToString();
-                Logger.Info($"BuildAuthenticatedUrl - Built authenticated URL with username '{username}' (password hidden)");
-                return result;
-            }
-            catch (Exception ex)
-            {
-                Logger.Warning($"Failed to build authenticated URL: {ex.Message}. Using original URL.");
-                return rtspUrl;
-            }
-        }
-
-        private static string RedactRtspUrl(string url)
-        {
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                return url;
-            }
-
-            try
-            {
-                if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && !string.IsNullOrEmpty(uri.UserInfo))
-                {
-                    var parts = uri.UserInfo.Split(new[] { ':' }, 2);
-                    var user = parts.Length > 0 ? parts[0] : string.Empty;
-                    var builder = new UriBuilder(uri)
-                    {
-                        UserName = user,
-                        Password = "***"
-                    };
-
-                    return builder.Uri.ToString();
-                }
-            }
-            catch
-            {
-                // best-effort redaction
-            }
-
-            return url;
         }
     }
 }

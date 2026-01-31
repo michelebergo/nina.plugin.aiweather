@@ -1,0 +1,36 @@
+﻿{
+    "Name":  "AI Weather",
+    "Identifier":  "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D",
+    "Author":  "miche",
+    "Repository":  "https://github.com/\u003cowner\u003e/\u003crepo\u003e",
+    "License":  "MIT",
+    "LicenseURL":  "https://opensource.org/licenses/MIT",
+    "Version":  {
+                    "Minor":  "0",
+                    "Build":  "0",
+                    "Patch":  "0",
+                    "Major":  "1"
+                },
+    "MinimumApplicationVersion":  {
+                                      "Minor":  "0",
+                                      "Build":  "0",
+                                      "Patch":  "0",
+                                      "Major":  "3"
+                                  },
+    "Tags":  [
+                 "Weather",
+                 "Safety Monitor",
+                 "All Sky Camera",
+                 "AI",
+                 "RTSP"
+             ],
+    "Descriptions":  {
+                         "ShortDescription":  "AI-powered all-sky camera weather monitoring"
+                     },
+    "Installer":  {
+                      "URL":  "https://github.com/\u003cowner\u003e/\u003crepo\u003e/releases/download/v1.0.0.0/AIWeather.1.0.0.0.zip",
+                      "Type":  "ARCHIVE",
+                      "Checksum":  "4275FB0098B7C86E9C601FF32158CEBAD8E7C96EEAAB99E423E045F11E659EB3",
+                      "ChecksumType":  "SHA256"
+                  }
+}

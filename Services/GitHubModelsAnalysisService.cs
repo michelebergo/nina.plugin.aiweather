@@ -100,25 +100,7 @@ namespace AIWeather.Services
                 // Create the prompt for weather analysis
                 var messages = new List<ChatMessage>
                 {
-                    new SystemChatMessage(@"You are an expert meteorologist analyzing all-sky camera images for astronomical observation safety. 
-Analyze the provided all-sky camera image and determine:
-1. Weather condition (Clear, PartlyCloudy, MostlyCloudy, Overcast, Rainy, Foggy)
-2. Cloud coverage percentage (0-100)
-3. Whether rain is detected
-4. Whether fog is detected
-5. Whether conditions are safe for astronomical imaging
-6. A brief description of the conditions
-
-Respond in JSON format:
-{
-  ""condition"": ""Clear|PartlyCloudy|MostlyCloudy|Overcast|Rainy|Foggy"",
-  ""cloudCoverage"": 0-100,
-  ""rainDetected"": true|false,
-  ""fogDetected"": true|false,
-  ""isSafe"": true|false,
-  ""description"": ""brief description"",
-  ""confidence"": 0-100
-}"),
+                    new SystemChatMessage(WeatherAnalysisPrompts.DetailedSystemPrompt),
                     new UserChatMessage(
                         ChatMessageContentPart.CreateTextPart("Analyze this all-sky camera image and provide weather assessment:"),
                         ChatMessageContentPart.CreateImagePart(BinaryData.FromBytes(Convert.FromBase64String(base64Image)), "image/jpeg")

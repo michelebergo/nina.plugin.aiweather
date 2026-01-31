@@ -176,5 +176,89 @@ namespace AIWeather.Properties {
                 this["AnthropicKey"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int CaptureMode {
+            get {
+                return ((int)(this["CaptureMode"]));
+            }
+            set {
+                this["CaptureMode"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string INDIDeviceName {
+            get {
+                return ((string)(this["INDIDeviceName"]));
+            }
+            set {
+                this["INDIDeviceName"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string FolderPath {
+            get {
+                return ((string)(this["FolderPath"]));
+            }
+            set {
+                this["FolderPath"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool UseAscomSafetyMonitor {
+            get {
+                return ((bool)(this["UseAscomSafetyMonitor"]));
+            }
+            set {
+                this["UseAscomSafetyMonitor"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string AscomSafetyMonitorProgId {
+            get {
+                return ((string)(this["AscomSafetyMonitorProgId"]));
+            }
+            set {
+                this["AscomSafetyMonitorProgId"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool WriteSafetyStatusFile {
+            get {
+                return ((bool)(this["WriteSafetyStatusFile"]));
+            }
+            set {
+                this["WriteSafetyStatusFile"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Users\\miche\\Documents\\N.I.N.A\\sky_conditions.txt")]
+        public string SafetyStatusFilePath {
+            get {
+                return ((string)(this["SafetyStatusFilePath"]));
+            }
+            set {
+                this["SafetyStatusFilePath"] = value;
+            }
+        }
     }
 }

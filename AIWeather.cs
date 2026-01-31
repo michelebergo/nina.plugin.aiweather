@@ -28,6 +28,9 @@ namespace AIWeather
     {
         private readonly IProfileService _profileService;
 
+        // Options instance for UI binding
+        public AIWeatherOptions Options { get; private set; }
+
         private static Dispatcher? UiDispatcher => Application.Current?.Dispatcher;
 
         private static void RunOnUiThread(Action action)
@@ -165,6 +168,9 @@ namespace AIWeather
             }
 
             _profileService = profileService;
+
+            // Create Options instance for binding
+            Options = new AIWeatherOptions(_profileService);
 
             EnsureDefaults();
             

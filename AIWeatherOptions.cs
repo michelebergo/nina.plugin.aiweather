@@ -3,6 +3,7 @@ using NINA.Profile;
 using NINA.Profile.Interfaces;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using AIWeather.Models;
 
 namespace AIWeather
 {
@@ -31,7 +32,37 @@ namespace AIWeather
                 Properties.Settings.Default.CloudCoverageThreshold = 70.0;
                 Properties.Settings.Default.UseGitHubModels = false;
                 Properties.Settings.Default.SelectedModel = "gpt-4o";
+                Properties.Settings.Default.CaptureMode = 0; // Default to RTSP
+                Properties.Settings.Default.FolderPath = "";
                 CoreUtil.SaveSettings(Properties.Settings.Default);
+            }
+        }
+
+        public CaptureMode CaptureMode
+        {
+            get => (CaptureMode)Properties.Settings.Default.CaptureMode;
+            set
+            {
+                Properties.Settings.Default.CaptureMode = (int)value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        // Helper property for ComboBox SelectedIndex binding (returns int directly)
+        public int CaptureModeIndex
+        {
+            get => Properties.Settings.Default.CaptureMode;
+            set
+            {
+                if (Properties.Settings.Default.CaptureMode != value)
+                {
+                    Properties.Settings.Default.CaptureMode = value;
+                    CoreUtil.SaveSettings(Properties.Settings.Default);
+                    RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(CaptureMode)); // Also notify CaptureMode changed
+                    Logger.Info($"Capture mode changed to: {(CaptureMode)value}");
+                }
             }
         }
 
@@ -96,6 +127,72 @@ namespace AIWeather
             set
             {
                 Properties.Settings.Default.SelectedModel = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        public string INDIDeviceName
+        {
+            get => Properties.Settings.Default.INDIDeviceName ?? string.Empty;
+            set
+            {
+                Properties.Settings.Default.INDIDeviceName = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        public string FolderPath
+        {
+            get => Properties.Settings.Default.FolderPath ?? string.Empty;
+            set
+            {
+                Properties.Settings.Default.FolderPath = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        public bool UseAscomSafetyMonitor
+        {
+            get => Properties.Settings.Default.UseAscomSafetyMonitor;
+            set
+            {
+                Properties.Settings.Default.UseAscomSafetyMonitor = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        public string AscomSafetyMonitorProgId
+        {
+            get => Properties.Settings.Default.AscomSafetyMonitorProgId ?? string.Empty;
+            set
+            {
+                Properties.Settings.Default.AscomSafetyMonitorProgId = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        public bool WriteSafetyStatusFile
+        {
+            get => Properties.Settings.Default.WriteSafetyStatusFile;
+            set
+            {
+                Properties.Settings.Default.WriteSafetyStatusFile = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        public string SafetyStatusFilePath
+        {
+            get => Properties.Settings.Default.SafetyStatusFilePath ?? string.Empty;
+            set
+            {
+                Properties.Settings.Default.SafetyStatusFilePath = value;
                 CoreUtil.SaveSettings(Properties.Settings.Default);
                 RaisePropertyChanged();
             }

@@ -1,6 +1,6 @@
 # All Sky Camera Weather Monitor Plugin for NINA
 
-An intelligent NINA plugin that monitors all-sky camera streams via RTSP and uses AI to determine weather conditions, automatically integrating with NINA's safety monitoring system to protect your equipment.
+An intelligent NINA plugin that monitors all-sky cameras and uses AI to determine weather conditions, automatically integrating with NINA's safety monitoring system to protect your equipment.
 
 ## Features
 
@@ -12,16 +12,22 @@ An intelligent NINA plugin that monitors all-sky camera streams via RTSP and use
   
 - 🔒 **Safety Integration**: Seamlessly integrates with NINA's safety monitoring system to automatically pause/stop imaging sequences when conditions become unsafe
 
-- 📹 **RTSP Stream Support**: Connects to any RTSP-compatible all-sky camera
+- 📹 **Multiple Capture Modes**:
+  - **RTSP Stream**: Connect to network cameras with continuous video monitoring
+  - **INDI Camera**: Periodic captures from INDI all-sky cameras (lower resource usage)
+  - **Folder Watch**: Monitor a folder for the latest image (works with any camera software)
 
-- 🤖 **Dual AI Modes**:
-  - **Local AI**: Uses advanced image processing algorithms for offline weather analysis
-  - **GitHub Models**: Cloud-based AI supporting Claude 3.5, GPT-4o, and Gemini (free for development)
+- 🤖 **Multiple AI Providers**:
+  - **Local AI**: Advanced image processing for offline weather analysis
+  - **GitHub Models**: Claude 3.5, GPT-4o, Gemini (free for development)
+  - **OpenAI**: GPT-4o, GPT-4o Mini (requires API key)
+  - **Google Gemini**: 1.5 Flash, 1.5 Pro, 2.0 Flash (requires API key)
+  - **Anthropic Claude**: 3.5 Sonnet, 3.5 Haiku, 3 Opus (requires API key)
 
 - ⚙️ **Fully Configurable**:
   - Adjustable check intervals
   - Customizable cloud coverage thresholds
-  - Easy RTSP configuration
+  - Easy configuration for all capture modes
 
 ## Installation
 
@@ -33,39 +39,54 @@ An intelligent NINA plugin that monitors all-sky camera streams via RTSP and use
 
 ## Configuration
 
+### Capture Mode Selection
+
+Choose how the plugin captures sky images:
+
+#### RTSP Stream Mode
+- For network cameras with RTSP support
+- **RTSP Stream URL**: Enter your camera's RTSP address (e.g., `rtsp://192.168.1.100:554/stream`)
+- Optional: Enter username/password if required
+- Provides continuous video monitoring with real-time preview
+
+#### INDI Camera Mode
+- For INDI-compatible all-sky cameras connected to NINA
+- **INDI Device Name**: Enter the name of your INDI camera device
+- Lower resource usage (periodic captures vs. continuous streaming)
+- Integrates directly with NINA's equipment management
+
+#### Folder Watch Mode
+- Works with any camera software that saves images to a folder
+- **Folder Path**: Select the folder where your camera saves images
+- Compatible with AllSky, UFOCapture, SharpCap, and other software
+- Monitors for the latest image file (.jpg, .png, .bmp, .tif)
+
 ### Basic Settings
 
-1. **RTSP Stream URL**: Enter your all-sky camera's RTSP stream address
-   - Example: `rtsp://192.168.1.100:554/stream`
-   - Consult your camera's documentation for the correct URL format
-
-2. **Check Interval**: How often to analyze the sky (in minutes)
+1. **Check Interval**: How often to analyze the sky (in minutes)
    - Recommended: 5-10 minutes for active monitoring
    - Lower values = more frequent checks but higher resource usage
 
-3. **Cloud Coverage Threshold**: Maximum cloud coverage percentage considered "safe"
+2. **Cloud Coverage Threshold**: Maximum cloud coverage percentage considered "safe"
    - Default: 70%
    - Lower values = more conservative (stops imaging with fewer clouds)
    - Higher values = more permissive
 
-### Advanced Settings (GitHub Models AI)
+### AI Provider Settings (Optional)
 
-For enhanced accuracy, you can enable GitHub Models with access to Claude, GPT-4, and Gemini:
+For enhanced accuracy, you can enable cloud-based AI analysis:
 
+#### GitHub Models (Recommended - Free for Development)
 1. Get a GitHub Personal Access Token:
    - Go to [GitHub Settings → Tokens](https://github.com/settings/tokens)
    - Create a new token (classic) with model access
    - Copy the token
-
-2. In NINA, enable "Use GitHub Models AI"
-3. Select your preferred model:
-   - **GPT-4o** or **GPT-4o Mini** (OpenAI) - Excellent vision and reasoning
-   - **Claude 3.5 Sonnet** (Anthropic) - Superior image analysis
-   - **Gemini 1.5 Flash/Pro** (Google) - Fast and accurate
+2. Enable "Use GitHub Models AI"
+3. Select your preferred model (Claude 3.5 Sonnet recommended)
 4. Enter your GitHub token
-5. The plugin will automatically use the selected AI model for weather analysis
 
-**Note:** GitHub Models is free for development and offers generous rate limits!
+#### Other AI Providers
+See [SETUP.md](SETUP.md) for detailed instructions on configuring OpenAI, Gemini, and Anthropic.
 
 ## Usage
 
@@ -77,7 +98,10 @@ To see the camera feed and analysis results in NINA:
 2. Select "All Sky Camera Safety Monitor"
 3. Click Connect
 4. The preview window will show:
-   - 📷 **Live camera feed** from your RTSP stream
+   - 📷 **Live view** (RTSP mode) or latest capture (INDI/Folder modes)
+   - ☁️ **Cloud coverage percentage**
+   - 🌦️ **Weather condition**
+   - ✅ **Safety status**
    - ☁️ **Cloud coverage** percentage with visual indicator
    - 🌤️ **Weather condition** (Clear, Cloudy, Rain, Fog, etc.)
    - ✅/❌ **Safety status** for imaging

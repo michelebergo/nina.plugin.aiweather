@@ -4,10 +4,22 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:AIWeather"
+             xmlns:models="clr-namespace:AIWeather.Models"
+             xmlns:converters="clr-namespace:AIWeather.Converters"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
+    <UserControl.Resources>
+        <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter"/>
+        <converters:EnumToIntConverter x:Key="EnumToIntConverter"/>
+    </UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <Grid Margin="10">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -31,78 +43,197 @@
                    FontSize="16" FontWeight="Bold" 
                    Margin="0,0,0,20"/>
 
-        <!-- RTSP URL -->
+        <!-- Capture Mode -->
         <TextBlock Grid.Row="1" Grid.Column="0" 
+                   Text="Capture Mode:" 
+                   VerticalAlignment="Center" 
+                   Margin="0,5"/>
+        <ComboBox Grid.Row="1" Grid.Column="1"
+                  SelectedIndex="{Binding CaptureModeIndex, Mode=TwoWay}"
+                  Margin="5" 
+                  ToolTip="Select how to capture sky images for analysis">
+            <ComboBoxItem Content="RTSP Stream (continuous video)"/>
+            <ComboBoxItem Content="INDI Camera (periodic captures)"/>
+            <ComboBoxItem Content="Folder Watch (monitor latest image)"/>
+        </ComboBox>
+
+        <!-- RTSP URL -->
+        <TextBlock Grid.Row="2" Grid.Column="0" 
                    Text="RTSP Stream URL:" 
                    VerticalAlignment="Center" 
-                   Margin="0,5"/>
-        <TextBox Grid.Row="1" Grid.Column="1" 
+                   Margin="0,5">
+            <TextBlock.Visibility>
+                <Binding Path="CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="0"/>
+            </TextBlock.Visibility>
+        </TextBlock>
+        <TextBox Grid.Row="2" Grid.Column="1" 
                  Text="{Binding RtspUrl, UpdateSourceTrigger=PropertyChanged}" 
                  Margin="5" 
-                 ToolTip="Enter the RTSP stream URL of your all-sky camera (e.g., rtsp://192.168.1.28/stream)"/>
+                 ToolTip="Enter the RTSP stream URL of your all-sky camera (e.g., rtsp://192.168.1.28/stream)">
+            <TextBox.Visibility>
+                <Binding Path="CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="0"/>
+            </TextBox.Visibility>
+        </TextBox>
 
         <!-- RTSP Username -->
-        <TextBlock Grid.Row="2" Grid.Column="0" 
+        <TextBlock Grid.Row="3" Grid.Column="0" 
                    Text="RTSP Username:" 
                    VerticalAlignment="Center" 
-                   Margin="0,5"/>
-        <TextBox Grid.Row="2" Grid.Column="1" 
+                   Margin="0,5">
+            <TextBlock.Visibility>
+                <Binding Path="CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="0"/>
+            </TextBlock.Visibility>
+        </TextBlock>
+        <TextBox Grid.Row="3" Grid.Column="1" 
                  Text="{Binding RtspUsername, UpdateSourceTrigger=PropertyChanged}" 
                  Margin="5" 
-                 ToolTip="Username for RTSP authentication (leave empty if not required)"/>
+                 ToolTip="Username for RTSP authentication (leave empty if not required)">
+            <TextBox.Visibility>
+                <Binding Path="CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="0"/>
+            </TextBox.Visibility>
+        </TextBox>
 
         <!-- RTSP Password -->
-        <TextBlock Grid.Row="3" Grid.Column="0" 
+        <TextBlock Grid.Row="4" Grid.Column="0" 
                    Text="RTSP Password:" 
                    VerticalAlignment="Center" 
-                   Margin="0,5"/>
-        <PasswordBox Grid.Row="3" Grid.Column="1" 
+                   Margin="0,5">
+            <TextBlock.Visibility>
+                <Binding Path="CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="0"/>
+            </TextBlock.Visibility>
+        </TextBlock>
+        <PasswordBox Grid.Row="4" Grid.Column="1" 
                      x:Name="RtspPasswordBox"
                      Margin="5" 
                      PasswordChanged="RtspPasswordBox_PasswordChanged"
                      Loaded="RtspPasswordBox_Loaded"
-                     ToolTip="Password for RTSP authentication (leave empty if not required)"/>
+                     ToolTip="Password for RTSP authentication (leave empty if not required)">
+            <PasswordBox.Visibility>
+                <Binding Path="CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="0"/>
+            </PasswordBox.Visibility>
+        </PasswordBox>
+
+        <!-- INDI Device Name -->
+        <TextBlock Grid.Row="2" Grid.Column="0" 
+                   Text="INDI Device Name:" 
+                   VerticalAlignment="Center" 
+                   Margin="0,5">
+            <TextBlock.Visibility>
+                <Binding Path="CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="1"/>
+            </TextBlock.Visibility>
+        </TextBlock>
+        <TextBox Grid.Row="2" Grid.Column="1" 
+                 Text="{Binding INDIDeviceName, UpdateSourceTrigger=PropertyChanged}" 
+                 Margin="5" 
+                 ToolTip="Name of the INDI all-sky camera device (e.g., 'AllSky Camera')">
+            <TextBox.Visibility>
+                <Binding Path="CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="1"/>
+            </TextBox.Visibility>
+        </TextBox>
+
+        <!-- Folder Path -->
+        <TextBlock Grid.Row="2" Grid.Column="0" 
+                   Text="Folder Path:" 
+                   VerticalAlignment="Center" 
+                   Margin="0,5">
+            <TextBlock.Visibility>
+                <Binding Path="CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="2"/>
+            </TextBlock.Visibility>
+        </TextBlock>
+        <DockPanel Grid.Row="2" Grid.Column="1" Margin="5">
+            <DockPanel.Visibility>
+                <Binding Path="CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="2"/>
+            </DockPanel.Visibility>
+            <Button DockPanel.Dock="Right" Content="Browse..." Width="75" Margin="5,0,0,0" Click="BrowseFolder_Click"/>
+            <TextBox Text="{Binding FolderPath, UpdateSourceTrigger=PropertyChanged}" 
+                     ToolTip="Folder to monitor for the latest image file"/>
+        </DockPanel>
 
         <!-- Check Interval -->
-        <TextBlock Grid.Row="4" Grid.Column="0" 
+        <TextBlock Grid.Row="5" Grid.Column="0" 
                    Text="Check Interval (minutes):" 
                    VerticalAlignment="Center" 
                    Margin="0,5"/>
-        <TextBox Grid.Row="4" Grid.Column="1" 
+        <TextBox Grid.Row="5" Grid.Column="1" 
                  Text="{Binding CheckIntervalMinutes, UpdateSourceTrigger=PropertyChanged}" 
                  Margin="5"
                  ToolTip="How often to check the weather conditions (in minutes, 1-60)"/>
 
         <!-- Cloud Coverage Threshold -->
-        <TextBlock Grid.Row="5" Grid.Column="0" 
+        <TextBlock Grid.Row="6" Grid.Column="0" 
                    Text="Cloud Coverage Threshold (%):" 
                    VerticalAlignment="Center" 
                    Margin="0,5"/>
-        <TextBox Grid.Row="5" Grid.Column="1" 
+        <TextBox Grid.Row="6" Grid.Column="1" 
                  Text="{Binding CloudCoverageThreshold, UpdateSourceTrigger=PropertyChanged}" 
                  Margin="5"
                  ToolTip="Maximum cloud coverage percentage considered safe for imaging (0-100)"/>
 
+        <!-- ASCOM Generic File SafetyMonitor -->
+        <TextBlock Grid.Row="7" Grid.Column="0"
+               Text="Use ASCOM SafetyMonitor:"
+               VerticalAlignment="Center"
+               Margin="0,5"
+               ToolTip="If enabled, SAFE/UNSAFE will come from the selected ASCOM SafetyMonitor (e.g. Generic File SafetyMonitor)."/>
+        <CheckBox Grid.Row="7" Grid.Column="1"
+              IsChecked="{Binding UseAscomSafetyMonitor}"
+              VerticalAlignment="Center"
+              Margin="5"/>
+
+        <TextBlock Grid.Row="8" Grid.Column="0"
+               Text="ASCOM ProgID:"
+               VerticalAlignment="Center"
+               Margin="0,5"/>
+        <DockPanel Grid.Row="8" Grid.Column="1" Margin="5">
+            <Button DockPanel.Dock="Right" Content="Choose..." Width="75" Margin="5,0,0,0"
+                Click="ChooseAscomSafetyMonitor_Click"
+                IsEnabled="{Binding UseAscomSafetyMonitor}"/>
+            <TextBox Text="{Binding AscomSafetyMonitorProgId, UpdateSourceTrigger=PropertyChanged}"
+                 IsEnabled="{Binding UseAscomSafetyMonitor}"
+                 ToolTip="ASCOM SafetyMonitor ProgID (use Choose... to pick a driver)."/>
+        </DockPanel>
+
+        <!-- Generic File SafetyMonitor output file -->
+        <TextBlock Grid.Row="9" Grid.Column="0"
+                   Text="Write status file:"
+                   VerticalAlignment="Center"
+                   Margin="0,5"
+                   ToolTip="Write SAFE/UNSAFE to a file for the ASCOM Generic File SafetyMonitor driver."/>
+        <CheckBox Grid.Row="9" Grid.Column="1"
+                  IsChecked="{Binding WriteSafetyStatusFile}"
+                  VerticalAlignment="Center"
+                  Margin="5"/>
+
+        <TextBlock Grid.Row="10" Grid.Column="0"
+                   Text="Status file path:"
+                   VerticalAlignment="Center"
+                   Margin="0,5"/>
+        <DockPanel Grid.Row="10" Grid.Column="1" Margin="5" IsEnabled="{Binding WriteSafetyStatusFile}">
+            <Button DockPanel.Dock="Right" Content="Browse..." Width="75" Margin="5,0,0,0" Click="BrowseSafetyStatusFile_Click"/>
+            <TextBox Text="{Binding SafetyStatusFilePath, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="File that will contain either SAFE or UNSAFE (e.g. C:\\Users\\miche\\Documents\\N.I.N.A\\sky_conditions.txt)."/>
+        </DockPanel>
+
         <!-- Separator -->
-        <Separator Grid.Row="6" Grid.ColumnSpan="2" Margin="0,20,0,10"/>
+        <Separator Grid.Row="11" Grid.ColumnSpan="2" Margin="0,20,0,10"/>
 
         <!-- Use GitHub Models -->
-        <TextBlock Grid.Row="7" Grid.Column="0" 
+        <TextBlock Grid.Row="12" Grid.Column="0" 
                    Text="Use GitHub Models AI:" 
                    VerticalAlignment="Center" 
                    Margin="0,5"/>
-        <CheckBox Grid.Row="7" Grid.Column="1" 
+        <CheckBox Grid.Row="12" Grid.Column="1" 
                   IsChecked="{Binding UseGitHubModels}" 
                   VerticalAlignment="Center" 
                   Margin="5"
                   ToolTip="Enable GitHub Models for advanced AI weather analysis (supports Claude, GPT-4, Gemini)"/>
 
         <!-- Model Selection -->
-        <TextBlock Grid.Row="8" Grid.Column="0" 
+        <TextBlock Grid.Row="13" Grid.Column="0" 
                    Text="AI Model:" 
                    VerticalAlignment="Center" 
                    Margin="0,5"/>
-        <ComboBox Grid.Row="8" Grid.Column="1"
+        <ComboBox Grid.Row="13" Grid.Column="1"
                   SelectedValue="{Binding SelectedModel, Mode=TwoWay}" 
                   SelectedValuePath="Tag"
                   IsEnabled="{Binding UseGitHubModels}"
@@ -116,18 +247,18 @@
         </ComboBox>
 
         <!-- GitHub Token -->
-        <TextBlock Grid.Row="9" Grid.Column="0" 
+        <TextBlock Grid.Row="14" Grid.Column="0" 
                    Text="GitHub Token:" 
                    VerticalAlignment="Center" 
                    Margin="0,5"/>
-        <TextBox Grid.Row="9" Grid.Column="1" 
+        <TextBox Grid.Row="14" Grid.Column="1" 
                  Text="{Binding GitHubToken, UpdateSourceTrigger=PropertyChanged}"
                  IsEnabled="{Binding UseGitHubModels}"
                  Margin="5" 
                  ToolTip="GitHub Personal Access Token with model access (get from github.com/settings/tokens)"/>
 
         <!-- Info Panel -->
-        <Border Grid.Row="10" Grid.ColumnSpan="2"
+        <Border Grid.Row="15" Grid.ColumnSpan="2"
                 BorderThickness="1"
                 Margin="0,20,0,0"
                 Padding="10">
@@ -139,6 +270,18 @@
                     when conditions become unsafe (clouds, rain, etc.).
                 </TextBlock>
                 <TextBlock TextWrapping="Wrap" Margin="0,10,0,0">
+                    <Bold>Capture Modes:</Bold>
+                </TextBlock>
+                <TextBlock TextWrapping="Wrap" Margin="15,5,0,0">
+                    • <Bold>RTSP Stream:</Bold> Continuous video monitoring from network cameras
+                </TextBlock>
+                <TextBlock TextWrapping="Wrap" Margin="15,5,0,0">
+                    • <Bold>INDI Camera:</Bold> Periodic image capture from INDI all-sky cameras (lower resource usage)
+                </TextBlock>
+                <TextBlock TextWrapping="Wrap" Margin="15,5,0,0">
+                    • <Bold>Folder Watch:</Bold> Monitor a folder for the latest image file (works with any camera software)
+                </TextBlock>
+                <TextBlock TextWrapping="Wrap" Margin="0,10,0,0">
                     <Bold>Local AI:</Bold> Uses basic image processing to detect clouds, fog, and rain.
                 </TextBlock>
                 <TextBlock TextWrapping="Wrap" Margin="0,5,0,0">
@@ -147,4 +290,5 @@
             </StackPanel>
         </Border>
     </Grid>
+    </ScrollViewer>
 </UserControl>

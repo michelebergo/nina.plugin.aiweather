@@ -1,0 +1,229 @@
+##############################################################################
+# STEP 1: Create GitHub Repository ✓ (Ready to Push)
+##############################################################################
+
+# Your local repo is initialized and committed. Now create the GitHub repo:
+
+1. Go to: https://github.com/new
+2. Repository name: nina.plugin.aiweather
+3. Description: AI-powered all-sky camera weather monitoring plugin for NINA
+4. Public repository
+5. Do NOT initialize with README, .gitignore, or license (we already have them)
+6. Click "Create repository"
+
+# Then run these commands to push:
+
+cd C:\Users\miche\Desktop\NINA_ai_allskycamera
+git remote add origin https://github.com/michelebergo/nina.plugin.aiweather.git
+git branch -M main
+git push -u origin main
+git push origin v1.0.0.0
+
+
+##############################################################################
+# STEP 2: Create GitHub Release ✓ (Ready to Execute)
+##############################################################################
+
+# After pushing, create the release:
+
+1. Go to: https://github.com/michelebergo/nina.plugin.aiweather/releases/new
+
+2. Choose tag: v1.0.0.0 (should exist from your push)
+
+3. Release title: v1.0.0.0 - Beta Release
+
+4. Description (copy this):
+────────────────────────────────────────────────────────────────
+## AI Weather Plugin - Beta Release
+
+AI-powered all-sky camera weather monitoring for NINA.
+
+### Features
+- 📹 **Live RTSP stream preview** with LibVLCSharp rendering
+- 🤖 **Multi-provider AI analysis**:
+  - GitHub Models (Claude 3.5 Sonnet, GPT-4o, Gemini 1.5)
+  - OpenAI (GPT-4o, GPT-4o Mini)
+  - Google Gemini (1.5 Flash, 1.5 Pro, 2.0 Flash)
+  - Anthropic Claude (3.5 Sonnet, 3.5 Haiku, 3 Opus)
+- 🖥️ **Local offline fallback** using ML image processing
+- 🔒 **Safety monitor integration** for automatic imaging pause/resume
+- ⚙️ **Configurable settings**:
+  - Cloud coverage thresholds (0-100%)
+  - Check intervals (1-60 minutes)
+  - Provider selection and API credentials
+
+### Installation (Beta Channel)
+
+This is a **BETA** release. To install via NINA Plugin Manager:
+
+1. Open NINA → Options → General → Plugin Repositories
+2. Click the `+` button
+3. Add: `https://nighttime-imaging.eu/wp-json/nina/v1/beta`
+4. Go to Plugin Manager → Available
+5. Find "AI Weather" and click Install
+
+**Or manual installation:**
+Download `NINA.Plugin.AIWeather.1.0.0.0.zip` below and extract to:
+```
+%LOCALAPPDATA%\NINA\Plugins\3.0.0\AIWeather\
+```
+
+### Requirements
+- NINA 3.0 or later
+- .NET 8.0 Runtime
+- RTSP-compatible all-sky camera (or any RTSP stream)
+- Optional: API keys for AI providers (GitHub token, OpenAI, Gemini, Anthropic)
+
+### Verification
+**File**: NINA.Plugin.AIWeather.1.0.0.0.zip  
+**SHA256**: `BD36FED504032708F1BDC1B1A346032A596364BB0059788BA1766C84C0EFC65A`
+
+### Documentation
+- [README](https://github.com/michelebergo/nina.plugin.aiweather#readme)
+- [Setup Guide](https://github.com/michelebergo/nina.plugin.aiweather/blob/main/SETUP.md)
+- [GitHub Models Setup](https://github.com/michelebergo/nina.plugin.aiweather/blob/main/GITHUB_MODELS_SETUP.md)
+
+### Support
+- Report issues: https://github.com/michelebergo/nina.plugin.aiweather/issues
+- NINA Discord: https://discord.gg/nighttime-imaging
+────────────────────────────────────────────────────────────────
+
+5. Check: ☑ Set as a pre-release
+
+6. Upload the release asset:
+   - Click "Attach binaries by dropping them here or selecting them"
+   - Select: C:\Users\miche\Desktop\NINA_ai_allskycamera\release\NINA.Plugin.AIWeather.1.0.0.0.zip
+   - Wait for upload to complete
+
+7. Click "Publish release"
+
+
+##############################################################################
+# STEP 3: Fork nina.plugin.manifests ✓ (Web UI)
+##############################################################################
+
+1. Go to: https://github.com/isbeorn/nina.plugin.manifests
+2. Click the "Fork" button (top right)
+3. Owner: michelebergo
+4. Repository name: nina.plugin.manifests (keep default)
+5. Description: (optional)
+6. Click "Create fork"
+
+
+##############################################################################
+# STEP 4: Copy Manifest Files ✓ (Ready to Execute)
+##############################################################################
+
+# After forking, clone your fork and copy the manifest:
+
+cd C:\Users\miche\Desktop
+git clone https://github.com/michelebergo/nina.plugin.manifests.git
+cd nina.plugin.manifests
+
+# Copy the manifest folder
+Copy-Item -Path "C:\Users\miche\Desktop\NINA_ai_allskycamera\release\manifest-for-nina.plugin.manifests\manifests\n\nina.plugin.aiweather" -Destination ".\manifests\n\" -Recurse -Force
+
+# Verify it's in the right place
+Get-ChildItem .\manifests\n\nina.plugin.aiweather\3.0.0.0\1.0.0.0\manifest.json
+
+# Optional: Validate (requires Node.js)
+# npm install
+# node gather.js
+
+# Commit and push
+git add manifests/n/nina.plugin.aiweather
+git commit -m "Add nina.plugin.aiweather 1.0.0.0 beta manifest"
+git push origin main
+
+
+##############################################################################
+# STEP 5: Create Pull Request ✓ (Web UI)
+##############################################################################
+
+1. Go to: https://github.com/isbeorn/nina.plugin.manifests
+
+2. You should see a banner: "michelebergo:main had recent pushes"
+   Click "Compare & pull request"
+   
+   OR manually:
+   - Click "Pull requests" tab
+   - Click "New pull request"
+   - Click "compare across forks"
+   - Base repository: isbeorn/nina.plugin.manifests (base: main)
+   - Head repository: michelebergo/nina.plugin.manifests (compare: main)
+
+3. Title: Add nina.plugin.aiweather 1.0.0.0 beta manifest
+
+4. Description (copy this):
+────────────────────────────────────────────────────────────────
+Adding beta manifest for AI Weather plugin v1.0.0.0
+
+**Plugin Details:**
+- Name: AI Weather
+- Version: 1.0.0.0
+- Channel: Beta
+- Author: michelebergo
+- Repository: https://github.com/michelebergo/nina.plugin.aiweather
+- License: MIT
+
+**Description:**
+AI-powered all-sky camera weather monitoring plugin with RTSP stream support, multi-provider AI analysis (GitHub Models, OpenAI, Gemini, Anthropic), and safety monitor integration for automatic imaging control.
+
+**Manifest Location:**
+`manifests/n/nina.plugin.aiweather/3.0.0.0/1.0.0.0/manifest.json`
+
+**Release Asset:**
+- File: NINA.Plugin.AIWeather.1.0.0.0.zip (297 MB)
+- URL: https://github.com/michelebergo/nina.plugin.aiweather/releases/download/v1.0.0.0/NINA.Plugin.AIWeather.1.0.0.0.zip
+- SHA256: BD36FED504032708F1BDC1B1A346032A596364BB0059788BA1766C84C0EFC65A
+
+**Testing:**
+- Manifest validated with `node gather.js`
+- Plugin tested with NINA 3.0
+- All dependencies included in archive
+────────────────────────────────────────────────────────────────
+
+5. Click "Create pull request"
+
+6. Wait for review from NINA maintainers
+
+
+##############################################################################
+# VERIFICATION CHECKLIST
+##############################################################################
+
+After completing all steps, verify:
+
+☐ GitHub repo created and code pushed
+☐ Tag v1.0.0.0 exists in repo
+☐ Release v1.0.0.0 published with ZIP attached
+☐ ZIP downloadable from release URL
+☐ nina.plugin.manifests forked to your account
+☐ Manifest committed to your fork
+☐ Pull request created to isbeorn/nina.plugin.manifests
+☐ PR description complete and accurate
+
+Once the PR is merged (usually within a few days):
+☐ Plugin appears in beta channel: https://nighttime-imaging.eu/wp-json/nina/v1/beta
+☐ Test installation via NINA Plugin Manager
+
+
+##############################################################################
+# QUICK COMMAND SUMMARY
+##############################################################################
+
+# Push to GitHub (after creating the repo):
+cd C:\Users\miche\Desktop\NINA_ai_allskycamera
+git remote add origin https://github.com/michelebergo/nina.plugin.aiweather.git
+git branch -M main
+git push -u origin main
+git push origin v1.0.0.0
+
+# Clone manifest fork and add manifest (after forking):
+cd C:\Users\miche\Desktop
+git clone https://github.com/michelebergo/nina.plugin.manifests.git
+cd nina.plugin.manifests
+Copy-Item -Path "C:\Users\miche\Desktop\NINA_ai_allskycamera\release\manifest-for-nina.plugin.manifests\manifests\n\nina.plugin.aiweather" -Destination ".\manifests\n\" -Recurse -Force
+git add manifests/n/nina.plugin.aiweather
+git commit -m "Add nina.plugin.aiweather 1.0.0.0 beta manifest"
+git push origin main

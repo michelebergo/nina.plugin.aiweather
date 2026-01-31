@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using AIWeather.Models;
 
 namespace AIWeather
 {
@@ -11,6 +12,48 @@ namespace AIWeather
         private string _mediaUrl = "";
         private bool _isRunning = false;
         private bool _isLoading = false;
+        private CaptureMode _captureMode = CaptureMode.RTSPStream;
+        private string _indiDeviceName = "";
+        private string _folderPath = "";
+
+        public CaptureMode CaptureMode
+        {
+            get => _captureMode;
+            set
+            {
+                if (_captureMode != value)
+                {
+                    _captureMode = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string INDIDeviceName
+        {
+            get => _indiDeviceName;
+            set
+            {
+                if (_indiDeviceName != value)
+                {
+                    _indiDeviceName = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string FolderPath
+        {
+            get => _folderPath;
+            set
+            {
+                if (_folderPath != value)
+                {
+                    _folderPath = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         public string Username
         {
@@ -94,6 +137,7 @@ namespace AIWeather
                 {
                     _isRunning = value;
                     OnPropertyChanged();
+                    System.Diagnostics.Debug.WriteLine($"[CameraSource] IsRunning changed to: {value} for {MediaUrl}");
                 }
             }
         }

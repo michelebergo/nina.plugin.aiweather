@@ -5,13 +5,75 @@
                     xmlns:conv="clr-namespace:AIWeather.Converters">
 
     <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+    <conv:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter"/>
     
     <!-- Options View Template - must use key pattern: <PluginName>_Options -->
     <DataTemplate x:Key="AI Weather_Options">
         <StackPanel Orientation="Vertical" Margin="10" DataContext="{Binding}">
 
+            <!-- Capture Mode -->
+            <TextBlock Text="Capture Mode:" Margin="0,0,0,2" FontWeight="Bold"/>
+            <ComboBox SelectedIndex="{Binding Options.CaptureModeIndex, Mode=TwoWay}"
+                      Width="300" HorizontalAlignment="Left"
+                      Margin="0,0,0,10">
+                <ComboBoxItem Content="RTSP Stream (continuous video)"/>
+                <ComboBoxItem Content="HTTP Image Download (from URL)"/>
+                <ComboBoxItem Content="Folder Watch (monitor latest image)"/>
+            </ComboBox>
+
+            <!-- RTSP URL (visible when mode = 0) -->
+            <StackPanel Margin="0,0,0,10">
+                <StackPanel.Visibility>
+                    <Binding Path="Options.CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="0"/>
+                </StackPanel.Visibility>
+                <TextBlock Text="RTSP Stream URL:" Margin="0,0,0,2"/>
+                <TextBox Text="{Binding Options.RtspUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                         Width="300" HorizontalAlignment="Left"/>
+                <TextBlock Text="Configure username/password in the AI Weather Monitor imaging tab" 
+                           FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
+            </StackPanel>
+
+            <!-- HTTP Image Download (visible when mode = 1) -->
+            <StackPanel Margin="0,0,0,10">
+                <StackPanel.Visibility>
+                    <Binding Path="Options.CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="1"/>
+                </StackPanel.Visibility>
+                <TextBlock Text="Image URL:" Margin="0,0,0,2"/>
+                <TextBox Text="{Binding Options.INDIDeviceName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                         Width="300" HorizontalAlignment="Left"/>
+                <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0" Width="300" HorizontalAlignment="Left">
+                    <Run Text="Enter full URL to latest image"/>
+                    <LineBreak/>
+                    <Run Text="Example: http://192.168.1.100/image.jpg"/>
+                    <LineBreak/>
+                    <Run Text="Perfect for indi-allsky, AllSky, or any web-hosted all-sky camera"/>
+                </TextBlock>
+                <TextBlock Text="Username (optional):" Margin="0,10,0,2"/>
+                <TextBox Text="{Binding Options.RtspUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                         Width="300" HorizontalAlignment="Left"/>
+                <TextBlock Text="Password (optional):" Margin="0,5,0,2"/>
+                <PasswordBox Width="300" HorizontalAlignment="Left"
+                             Loaded="HttpPasswordBox_Loaded"
+                             PasswordChanged="HttpPasswordBox_PasswordChanged"/>
+            </StackPanel>
+
+            <!-- Folder Path (visible when mode = 2) -->
+            <StackPanel Margin="0,0,0,10">
+                <StackPanel.Visibility>
+                    <Binding Path="Options.CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="2"/>
+                </StackPanel.Visibility>
+                <TextBlock Text="Folder Path:" Margin="0,0,0,2"/>
+                <DockPanel>
+                    <Button Content="Browse..." DockPanel.Dock="Right" Margin="5,0,0,0" Padding="10,2"
+                            Click="BrowseFolder_Click"/>
+                    <TextBox Text="{Binding Options.FolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                             VerticalContentAlignment="Center"/>
+                </DockPanel>
+                <TextBlock Text="Folder containing latest all-sky images" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
+            </StackPanel>
+
             <!-- Analysis Provider -->
-            <TextBlock Text="Analysis Provider:" Margin="0,0,0,2"/>
+            <TextBlock Text="Analysis Provider:" Margin="0,10,0,2" FontWeight="Bold"/>
             <ComboBox ItemsSource="{Binding ProviderOptions}"
                       DisplayMemberPath="Name"
                       SelectedValuePath="Id"
@@ -27,6 +89,27 @@
             <TextBlock Text="Cloud Coverage Threshold (%):" Margin="0,10,0,2"/>
             <TextBox Text="{Binding CloudCoverageThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                      Width="100" HorizontalAlignment="Left"/>
+
+                    <!-- Generic File SafetyMonitor output file -->
+                    <TextBlock Text="Generic File SafetyMonitor" Margin="0,20,0,2" FontWeight="Bold"/>
+                    <TextBlock Text="Write Safe/Unsafe status file:" Margin="0,0,0,6"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
+                    <CheckBox IsChecked="{Binding Options.WriteSafetyStatusFile, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          VerticalAlignment="Center"
+                          Width="64"
+                          Margin="0,0,8,0"/>
+                    <TextBox Text="{Binding Options.SafetyStatusFilePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="{Binding Options.WriteSafetyStatusFile}"
+                         Width="360"
+                         VerticalContentAlignment="Center"/>
+                    <Button Content="Browse..."
+                        Margin="8,0,0,0"
+                        Padding="10,2"
+                        IsEnabled="{Binding Options.WriteSafetyStatusFile}"
+                        Click="BrowseSafetyStatusFile_Click"/>
+                    </StackPanel>
+                    <TextBlock Text="Writes a single line: Safe or Unsafe" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,4"/>
+                    <TextBlock Text="Point your ASCOM Generic File SafetyMonitor to this file" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,8"/>
             
             <!-- GitHub Models Token -->
             <StackPanel Margin="0,10,0,0"

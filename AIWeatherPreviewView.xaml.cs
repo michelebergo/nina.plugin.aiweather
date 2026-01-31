@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.Composition;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -8,6 +9,7 @@ using System.Windows.Threading;
 using LibVLCSharp.Shared;
 using NINA.Core.Utility;
 using AIWeather.Views;
+using AIWeather.Models;
 using System.Windows.Controls.Primitives;
 
 namespace AIWeather
@@ -37,9 +39,95 @@ namespace AIWeather
             // Set view reference in ViewModel when loaded
             this.Loaded += (s, e) =>
             {
+                Logger.Info($"🔄 AI Weather view Loaded event fired");
+                
                 if (DataContext is AIWeatherPreviewViewModel vm)
                 {
                     vm.SetView(this);
+                    Logger.Debug($"View reference set in ViewModel");
+                    
+                    // If we're navigating back and there's a running RTSP stream, restart it
+                    // Use longer delay and background priority to ensure UI is stable
+                    Dispatcher.BeginInvoke(new Action(async () =>
+                    {
+                        try
+                        {
+                            Logger.Debug("Waiting 1000ms for view stabilization...");
+                            // Wait for view to fully stabilize before attempting restart
+                            await Task.Delay(1000);
+                            
+                            // Recheck DataContext in case view was unloaded during delay
+                            if (DataContext is not AIWeatherPreviewViewModel viewModel)
+                            {
+                                Logger.Debug("View unloaded before RTSP restart could complete");
+                                return;
+                            }
+                            
+                            Logger.Debug($"Checking for running RTSP stream. Mode: {viewModel.CurrentCaptureMode}");
+                            
+                            // Check if any source is marked as running (RTSP mode only)
+                            var runningSource = viewModel.Sources?.FirstOrDefault(src => src.IsRunning);
+                            if (runningSource != null && viewModel.CurrentCaptureMode == CaptureMode.RTSPStream)
+                            {
+                                Logger.Info($"🔄 View reloaded with running RTSP stream - restarting playback for {runningSource.FullUrl}");
+                                // Restart the stream only if we're still on the UI thread and view is loaded
+                                if (this.IsLoaded)
+                                {
+                                    Logger.Info($"Attempting StartStreamAsync with URL: {runningSource.FullUrl}");
+                                    await StartStreamAsync(runningSource.FullUrl, runningSource.Username, runningSource.Password);
+                                    Logger.Info("✅ RTSP stream successfully restarted after navigation");
+                                }
+                                else
+                                {
+                                    Logger.Warning("View no longer loaded, skipping stream restart");
+                                }
+                            }
+                            else
+                            {
+                                Logger.Debug($"No running RTSP stream found. RunningSource: {runningSource != null}, Mode: {viewModel.CurrentCaptureMode}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error($"Error restarting RTSP stream on view reload: {ex.Message}");
+                        }
+                    }), DispatcherPriority.Background);
+                }
+                else
+                {
+                    Logger.Warning("DataContext is not AIWeatherPreviewViewModel");
+                }
+                
+                // Refresh video layout when view becomes visible
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        UpdateVideoHostLayoutToFill();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"Error refreshing video layout on load: {ex.Message}");
+                    }
+                }), DispatcherPriority.Loaded);
+            };
+            
+            // Also refresh when visibility changes
+            this.IsVisibleChanged += (s, e) =>
+            {
+                if (this.IsVisible)
+                {
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            UpdateVideoHostLayoutToFill();
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Debug($"Error refreshing video layout on visibility change: {ex.Message}");
+                        }
+                    }), DispatcherPriority.Loaded);
                 }
             };
         }
@@ -48,24 +136,18 @@ namespace AIWeather
         {
             try
             {
-                // NOTE: WPF can raise Unloaded during normal docking/layout changes.
+                // NOTE: WPF can raise Unloaded during normal docking/layout changes (tab switching).
+                // DO NOT stop the stream here - it should continue running in the background.
+                // Only clean up when explicitly stopped by user or plugin shutdown.
+                
                 // Disposing LibVLC here can crash NINA on the next start (native AV).
-                StopStream();
-
-                try
-                {
-                    _videoHost?.Dispose();
-                }
-                catch
-                {
-                    // best-effort
-                }
-
-                _videoHost = null;
+                // DO NOT dispose resources here - let them persist across navigation.
+                
+                Logger.Debug("AI Weather view unloaded (navigated away) - keeping stream running");
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error disposing LibVLC: {ex.Message}");
+                Logger.Error($"Error in view unloaded handler: {ex.Message}");
             }
         }
 
@@ -277,15 +359,46 @@ namespace AIWeather
                     await Task.Delay(100, startToken);
                 }
 
+                var finalState = player.State;
+                var finalIsPlaying = player.IsPlaying;
+                Logger.Info($"Stream startup complete. Final state: {finalState}, IsPlaying: {finalIsPlaying}");
+                
+                if (!finalIsPlaying)
+                {
+                    var errorMsg = "RTSP stream failed to start. ";
+                    if (finalState == VLCState.Error)
+                    {
+                        errorMsg += "Possible causes: incorrect URL, wrong credentials, network unreachable, or unsupported codec.";
+                    }
+                    else
+                    {
+                        errorMsg += $"Player state: {finalState}. Check URL format and network connectivity.";
+                    }
+                    Logger.Warning(errorMsg);
+                    Logger.Warning($"Troubleshooting tips:\n" +
+                        $"  1. Verify RTSP URL is correct (e.g., rtsp://camera-ip:554/stream)\n" +
+                        $"  2. Check username/password if authentication is required\n" +
+                        $"  3. Ensure camera is reachable (ping the IP address)\n" +
+                        $"  4. Try the URL in VLC media player to verify it works\n" +
+                        $"  5. Some cameras require specific paths like /h264, /live, or /stream");
+                }
+
                 Logger.Info($"Started RTSP stream: {RedactRtspCredentials(playbackUrl)}");
             }
             catch (OperationCanceledException)
             {
                 Logger.Info("StartStream canceled");
             }
+            catch (UriFormatException ex)
+            {
+                Logger.Error($"Invalid RTSP URL format: {ex.Message}");
+                Logger.Error("URL must be in format: rtsp://[username:password@]camera-ip[:port]/path");
+                await StopStreamCoreAsync();
+            }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to start stream: {ex.Message}", ex);
+                Logger.Error($"Failed to start RTSP stream: {ex.Message}", ex);
+                Logger.Error("Common issues: Wrong URL, authentication failure, network error, or camera offline.");
                 await StopStreamCoreAsync();
             }
             finally
@@ -302,6 +415,9 @@ namespace AIWeather
 
         public async Task StopStreamAsync()
         {
+            // Log the call stack to understand who's calling this
+            Logger.Info($"🛑 StopStreamAsync called - Stack trace: {Environment.StackTrace.Split('\n').Take(5).Aggregate((a, b) => a + "\n" + b)}");
+            
             if (!Dispatcher.CheckAccess())
             {
                 await Dispatcher.InvokeAsync(() => StopStreamAsync()).Task.Unwrap();
@@ -571,21 +687,48 @@ namespace AIWeather
                 _videoHost.Height = panelHeight;
                 _videoHost.Margin = new Thickness(0);
                 _videoHost.ResizeTo(panelWidth, panelHeight);
+
+                try
+                {
+                    // Let VLC pick default scaling when we don't know the video size yet.
+                    _videoHost.Player.Scale = 0;
+                }
+                catch
+                {
+                    // best-effort
+                }
                 return;
             }
 
-            // Scale-to-fill (crop) while preserving aspect ratio.
-            var scale = Math.Max(panelWidth / videoWidth, panelHeight / videoHeight);
-            var targetWidth = Math.Max(1, videoWidth * scale);
-            var targetHeight = Math.Max(1, videoHeight * scale);
+            // Keep the HWND viewport exactly the size of the panel.
+            // Then ask VLC to scale the video up so it fully covers the viewport (cropping as needed).
+            // This avoids relying on WPF clipping (HwndHost isn't reliably clipped) and prevents
+            // letterboxing/"white bands" after navigation/relayout.
+            _videoHost.HorizontalAlignment = HorizontalAlignment.Left;
+            _videoHost.VerticalAlignment = VerticalAlignment.Top;
+            _videoHost.Margin = new Thickness(0);
+            _videoHost.Width = panelWidth;
+            _videoHost.Height = panelHeight;
+            _videoHost.ResizeTo(panelWidth, panelHeight);
 
-            var left = (panelWidth - targetWidth) / 2.0;
-            var top = (panelHeight - targetHeight) / 2.0;
+            var scaleToFill = Math.Max(panelWidth / videoWidth, panelHeight / videoHeight);
+            if (double.IsNaN(scaleToFill) || double.IsInfinity(scaleToFill) || scaleToFill <= 0.001)
+            {
+                scaleToFill = 1.0;
+            }
 
-            _videoHost.Width = targetWidth;
-            _videoHost.Height = targetHeight;
-            _videoHost.Margin = new Thickness(left, top, 0, 0);
-            _videoHost.ResizeTo(targetWidth, targetHeight);
+            try
+            {
+                _videoHost.Player.Scale = (float)scaleToFill;
+            }
+            catch
+            {
+                // best-effort
+            }
+
+            // Force layout update
+            _videoHost.UpdateLayout();
+            VideoPanel.UpdateLayout();
         }
     }
 }
