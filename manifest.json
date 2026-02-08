@@ -4,10 +4,10 @@
   "Version": "1.2.0.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
-  "Homepage": "",
-  "Repository": "",
-  "License": "",
-  "LicenseURL": "",
+  "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
+  "Repository": "https://github.com/michelebergo/nina.plugin.aiweather",
+  "License": "MIT",
+  "LicenseURL": "https://opensource.org/licenses/MIT",
   "Tags": [
     "weather",
     "safety",
@@ -17,10 +17,10 @@
   ],
   "Description": {
     "short": {
-      "EN": "AI-powered all-sky camera weather monitoring for automated imaging safety"
+      "EN": "AI-powered all-sky camera weather monitoring with automatic safety protection"
     },
     "long": {
-      "EN": "Monitors an all-sky camera via RTSP stream and uses AI to analyze weather conditions (clouds, rain, sky conditions). Integrates with NINA's safety system to automatically pause/stop imaging when conditions become unsafe. Supports GitHub Models (GPT-4o, Claude, Gemini) and local AI analysis."
+      "EN": "Analyzes all-sky camera images using AI vision models to determine real-time weather conditions including cloud coverage, rain, and fog detection. Supports three capture modes (RTSP stream, HTTP image download, folder watch) and five AI providers (Local offline, GitHub Models, OpenAI, Google Gemini, Anthropic Claude). Integrates with NINA's safety monitor to automatically pause or abort imaging sequences when conditions become unsafe. Features automatic fallback to local analysis if cloud AI providers fail, optional ASCOM Generic File SafetyMonitor output, and a live preview panel with real-time activity logging."
     }
   },
   "ChangeLog": [

@@ -209,22 +209,40 @@
                 </StackPanel>
             
             <!-- Description Section -->
-            <TextBlock Text="Description" FontWeight="Bold" Margin="0,20,0,10"/>
-            <TextBlock Text="All Sky Camera Weather Monitor" Margin="0,0,0,5"/>
-            <TextBlock Text="Monitor weather conditions using an all-sky camera with AI-powered analysis:" Margin="0,5,0,5" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left"/>
-            
-            <StackPanel Margin="15,5,0,0">
-                <TextBlock Text="○   RTSP stream capture from all-sky cameras" Margin="0,2"/>
-                <TextBlock Text="○   AI-powered weather analysis using GitHub Models (Claude, GPT-4, Gemini)" Margin="0,2"/>
-                <TextBlock Text="○   Offline fallback using local image processing" Margin="0,2"/>
-                <TextBlock Text="○   Automatic imaging pause/resume based on weather conditions" Margin="0,2"/>
-                <TextBlock Text="○   Live preview with real-time analysis" Margin="0,2"/>
-                <TextBlock Text="○   Configurable cloud coverage thresholds" Margin="0,2"/>
-                <TextBlock Text="○   Periodic monitoring at customizable intervals" Margin="0,2"/>
+            <TextBlock Text="About AI Weather" FontWeight="Bold" Margin="0,20,0,10"/>
+            <TextBlock Text="AI Weather analyzes all-sky camera images using artificial intelligence to determine real-time weather conditions and protect your equipment during unattended imaging sessions."
+                       Margin="0,0,0,10" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left"/>
+
+            <TextBlock Text="How It Works" FontWeight="Bold" Margin="0,5,0,5"/>
+            <TextBlock Text="The plugin periodically captures an image from your all-sky camera, sends it to a vision-capable AI model, and receives a structured weather assessment including cloud coverage percentage, weather condition, and rain/fog detection. Based on configurable thresholds, it reports a Safe or Unsafe status to NINA's safety monitor, which can automatically pause or abort an imaging sequence."
+                       Margin="0,0,0,10" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left"/>
+
+            <TextBlock Text="Capture Modes" FontWeight="Bold" Margin="0,5,0,5"/>
+            <StackPanel Margin="15,0,0,10">
+                <TextBlock Text="○   RTSP Stream - live video from network IP cameras with real-time preview" Margin="0,3"/>
+                <TextBlock Text="○   HTTP Image - periodic download from a URL (indi-allsky, AllSky, web cameras)" Margin="0,3"/>
+                <TextBlock Text="○   Folder Watch - monitors a local folder for the latest image saved by any camera software" Margin="0,3"/>
             </StackPanel>
-            
-            <TextBlock Text="The plugin integrates with NINA's safety monitor system to automatically protect your equipment from adverse weather conditions by analyzing all-sky camera images in real-time." 
-                       Margin="0,10,0,0" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left" FontSize="11" Foreground="#AAAAAA"/>
+
+            <TextBlock Text="AI Providers" FontWeight="Bold" Margin="0,5,0,5"/>
+            <StackPanel Margin="15,0,0,10">
+                <TextBlock Text="○   Local - offline heuristic analysis using brightness, color, and pattern detection" Margin="0,3"/>
+                <TextBlock Text="○   GitHub Models - free access to GPT-4o, Claude, Gemini via GitHub token" Margin="0,3"/>
+                <TextBlock Text="○   OpenAI - GPT-4o and GPT-4o Mini" Margin="0,3"/>
+                <TextBlock Text="○   Google Gemini - Gemini 1.5 Flash, 1.5 Pro, 2.0 Flash" Margin="0,3"/>
+                <TextBlock Text="○   Anthropic Claude - Claude 3.5 Sonnet, 3.5 Haiku, 3 Opus" Margin="0,3"/>
+            </StackPanel>
+
+            <TextBlock Text="Safety Features" FontWeight="Bold" Margin="0,5,0,5"/>
+            <StackPanel Margin="15,0,0,10">
+                <TextBlock Text="○   Detects cloud coverage, rain (including lens droplets), and fog" Margin="0,3"/>
+                <TextBlock Text="○   Rain and fog trigger Unsafe regardless of cloud threshold" Margin="0,3"/>
+                <TextBlock Text="○   Automatic fallback to local analysis if the AI provider fails or times out" Margin="0,3"/>
+                <TextBlock Text="○   Optional status file output for ASCOM Generic File SafetyMonitor integration" Margin="0,3"/>
+            </StackPanel>
+
+            <TextBlock Text="Connect the safety monitor under Equipment > Safety Monitor > All Sky Camera Safety Monitor to start protecting your imaging sessions."
+                       Margin="0,0,0,0" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left" FontSize="11" Foreground="#AAAAAA"/>
         </StackPanel>
     </DataTemplate>
     

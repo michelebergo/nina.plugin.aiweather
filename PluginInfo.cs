@@ -7,8 +7,8 @@ namespace AIWeather
     {
         public const string PLUGIN_NAME = "AI Weather";
         public const string PLUGIN_VERSION = "1.0.0.0";
-        public const string PLUGIN_AUTHOR = "miche";
-        public const string PLUGIN_DESCRIPTION = "AI-powered all-sky camera weather monitoring";
+        public const string PLUGIN_AUTHOR = "Michele Bergo";
+        public const string PLUGIN_DESCRIPTION = "AI-powered all-sky camera weather monitoring with automatic safety protection";
         
         public static readonly Guid PLUGIN_ID = new Guid("A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D");
         

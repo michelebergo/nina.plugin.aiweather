@@ -5,9 +5,9 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("AI Weather")]
-[assembly: AssemblyDescription("AI-powered all-sky camera weather monitoring")]
+[assembly: AssemblyDescription("AI-powered all-sky camera weather monitoring with automatic safety protection")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("michelebergo")]
+[assembly: AssemblyCompany("Michele Bergo")]
 [assembly: AssemblyProduct("NINA.Plugins")]
 [assembly: AssemblyCopyright("Copyright © 2026")]
 [assembly: AssemblyTrademark("")]
@@ -26,7 +26,7 @@ using System.Runtime.InteropServices;
 
 // Required by the N.I.N.A. community plugin manifest repository
 [assembly: AssemblyMetadata("Identifier", "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D")]
-[assembly: AssemblyMetadata("Author", "michelebergo")]
+[assembly: AssemblyMetadata("Author", "Michele Bergo")]
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
@@ -43,8 +43,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Tags", "Weather,Safety Monitor,All Sky Camera,AI,RTSP")]
 
 // Optional metadata used by N.I.N.A.'s plugin manager UI
-[assembly: AssemblyMetadata("Homepage", "")]
-[assembly: AssemblyMetadata("ChangelogURL", "")]
+[assembly: AssemblyMetadata("Homepage", "https://github.com/michelebergo/nina.plugin.aiweather")]
+[assembly: AssemblyMetadata("ChangelogURL", "https://github.com/michelebergo/nina.plugin.aiweather/releases")]
 
 // Featured logo displayed next to the plugin in the plugin list
 // This points to an embedded WPF resource.
@@ -55,25 +55,28 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("AltScreenshotURL", "")]
 
 // Long description displayed in the plugin manager
-[assembly: AssemblyMetadata("LongDescription", @"All Sky Camera Weather Monitor
+[assembly: AssemblyMetadata("LongDescription", @"AI Weather analyzes all-sky camera images using artificial intelligence to determine real-time weather conditions and protect your equipment during unattended imaging sessions.
 
-Monitor weather conditions using an all-sky camera with AI-powered analysis:
+How It Works:
+The plugin periodically captures an image from your all-sky camera, sends it to a vision-capable AI model, and receives a structured weather assessment including cloud coverage percentage, weather condition, and rain/fog detection. Based on configurable thresholds, it reports a Safe or Unsafe status to NINA's safety monitor, which can automatically pause or abort an imaging sequence.
 
-Features:
-- RTSP stream capture from all-sky cameras
-- AI-powered weather analysis using GitHub Models (Claude, GPT-4, Gemini)
-- Offline fallback using local image processing
-- Automatic imaging pause/resume based on weather conditions
-- Live preview with real-time analysis
-- Configurable cloud coverage thresholds
-- Periodic monitoring at customizable intervals
+Capture Modes:
+- RTSP Stream: live video from network IP cameras with real-time preview
+- HTTP Image: periodic download from a URL (indi-allsky, AllSky, web cameras)
+- Folder Watch: monitors a local folder for the latest image saved by any camera software
 
-The plugin integrates with NINA's safety monitor system to automatically protect your equipment
-from adverse weather conditions by analyzing all-sky camera images in real-time.
+AI Providers:
+- Local: offline heuristic analysis using brightness, color, and pattern detection
+- GitHub Models: free access to GPT-4o, Claude, Gemini via GitHub token
+- OpenAI: GPT-4o and GPT-4o Mini
+- Google Gemini: Gemini 1.5 Flash, 1.5 Pro, 2.0 Flash
+- Anthropic Claude: Claude 3.5 Sonnet, 3.5 Haiku, 3 Opus
 
-Supports:
-- GitHub Models API (Claude 3.5 Sonnet, GPT-4o, GPT-4o Mini, Gemini 1.5 Flash/Pro)
-- Local image analysis as offline fallback
-- RTSP camera streams
-- Configurable monitoring intervals (1-60 minutes)
+Safety Features:
+- Detects cloud coverage, rain (including lens droplets), and fog
+- Rain and fog trigger Unsafe regardless of cloud threshold
+- Automatic fallback to local analysis if the AI provider fails or times out
+- Optional status file output for ASCOM Generic File SafetyMonitor integration
+
+Connect the safety monitor under Equipment > Safety Monitor > All Sky Camera Safety Monitor to start protecting your imaging sessions.
 ")]
