@@ -80,10 +80,12 @@ namespace AIWeather.Services
 
             try
             {
-                Logger.Debug($"Starting GitHub Models AI weather analysis with {_modelName}");
+                Logger.Info($"Starting GitHub Models AI weather analysis with {_modelName}");
 
                 // Convert bitmap to base64
+                Logger.Debug("Converting image to base64...");
                 string base64Image = ConvertImageToBase64(image);
+                Logger.Debug($"Image converted to base64, size: {base64Image.Length} chars");
 
                 // Get the chat client for the selected model
                 var normalizedModelName = NormalizeModelName(_modelName);
@@ -95,9 +97,11 @@ namespace AIWeather.Services
                 }
 
                 var modelId = ModelMap[normalizedModelName];
+                Logger.Debug($"Getting chat client for model: {modelId}");
                 var chatClient = _client.GetChatClient(modelId);
 
                 // Create the prompt for weather analysis
+                Logger.Debug("Creating chat messages with image...");
                 var messages = new List<ChatMessage>
                 {
                     new SystemChatMessage(WeatherAnalysisPrompts.DetailedSystemPrompt),
@@ -107,10 +111,17 @@ namespace AIWeather.Services
                     )
                 };
 
-                // Call the AI model
-                var chatCompletion = await chatClient.CompleteChatAsync(messages, cancellationToken: cancellationToken);
+                // Call the AI model with timeout
+                Logger.Info("Calling GitHub Models API...");
+
+                // Create a timeout cancellation token source (60 seconds timeout)
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+                var chatCompletion = await chatClient.CompleteChatAsync(messages, cancellationToken: linkedCts.Token);
                 var response = chatCompletion.Value.Content[0].Text;
 
+                Logger.Info($"GitHub Models API responded, response length: {response.Length} chars");
                 Logger.Debug($"AI Response: {response}");
 
                 // Parse the response
@@ -119,9 +130,18 @@ namespace AIWeather.Services
                 Logger.Info($"GitHub Models analysis complete: {weatherResult.Condition}, Cloud Coverage: {weatherResult.CloudCoverage:F1}%, Safe: {weatherResult.IsSafeForImaging}");
                 return weatherResult;
             }
+            catch (OperationCanceledException ex)
+            {
+                Logger.Warning($"GitHub Models API call timed out or was cancelled: {ex.Message}");
+
+                // Fallback to local analysis
+                var fallback = new LocalWeatherAnalysisService();
+                return await fallback.AnalyzeImageAsync(image, cancellationToken);
+            }
             catch (Exception ex)
             {
                 Logger.Error($"Error in GitHub Models analysis: {ex.Message}", ex);
+                Logger.Debug($"Exception type: {ex.GetType().Name}, StackTrace: {ex.StackTrace}");
 
                 // Fallback to local analysis
                 var fallback = new LocalWeatherAnalysisService();

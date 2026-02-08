@@ -48,12 +48,15 @@ namespace AIWeather.Services
         {
             if (!_isInitialized)
             {
+                Logger.Warning("Anthropic service not initialized, falling back to local analysis");
                 var fallback = new LocalWeatherAnalysisService();
                 return await fallback.AnalyzeImageAsync(image, cancellationToken);
             }
 
             try
             {
+                Logger.Info($"Starting Anthropic AI weather analysis with {_modelName}");
+
                 var base64Image = ConvertImageToBase64(image);
 
                 var payload = new
@@ -94,18 +97,35 @@ namespace AIWeather.Services
                 request.Headers.UserAgent.ParseAdd("NINA-AIWeather/1.0");
                 request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-                using var response = await Http.SendAsync(request, cancellationToken);
-                var json = await response.Content.ReadAsStringAsync(cancellationToken);
+                Logger.Info("Calling Anthropic API...");
+
+                // Create a timeout cancellation token source (60 seconds timeout)
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+                using var response = await Http.SendAsync(request, linkedCts.Token);
+                var json = await response.Content.ReadAsStringAsync(linkedCts.Token);
 
                 if (!response.IsSuccessStatusCode)
                 {
+                    Logger.Error($"Anthropic API error: HTTP {(int)response.StatusCode}: {json}");
                     throw new InvalidOperationException($"HTTP {(int)response.StatusCode}: {json}");
                 }
+
+                Logger.Info("Anthropic API responded, parsing response...");
 
                 using var doc = JsonDocument.Parse(json);
                 var text = ExtractAnthropicText(doc.RootElement);
 
-                return PromptText.ParseAIResponse(text);
+                var result = PromptText.ParseAIResponse(text);
+                Logger.Info($"Anthropic analysis complete: {result.Condition}, Cloud Coverage: {result.CloudCoverage:F1}%");
+                return result;
+            }
+            catch (OperationCanceledException ex)
+            {
+                Logger.Warning($"Anthropic API call timed out or was cancelled: {ex.Message}");
+                var fallback = new LocalWeatherAnalysisService();
+                return await fallback.AnalyzeImageAsync(image, cancellationToken);
             }
             catch (Exception ex)
             {

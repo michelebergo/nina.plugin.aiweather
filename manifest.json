@@ -1,9 +1,9 @@
 {
   "Identifier": "NINA.Plugin.AIWeather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.1.0.0",
+  "Version": "1.2.0.0",
   "MinimumApplicationVersion": "3.0.0.0",
-  "Author": "Your Name",
+  "Author": "Michele Bergo",
   "Homepage": "",
   "Repository": "",
   "License": "",
@@ -24,6 +24,16 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.2.0.0",
+      "Date": "2026-02-08",
+      "Changes": [
+        "Added 60-second timeout to all AI analysis providers to prevent indefinite hangs",
+        "Enhanced logging throughout AI analysis pipeline for better debugging",
+        "Improved error handling with separate timeout exception catching",
+        "Added automatic fallback to local analysis when AI providers timeout or fail"
+      ]
+    },
     {
       "Version": "1.1.0",
       "Date": "2026-01-31",

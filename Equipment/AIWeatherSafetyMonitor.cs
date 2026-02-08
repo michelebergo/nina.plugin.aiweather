@@ -347,7 +347,9 @@ namespace AIWeather.Equipment
                 Logger.Info($"✓ Image captured successfully from {captureMode}, size: {frame.Width}x{frame.Height}");
 
                 // Analyze the frame
+                Logger.Info($"🤖 Starting AI analysis using {_analysisService.GetType().Name}...");
                 var result = await _analysisService.AnalyzeImageAsync(frame, cancellationToken);
+                Logger.Info($"✅ AI analysis completed successfully");
                 _lastResult = result;
 
                 // Store a copy of the image for UI restoration
