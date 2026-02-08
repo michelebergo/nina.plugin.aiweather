@@ -19,9 +19,28 @@ packages/
 # NINA Plugin specific
 *.zip
 publish/
+release/
+_release_out_test/
+
+# Dev scripts
+deploy.ps1
+rebuild-and-restart.ps1
+test-plugin.ps1
+prepare-nina-release.ps1
+
+# Extra docs
+AI_MODEL_RECOMMENDATIONS.md
+BUILD.md
+GITHUB_MODELS_SETUP.md
+RELEASE_CHECKLIST.md
+RELEASE_STEPS.txt
+SETUP.md
 
 # Rider
 .idea/
+
+# Claude Code
+.claude/
 
 # Temporary files
 *.tmp
