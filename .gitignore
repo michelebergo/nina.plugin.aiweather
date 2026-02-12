@@ -56,3 +56,5 @@ Thumbs.db
 # User settings (containing API keys)
 user_settings.json
 appsettings.local.json
+
+.vscode/

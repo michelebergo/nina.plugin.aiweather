@@ -33,7 +33,6 @@ namespace AIWeather
         {
             if (sender is PasswordBox pb)
             {
-                Properties.Settings.Default.Reload();
                 var current = Properties.Settings.Default.RtspPassword ?? string.Empty;
                 if (!string.Equals(pb.Password, current))
                 {
@@ -82,7 +81,6 @@ namespace AIWeather
         {
             if (sender is PasswordBox pb)
             {
-                Properties.Settings.Default.Reload();
                 var current = Properties.Settings.Default.RtspPassword ?? string.Empty;
                 if (!string.Equals(pb.Password, current))
                 {

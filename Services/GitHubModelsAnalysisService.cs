@@ -27,12 +27,22 @@ namespace AIWeather.Services
 
         private const string GITHUB_MODELS_ENDPOINT = "https://models.inference.ai.azure.com";
 
-        // Model mapping
+        // Model mapping — keep in sync with SupportedVisionModelIds in AIWeather.cs
         private static readonly Dictionary<string, string> ModelMap = new()
         {
+            // OpenAI
             { "gpt-4o", "gpt-4o" },
             { "gpt-4o-mini", "gpt-4o-mini" },
+            { "gpt-4.1", "gpt-4.1" },
+            { "gpt-4.1-mini", "gpt-4.1-mini" },
+            { "gpt-4.1-nano", "gpt-4.1-nano" },
+            { "o1", "o1" },
+            { "o3", "o3" },
+            { "o4-mini", "o4-mini" },
+            // Anthropic (via GitHub)
+            { "claude-sonnet-4-5", "claude-sonnet-4-5" },
             { "claude-3.5-sonnet", "claude-3.5-sonnet" },
+            // Google (via GitHub)
             { "gemini-1.5-flash", "gemini-1.5-flash" },
             { "gemini-1.5-pro", "gemini-1.5-pro" }
         };

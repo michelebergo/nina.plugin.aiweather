@@ -24,7 +24,7 @@ namespace AIWeather.Services
         public GeminiAnalysisService(string apiKey, string modelName)
         {
             _apiKey = apiKey;
-            _modelName = string.IsNullOrWhiteSpace(modelName) ? "gemini-1.5-flash" : modelName.Trim();
+            _modelName = string.IsNullOrWhiteSpace(modelName) ? "gemini-2.0-flash" : modelName.Trim();
         }
 
         public Task<bool> InitializeAsync(CancellationToken cancellationToken = default)

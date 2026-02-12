@@ -44,6 +44,7 @@ namespace AIWeather
                 if (DataContext is AIWeatherPreviewViewModel vm)
                 {
                     vm.SetView(this);
+                    vm.SyncCaptureMode();
                     Logger.Debug($"View reference set in ViewModel");
                     
                     // If we're navigating back and there's a running RTSP stream, restart it

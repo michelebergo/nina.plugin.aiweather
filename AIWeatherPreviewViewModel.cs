@@ -293,6 +293,21 @@ namespace AIWeather
             }
         }
 
+        /// <summary>
+        /// Re-synchronises all capture-mode-dependent UI properties from the current
+        /// in-memory settings.  Called from the view's Loaded handler so the panel always
+        /// reflects the latest Options page state when the user navigates to it.
+        /// </summary>
+        public void SyncCaptureMode()
+        {
+            RaisePropertyChanged(nameof(CurrentCaptureMode));
+            RaisePropertyChanged(nameof(IsRtspMode));
+            RaisePropertyChanged(nameof(IsNonRtspMode));
+            RaisePropertyChanged(nameof(IsFolderMode));
+            RaisePropertyChanged(nameof(IsUrlMode));
+            SyncPrimarySourceFromSettings();
+        }
+
         private void SyncPrimarySourceFromSettings()
         {
             if (Sources == null || Sources.Count == 0)

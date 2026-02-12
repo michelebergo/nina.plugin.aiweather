@@ -66,41 +66,88 @@ namespace AIWeather
             new ProviderOption("Anthropic", "Anthropic Claude")
         };
 
-        // Only models we know how to call for *vision* analysis via ChatCompletions.
-        // The GitHub Models catalog includes many non-chat and/or non-vision models.
-        private static readonly string[] SupportedVisionModelIds = new[]
-        {
-            "gpt-4o",
-            "gpt-4o-mini",
-            "claude-3.5-sonnet",
-            "gemini-1.5-flash",
-            "gemini-1.5-pro"
-        };
+        // Vision-capable models known to work with image analysis via ChatCompletions.
+        // Used as the filter when querying the GitHub Models catalog (which contains many
+        // non-vision, non-chat models). Keep this list in sync with ModelMap in
+        // GitHubModelsAnalysisService so any model the user can select will actually work.
+        private static readonly System.Collections.Generic.HashSet<string> SupportedVisionModelIds =
+            new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                // OpenAI
+                "gpt-4o",
+                "gpt-4o-mini",
+                "gpt-4.1",
+                "gpt-4.1-mini",
+                "gpt-4.1-nano",
+                "o1",
+                "o3",
+                "o4-mini",
+                // Anthropic (via GitHub)
+                "claude-sonnet-4-5",
+                "claude-3.5-sonnet",
+                // Google (via GitHub)
+                "gemini-1.5-flash",
+                "gemini-1.5-pro",
+            };
 
+        // Per-provider default/fallback model lists. These are shown when the provider's
+        // live API cannot be reached, and serve as the initial list before the first fetch.
+        // Ordered with recommended default first.
         private static readonly System.Collections.Generic.Dictionary<string, string[]> DefaultModelsByProvider =
             new System.Collections.Generic.Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
             {
-                ["GitHubModels"] = SupportedVisionModelIds,
+                ["GitHubModels"] = new[]
+                {
+                    "gpt-4o",
+                    "gpt-4o-mini",
+                    "gpt-4.1",
+                    "gpt-4.1-mini",
+                    "gpt-4.1-nano",
+                    "o1",
+                    "o3",
+                    "o4-mini",
+                    "claude-sonnet-4-5",
+                    "claude-3.5-sonnet",
+                    "gemini-1.5-flash",
+                    "gemini-1.5-pro",
+                },
                 ["OpenAI"] = new[]
                 {
                     "gpt-4o",
-                    "gpt-4o-mini"
+                    "gpt-4o-mini",
+                    "gpt-4.1",
+                    "gpt-4.1-mini",
+                    "gpt-4.1-nano",
+                    "o1",
+                    "o3",
+                    "o4-mini",
                 },
                 ["Gemini"] = new[]
                 {
+                    "gemini-2.0-flash",
+                    "gemini-2.5-flash",
+                    "gemini-2.5-pro",
                     "gemini-1.5-flash",
                     "gemini-1.5-pro",
-                    "gemini-2.0-flash"
                 },
                 ["Anthropic"] = new[]
                 {
+                    "claude-sonnet-4-5-20250929",
+                    "claude-sonnet-4-20250514",
+                    "claude-haiku-4-5-20251001",
                     "claude-3-5-sonnet-20241022",
                     "claude-3-5-haiku-20241022",
-                    "claude-3-opus-20240229"
+                    "claude-3-opus-20240229",
                 }
             };
 
-        public ObservableCollection<string> AvailableModels { get; } = new ObservableCollection<string>(SupportedVisionModelIds);
+        // ── Model cache (1-hour TTL, per provider – mirrors AI Assistant pattern) ──
+        private static readonly System.Collections.Generic.Dictionary<string, (string[] models, DateTime fetchedAt)> _modelCache =
+            new System.Collections.Generic.Dictionary<string, (string[], DateTime)>(StringComparer.OrdinalIgnoreCase);
+        private static readonly TimeSpan ModelCacheDuration = TimeSpan.FromHours(1);
+
+        public ObservableCollection<string> AvailableModels { get; } = new ObservableCollection<string>(
+            DefaultModelsByProvider.TryGetValue("GitHubModels", out var init) ? init : Array.Empty<string>());
 
         private string _gitHubTokenStatus = string.Empty;
         public string GitHubTokenStatus
@@ -265,92 +312,104 @@ namespace AIWeather
 
         public async Task RefreshAvailableModelsAsync()
         {
+            var currentProvider = AnalysisProvider ?? "Local";
+
+            // Local provider has no model dropdown.
+            if (string.Equals(currentProvider, "Local", StringComparison.OrdinalIgnoreCase))
+            {
+                RunOnUiThread(() =>
+                {
+                    AvailableModels.Clear();
+                    ModelsStatus = "Local analysis — no model selection needed";
+                });
+                return;
+            }
+
             try
             {
-                string statusMessage;
-                System.Collections.Generic.List<string>? newModels = null;
-
-                // Non-GitHub providers: show a reasonable built-in suggestion list.
-                if (!IsGitHubModelsProvider)
+                // ── Check cache first (1-hour TTL) ──────────────────────────────
+                if (_modelCache.TryGetValue(currentProvider, out var cached) &&
+                    DateTime.UtcNow - cached.fetchedAt < ModelCacheDuration &&
+                    cached.models.Length > 0)
                 {
-                    if (DefaultModelsByProvider.TryGetValue(AnalysisProvider ?? string.Empty, out var defaults) && defaults.Length > 0)
+                    Logger.Debug($"Returning {cached.models.Length} cached models for {currentProvider}");
+                    RunOnUiThread(() =>
                     {
-                        newModels = defaults.ToList();
-                        statusMessage = $"Using built-in {AnalysisProvider} model list";
+                        AvailableModels.Clear();
+                        foreach (var m in cached.models) AvailableModels.Add(m);
+                        ModelsStatus = $"Loaded {cached.models.Length} models (cached)";
+                        EnsureSelectedModelIsValid();
+                    });
+                    return;
+                }
+
+                RunOnUiThread(() => { ModelsStatus = $"Fetching models from {currentProvider}..."; });
+
+                // ── Fetch live model list per provider ──────────────────────────
+                string[]? liveModels = null;
+                try
+                {
+                    liveModels = await FetchModelsForProviderAsync(currentProvider);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"Live model fetch failed for {currentProvider}: {ex.Message}");
+                }
+
+                // Filter / fallback
+                System.Collections.Generic.List<string> finalModels;
+
+                if (liveModels != null && liveModels.Length > 0)
+                {
+                    // For GitHub Models we must filter to vision-capable models only.
+                    if (string.Equals(currentProvider, "GitHubModels", StringComparison.OrdinalIgnoreCase))
+                    {
+                        finalModels = liveModels
+                            .Where(m => SupportedVisionModelIds.Contains(m))
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .OrderBy(m => m)
+                            .ToList();
+
+                        if (finalModels.Count == 0)
+                        {
+                            // None of the live models passed the vision filter — use defaults.
+                            Logger.Info($"GitHub Models returned {liveModels.Length} models but none matched vision filter; using defaults");
+                            finalModels = DefaultModelsByProvider.TryGetValue(currentProvider, out var defs)
+                                ? defs.ToList()
+                                : new System.Collections.Generic.List<string> { "gpt-4o" };
+                        }
                     }
                     else
                     {
-                        statusMessage = $"Model list not available for {AnalysisProvider}; enter a model name";
+                        // Other providers: use the live list as-is (they're already relevant).
+                        finalModels = liveModels.ToList();
                     }
 
-                    RunOnUiThread(() =>
-                    {
-                        if (newModels != null)
-                        {
-                            AvailableModels.Clear();
-                            foreach (var model in newModels)
-                            {
-                                AvailableModels.Add(model);
-                            }
-                        }
-
-                        ModelsStatus = statusMessage;
-                        EnsureSelectedModelIsValid();
-                    });
-
-                    return;
+                    // Cache the result.
+                    _modelCache[currentProvider] = (finalModels.ToArray(), DateTime.UtcNow);
+                    Logger.Info($"Cached {finalModels.Count} models for {currentProvider}");
                 }
-
-                var token = Properties.Settings.Default.GitHubToken;
-                if (string.IsNullOrWhiteSpace(token))
+                else
                 {
-                    RunOnUiThread(() =>
-                    {
-                        ModelsStatus = "Using built-in model list (no GitHub token set)";
-                        EnsureSelectedModelIsValid();
-                    });
-                    return;
+                    // Fallback to built-in defaults.
+                    finalModels = DefaultModelsByProvider.TryGetValue(currentProvider, out var defaults) && defaults.Length > 0
+                        ? defaults.ToList()
+                        : new System.Collections.Generic.List<string>();
                 }
 
-                RunOnUiThread(() => { ModelsStatus = "Fetching models from GitHub Models..."; });
-
-                var models = await FetchGitHubModelsAsync(token);
-                if (models == null || models.Count == 0)
-                {
-                    RunOnUiThread(() =>
-                    {
-                        ModelsStatus = "Model fetch returned no results; using built-in list";
-                        EnsureSelectedModelIsValid();
-                    });
-                    return;
-                }
-
-                // Filter to supported vision-capable chat models.
-                newModels = models
-                    .Where(m => SupportedVisionModelIds.Any(s => string.Equals(s, m, StringComparison.OrdinalIgnoreCase)))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(m => m)
-                    .ToList();
-
-                if (newModels.Count == 0)
-                {
-                    RunOnUiThread(() =>
-                    {
-                        ModelsStatus = $"Fetched {models.Count} models, but none are supported for vision analysis; using built-in list";
-                        EnsureSelectedModelIsValid();
-                    });
-                    return;
-                }
+                var statusMsg = liveModels != null && liveModels.Length > 0
+                    ? $"Loaded {finalModels.Count} models from {currentProvider}"
+                    : $"Using built-in {currentProvider} model list ({finalModels.Count} models)";
 
                 RunOnUiThread(() =>
                 {
                     AvailableModels.Clear();
-                    foreach (var model in newModels)
+                    foreach (var model in finalModels)
                     {
                         AvailableModels.Add(model);
                     }
 
-                    ModelsStatus = $"Loaded {AvailableModels.Count} supported models";
+                    ModelsStatus = statusMsg;
                     EnsureSelectedModelIsValid();
                 });
             }
@@ -363,6 +422,192 @@ namespace AIWeather
                 });
                 Logger.Warning($"Failed to refresh model list: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Query the provider's API to discover currently available models.
+        /// Mirrors the pattern used in AI Assistant's per-provider GetAvailableModelsAsync().
+        /// Returns null on failure (caller falls back to defaults).
+        /// </summary>
+        private async Task<string[]?> FetchModelsForProviderAsync(string provider)
+        {
+            // ── GitHub Models ───────────────────────────────────────────────────
+            if (string.Equals(provider, "GitHubModels", StringComparison.OrdinalIgnoreCase))
+            {
+                var token = Properties.Settings.Default.GitHubToken;
+                if (string.IsNullOrWhiteSpace(token)) return null;
+
+                var models = await FetchGitHubModelsAsync(token);
+                return models?.ToArray();
+            }
+
+            // ── OpenAI ──────────────────────────────────────────────────────────
+            if (string.Equals(provider, "OpenAI", StringComparison.OrdinalIgnoreCase))
+            {
+                var key = Properties.Settings.Default.OpenAIKey;
+                if (string.IsNullOrWhiteSpace(key)) return null;
+
+                return await FetchOpenAIModelsAsync(key.Trim());
+            }
+
+            // ── Gemini ──────────────────────────────────────────────────────────
+            if (string.Equals(provider, "Gemini", StringComparison.OrdinalIgnoreCase))
+            {
+                var key = Properties.Settings.Default.GeminiKey;
+                if (string.IsNullOrWhiteSpace(key)) return null;
+
+                return await FetchGeminiModelsAsync(key.Trim());
+            }
+
+            // ── Anthropic ───────────────────────────────────────────────────────
+            if (string.Equals(provider, "Anthropic", StringComparison.OrdinalIgnoreCase))
+            {
+                var key = Properties.Settings.Default.AnthropicKey;
+                if (string.IsNullOrWhiteSpace(key)) return null;
+
+                return await FetchAnthropicModelsAsync(key.Trim());
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Fetch available OpenAI models via /v1/models, filtering to vision-capable models.
+        /// </summary>
+        private static async Task<string[]> FetchOpenAIModelsAsync(string apiKey)
+        {
+            using var http = new HttpClient();
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("NINA-AIWeather/1.0");
+
+            using var response = await http.GetAsync("https://api.openai.com/v1/models");
+            var json = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException($"HTTP {(int)response.StatusCode}");
+
+            using var doc = JsonDocument.Parse(json);
+            var models = doc.RootElement.GetProperty("data");
+
+            // Keep only GPT-4o+ and o-series vision models (exclude embeddings, whisper, dall-e, tts, etc.)
+            var visionPrefixes = new[] { "gpt-4o", "gpt-4.1", "o1", "o3", "o4-mini" };
+            var excludePatterns = new[] { "embed", "whisper", "dall-e", "tts", "realtime", "audio", "search" };
+
+            var result = new System.Collections.Generic.List<string>();
+            foreach (var m in models.EnumerateArray())
+            {
+                var id = m.GetProperty("id").GetString();
+                if (string.IsNullOrEmpty(id)) continue;
+                if (excludePatterns.Any(p => id.Contains(p, StringComparison.OrdinalIgnoreCase))) continue;
+                if (!visionPrefixes.Any(p => id.StartsWith(p, StringComparison.OrdinalIgnoreCase))) continue;
+
+                result.Add(id);
+            }
+
+            // Sort and deduplicate: prefer shorter canonical names first.
+            return result
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(m => m, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Fetch available Gemini models via the generativelanguage API, filtering to generateContent-capable models.
+        /// </summary>
+        private static async Task<string[]> FetchGeminiModelsAsync(string apiKey)
+        {
+            using var http = new HttpClient();
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("NINA-AIWeather/1.0");
+
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models?key={Uri.EscapeDataString(apiKey)}";
+            using var response = await http.GetAsync(url);
+            var json = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException($"HTTP {(int)response.StatusCode}");
+
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("models", out var models))
+                return Array.Empty<string>();
+
+            var result = new System.Collections.Generic.List<string>();
+            foreach (var m in models.EnumerateArray())
+            {
+                // Only include models that support generateContent (i.e., actual chat/vision models).
+                if (m.TryGetProperty("supportedGenerationMethods", out var methods) && methods.ValueKind == JsonValueKind.Array)
+                {
+                    bool supportsGenerate = false;
+                    foreach (var method in methods.EnumerateArray())
+                    {
+                        if (string.Equals(method.GetString(), "generateContent", StringComparison.OrdinalIgnoreCase))
+                        {
+                            supportsGenerate = true;
+                            break;
+                        }
+                    }
+                    if (!supportsGenerate) continue;
+                }
+
+                // Name comes as "models/gemini-2.0-flash" — strip the prefix.
+                var name = m.TryGetProperty("name", out var nameProp) ? nameProp.GetString() : null;
+                if (string.IsNullOrEmpty(name)) continue;
+                if (name.StartsWith("models/", StringComparison.OrdinalIgnoreCase))
+                    name = name.Substring("models/".Length);
+
+                // Only include Gemini models (skip legacy PaLM, etc.)
+                if (!name.StartsWith("gemini", StringComparison.OrdinalIgnoreCase)) continue;
+
+                result.Add(name);
+            }
+
+            return result
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(m => m, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Fetch available Anthropic models via /v1/models (if supported) or return curated list.
+        /// </summary>
+        private static async Task<string[]> FetchAnthropicModelsAsync(string apiKey)
+        {
+            using var http = new HttpClient();
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("NINA-AIWeather/1.0");
+            http.DefaultRequestHeaders.TryAddWithoutValidation("x-api-key", apiKey);
+            http.DefaultRequestHeaders.TryAddWithoutValidation("anthropic-version", "2023-06-01");
+
+            using var response = await http.GetAsync("https://api.anthropic.com/v1/models");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+
+                if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+                {
+                    var result = new System.Collections.Generic.List<string>();
+                    foreach (var m in data.EnumerateArray())
+                    {
+                        var id = m.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
+                        if (string.IsNullOrEmpty(id)) continue;
+                        // Only include Claude models that support vision (claude-3+ and claude-4+).
+                        if (!id.StartsWith("claude-", StringComparison.OrdinalIgnoreCase)) continue;
+
+                        result.Add(id);
+                    }
+
+                    if (result.Count > 0)
+                    {
+                        return result
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .OrderByDescending(m => m) // Newest first
+                            .ToArray();
+                    }
+                }
+            }
+
+            // /v1/models may not be available for all accounts — return null to use defaults.
+            return null!;
         }
 
         public async Task TryGitHubTokenAsync()
@@ -436,6 +681,10 @@ namespace AIWeather
                 }
 
                 OpenAIKeyStatus = count > 0 ? $"Key OK (models: {count})" : "Key OK";
+
+                // Invalidate cache so next refresh fetches fresh models.
+                _modelCache.Remove("OpenAI");
+                await RefreshAvailableModelsAsync();
             }
             catch (Exception ex)
             {
@@ -484,6 +733,10 @@ namespace AIWeather
                 }
 
                 GeminiKeyStatus = count > 0 ? $"Key OK (models: {count})" : "Key OK";
+
+                // Invalidate cache so next refresh fetches fresh models.
+                _modelCache.Remove("Gemini");
+                await RefreshAvailableModelsAsync();
             }
             catch (Exception ex)
             {
@@ -516,6 +769,10 @@ namespace AIWeather
                 if (response.IsSuccessStatusCode)
                 {
                     AnthropicKeyStatus = "Key OK";
+
+                    // Invalidate cache so next refresh fetches fresh models.
+                    _modelCache.Remove("Anthropic");
+                    await RefreshAvailableModelsAsync();
                     return;
                 }
 
@@ -523,7 +780,7 @@ namespace AIWeather
                 if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     var model = string.IsNullOrWhiteSpace(Properties.Settings.Default.SelectedModel)
-                        ? "claude-3-5-sonnet-20241022"
+                        ? "claude-sonnet-4-5-20250929"
                         : Properties.Settings.Default.SelectedModel.Trim();
 
                     var payload = new
@@ -548,6 +805,12 @@ namespace AIWeather
                     AnthropicKeyStatus = postResp.IsSuccessStatusCode
                         ? "Key OK"
                         : $"Key test failed: HTTP {(int)postResp.StatusCode} {postResp.StatusCode}";
+
+                    if (postResp.IsSuccessStatusCode)
+                    {
+                        _modelCache.Remove("Anthropic");
+                        await RefreshAvailableModelsAsync();
+                    }
 
                     return;
                 }

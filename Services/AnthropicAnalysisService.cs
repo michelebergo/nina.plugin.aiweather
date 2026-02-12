@@ -27,7 +27,7 @@ namespace AIWeather.Services
         public AnthropicAnalysisService(string apiKey, string modelName)
         {
             _apiKey = apiKey;
-            _modelName = string.IsNullOrWhiteSpace(modelName) ? "claude-3-5-sonnet-20241022" : modelName.Trim();
+            _modelName = string.IsNullOrWhiteSpace(modelName) ? "claude-sonnet-4-5-20250929" : modelName.Trim();
         }
 
         public Task<bool> InitializeAsync(CancellationToken cancellationToken = default)

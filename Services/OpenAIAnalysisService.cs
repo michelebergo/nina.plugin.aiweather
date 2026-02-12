@@ -27,7 +27,7 @@ namespace AIWeather.Services
         public OpenAIAnalysisService(string apiKey, string modelName)
         {
             _apiKey = apiKey;
-            _modelName = string.IsNullOrWhiteSpace(modelName) ? "gpt-4o-mini" : modelName.Trim();
+            _modelName = string.IsNullOrWhiteSpace(modelName) ? "gpt-4o" : modelName.Trim();
         }
 
         public Task<bool> InitializeAsync(CancellationToken cancellationToken = default)

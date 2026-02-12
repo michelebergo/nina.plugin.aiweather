@@ -20,8 +20,8 @@ namespace AIWeather
         {
             if (sender is PasswordBox passwordBox)
             {
-                // Load saved password - reload from disk to get latest
-                Properties.Settings.Default.Reload();
+                // Load saved password from in-memory settings (do NOT call Reload() – it
+                // reloads ALL settings from disk and can revert unsaved capture-mode changes).
                 var savedPassword = Properties.Settings.Default.RtspPassword;
                 if (!string.IsNullOrEmpty(savedPassword))
                 {

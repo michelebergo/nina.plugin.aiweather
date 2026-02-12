@@ -197,15 +197,13 @@
                     <Button Content="Refresh"
                         Margin="8,0,0,0"
                         Padding="10,2"
-                        Click="RefreshModels_Click"
-                        Visibility="{Binding IsGitHubModelsProvider, Converter={StaticResource BoolToVisibility}}"/>
+                        Click="RefreshModels_Click"/>
                 </StackPanel>
 
                 <TextBlock Text="{Binding ModelsStatus}"
                        Margin="0,4,0,0"
                        FontSize="10"
-                       Foreground="#AAAAAA"
-                       Visibility="{Binding IsGitHubModelsProvider, Converter={StaticResource BoolToVisibility}}"/>
+                       Foreground="#AAAAAA"/>
                 </StackPanel>
             
             <!-- Description Section -->
@@ -227,10 +225,10 @@
             <TextBlock Text="AI Providers" FontWeight="Bold" Margin="0,5,0,5"/>
             <StackPanel Margin="15,0,0,10">
                 <TextBlock Text="○   Local - offline heuristic analysis using brightness, color, and pattern detection" Margin="0,3"/>
-                <TextBlock Text="○   GitHub Models - free access to GPT-4o, Claude, Gemini via GitHub token" Margin="0,3"/>
-                <TextBlock Text="○   OpenAI - GPT-4o and GPT-4o Mini" Margin="0,3"/>
-                <TextBlock Text="○   Google Gemini - Gemini 1.5 Flash, 1.5 Pro, 2.0 Flash" Margin="0,3"/>
-                <TextBlock Text="○   Anthropic Claude - Claude 3.5 Sonnet, 3.5 Haiku, 3 Opus" Margin="0,3"/>
+                <TextBlock Text="○   GitHub Models - free access to GPT-4o/4.1, Claude, Gemini via GitHub token" Margin="0,3"/>
+                <TextBlock Text="○   OpenAI - GPT-4o, GPT-4.1, o1, o3, o4-mini (models fetched live)" Margin="0,3"/>
+                <TextBlock Text="○   Google Gemini - Gemini 2.0/2.5 Flash, 2.5 Pro, 1.5 Flash/Pro (models fetched live)" Margin="0,3"/>
+                <TextBlock Text="○   Anthropic Claude - Claude Sonnet 4.5, Sonnet 4, Haiku 4.5, 3.5 series (models fetched live)" Margin="0,3"/>
             </StackPanel>
 
             <TextBlock Text="Safety Features" FontWeight="Bold" Margin="0,5,0,5"/>
