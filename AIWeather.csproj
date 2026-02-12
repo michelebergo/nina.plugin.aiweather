@@ -20,43 +20,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- NINA SDK - You'll need to reference the actual NINA assemblies from your NINA installation -->
-    <Reference Include="System.ComponentModel.Composition">
-      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\System.ComponentModel.Composition.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="NINA.Core">
-      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.Core.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="NINA.Astrometry">
-      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.Astrometry.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="NINA.Equipment">
-      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.Equipment.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="NINA.WPF.Base">
-      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.WPF.Base.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="NINA.Plugin">
-      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.Plugin.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="NINA.Profile">
-      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.Profile.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="NINA.Image">
-      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\NINA.Image.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="CommunityToolkit.Mvvm">
-      <HintPath>C:\Program Files\N.I.N.A. - Nighttime Imaging 'N' Astronomy\CommunityToolkit.Mvvm.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
+    <!-- NINA SDK via NuGet – compile-time only; NINA itself provides these DLLs at runtime.
+         ExcludeAssets="runtime" prevents them from being copied to the output (same as Private=False). -->
+    <PackageReference Include="NINA.Plugin" Version="3.0.0.9001" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <ItemGroup>
@@ -81,7 +47,7 @@
     <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     
     <!-- Utilities -->
-    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.2" />
     <PackageReference Include="System.Text.Json" Version="9.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
