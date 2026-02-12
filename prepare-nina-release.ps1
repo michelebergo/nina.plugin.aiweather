@@ -3,12 +3,12 @@
 # https://github.com/isbeorn/nina.plugin.manifests/blob/main/tools/CreateManifest.ps1
 #
 # Usage:
-#   .\prepare-nina-release.ps1              # Build + generate manifest (beta)
-#   .\prepare-nina-release.ps1 -Beta:$false # Build + generate manifest (release)
+#   .\prepare-nina-release.ps1           # Build + generate manifest (release)
+#   .\prepare-nina-release.ps1 -Beta    # Build + generate manifest (beta channel)
 
 param(
     [string]$RepositoryUrl = "https://github.com/michelebergo/nina.plugin.aiweather",
-    [switch]$Beta = $true
+    [switch]$Beta = $false
 )
 
 $ErrorActionPreference = "Stop"
