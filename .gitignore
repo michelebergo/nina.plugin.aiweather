@@ -22,11 +22,13 @@ publish/
 release/
 _release_out_test/
 
-# Dev scripts
+# Dev scripts (local helpers, not needed in repo)
 deploy.ps1
 rebuild-and-restart.ps1
 test-plugin.ps1
-prepare-nina-release.ps1
+
+# Local release artifacts (the GitHub Action handles releases)
+release/CreateManifest.ps1
 
 # Extra docs
 AI_MODEL_RECOMMENDATIONS.md

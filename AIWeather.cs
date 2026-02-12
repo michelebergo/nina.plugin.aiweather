@@ -194,6 +194,8 @@ namespace AIWeather
 
                 Logger.Info("Merged resource dictionary: Options");
                 Logger.Info("Merged resource dictionary: DataTemplates");
+
+
             }
             catch (Exception ex)
             {

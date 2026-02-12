@@ -30,8 +30,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.1.0.0")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyVersion("1.3.0.0")]
+[assembly: AssemblyFileVersion("1.3.0.0")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MIT")]
@@ -47,36 +47,62 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("ChangelogURL", "https://github.com/michelebergo/nina.plugin.aiweather/releases")]
 
 // Featured logo displayed next to the plugin in the plugin list
-// This points to an embedded WPF resource.
-[assembly: AssemblyMetadata("FeaturedImageURL", "pack://application:,,,/NINA.Plugin.AIWeather;component/ai_weather_logo.png")]
+[assembly: AssemblyMetadata("FeaturedImageURL", "https://raw.githubusercontent.com/michelebergo/nina.plugin.aiweather/main/ai_weather_logo.png")]
 
 // Optional screenshots (leave empty if not available)
 [assembly: AssemblyMetadata("ScreenshotURL", "")]
 [assembly: AssemblyMetadata("AltScreenshotURL", "")]
 
+// Short description shown in plugin list
+[assembly: AssemblyMetadata("ShortDescription", "AI-powered all-sky camera weather monitoring with automatic safety protection for unattended imaging sessions")]
+
 // Long description displayed in the plugin manager
-[assembly: AssemblyMetadata("LongDescription", @"AI Weather analyzes all-sky camera images using artificial intelligence to determine real-time weather conditions and protect your equipment during unattended imaging sessions.
+[assembly: AssemblyMetadata("LongDescription", @"Protect your equipment and imaging sessions with intelligent, real-time weather monitoring powered by AI vision models. AI Weather watches the sky so you don't have to.
 
-How It Works:
-The plugin periodically captures an image from your all-sky camera, sends it to a vision-capable AI model, and receives a structured weather assessment including cloud coverage percentage, weather condition, and rain/fog detection. Based on configurable thresholds, it reports a Safe or Unsafe status to NINA's safety monitor, which can automatically pause or abort an imaging sequence.
+🌩️ REAL-TIME WEATHER MONITORING:
+• Automatic Sky Analysis: AI vision models analyze your all-sky camera images to determine cloud coverage, detect rain and fog
+• Continuous Protection: Periodic image capture and analysis runs in the background during your entire imaging session
+• Instant Alerts: Weather status updates in real-time with detailed condition reports and cloud coverage percentages
+• Live Preview: See exactly what the AI sees with the built-in camera preview panel
 
-Capture Modes:
-- RTSP Stream: live video from network IP cameras with real-time preview
-- HTTP Image: periodic download from a URL (indi-allsky, AllSky, web cameras)
-- Folder Watch: monitors a local folder for the latest image saved by any camera software
+📷 3 FLEXIBLE CAPTURE MODES:
+• RTSP Stream: Live video from network IP cameras (Dahua, Hikvision, etc.) with real-time preview and snapshot extraction
+• HTTP Image Download: Periodic image download from any URL — works with indi-allsky, AllSky, web cameras, and any HTTP-accessible image
+• Folder Watch: Monitors a local directory for the latest image saved by any camera software — perfect for USB cameras or custom setups
 
-AI Providers:
-- Local: offline heuristic analysis using brightness, color, and pattern detection
-- GitHub Models: free access to GPT-4o, Claude, Gemini via GitHub token
-- OpenAI: GPT-4o and GPT-4o Mini
-- Google Gemini: Gemini 1.5 Flash, 1.5 Pro, 2.0 Flash
-- Anthropic Claude: Claude 3.5 Sonnet, 3.5 Haiku, 3 Opus
+🤖 5 AI PROVIDERS (Free to Advanced):
+• Local (FREE, Offline): Built-in heuristic analysis using brightness, color distribution, and edge detection — no internet needed, no API costs
+• GitHub Models (FREE): Access GPT-4o and GPT-4o-mini vision models with just a GitHub token — no credit card required
+• OpenAI: GPT-4o and GPT-4o Mini for high-accuracy cloud and weather analysis
+• Google Gemini: Gemini 1.5 Flash, 1.5 Pro, 2.0 Flash — fast and capable vision models
+• Anthropic Claude: Claude 3.5 Sonnet, 3.5 Haiku, 3 Opus — excellent at detailed image understanding
 
-Safety Features:
-- Detects cloud coverage, rain (including lens droplets), and fog
-- Rain and fog trigger Unsafe regardless of cloud threshold
-- Automatic fallback to local analysis if the AI provider fails or times out
-- Optional status file output for ASCOM Generic File SafetyMonitor integration
+🛡️ SAFETY FEATURES:
+• Configurable Cloud Threshold: Set the cloud coverage percentage that triggers an Unsafe status (e.g., 50%, 70%, 90%)
+• Rain Detection: Rain (including lens droplets) immediately triggers Unsafe — regardless of cloud threshold
+• Fog Detection: Fog conditions immediately trigger Unsafe — protects optics and prevents wasted exposures
+• Automatic Fallback: If the cloud AI provider fails, times out, or loses connectivity, the plugin falls back to local offline analysis
+• 60-Second Timeout: All AI providers have a 60-second timeout to prevent indefinite hangs during analysis
+• ASCOM SafetyMonitor Integration: Outputs a status file compatible with the ASCOM Generic File SafetyMonitor for third-party software integration
 
-Connect the safety monitor under Equipment > Safety Monitor > All Sky Camera Safety Monitor to start protecting your imaging sessions.
-")]
+⚙️ EASY SETUP:
+1. Configure your all-sky camera source (RTSP URL, HTTP URL, or watched folder path)
+2. Choose an AI provider and enter your API key (or use Local for zero-config offline analysis)
+3. Set your cloud coverage safety threshold
+4. Connect the safety monitor under Equipment → Safety Monitor → All Sky Camera Safety Monitor
+5. Start monitoring — the plugin automatically protects your sequences
+
+💡 BEGINNER-FRIENDLY:
+• Start with Local (offline) mode — no API keys needed, works out of the box
+• Upgrade to GitHub Models for free AI-powered analysis with just a GitHub account
+• Detailed activity log shows every analysis result for easy troubleshooting
+• Works with any all-sky camera that provides RTSP, HTTP, or file-based output
+
+⚡ PRO FEATURES:
+• Custom Analysis Intervals: Configure how often the sky is analyzed (seconds between captures)
+• Multiple Camera Support: Point to different camera sources as needed
+• Robust Error Handling: Automatic recovery from network failures, API errors, and camera disconnects
+• Detailed Logging: Every analysis result is logged with timestamp, provider, cloud percentage, and safety status
+• Seamless NINA Integration: Works directly with NINA's safety monitor system to pause or abort sequences when conditions deteriorate
+
+Transform your all-sky camera into an intelligent weather guardian. Focus on imaging while AI Weather keeps watch over your equipment and data.")]
