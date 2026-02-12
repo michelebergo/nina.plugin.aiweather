@@ -441,12 +441,10 @@ namespace AIWeather.Equipment
                             !result.RainDetected &&
                             !result.FogDetected;
 
-                var status = isSafe ? "SAFE" : "UNSAFE";
+                var status = isSafe ? "Safe" : "Unsafe";
 
-                // Write to file
-                var content = $"{status}\nTimestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\nCondition: {result.Condition}\nCloud Coverage: {result.CloudCoverage:F1}%\nConfidence: {result.Confidence:F1}%\nRain: {result.RainDetected}\nFog: {result.FogDetected}\nDescription: {result.Description}";
-
-                File.WriteAllText(filePath, content);
+                // Write plain SAFE/UNSAFE — compatible with ASCOM Generic File SafetyMonitor
+                File.WriteAllText(filePath, status);
                 Logger.Debug($"Safety status written to file: {filePath} - Status: {status}");
             }
             catch (Exception ex)
