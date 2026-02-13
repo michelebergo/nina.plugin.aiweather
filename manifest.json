@@ -1,7 +1,7 @@
 {
   "Identifier": "NINA.Plugin.AIWeather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.5.0.0",
+  "Version": "1.5.1.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,13 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.5.1.0",
+      "Date": "2026-02-13",
+      "Changes": [
+        "Fixed release packaging: plugin DLL was missing from the distribution zip"
+      ]
+    },
     {
       "Version": "1.5.0.0",
       "Date": "2026-02-13",
