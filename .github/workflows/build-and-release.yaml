@@ -26,7 +26,7 @@ env:
   PLUGIN_NAME: "AI Weather"
   PLUGIN_SLN_NAME: "AIWeather"
   PLUGIN_DLL_NAME: "NINA.Plugin.AIWeather"
-  PLUGIN_MANIFEST_PATH: "n/nina.plugin.aiweather"
+  PLUGIN_MANIFEST_PATH: "a/aiweather"
 
 jobs:
   build-and-release:
@@ -126,8 +126,16 @@ jobs:
           mkdir -p "${DEST}"
           cp "./${{ env.PLUGIN_DLL_NAME }}.${{ github.ref_name }}.manifest.json" "${DEST}/manifest.json"
           cd nina.plugin.manifests
+          # ── REMOVE THE OLD PLUGIN IF IT EXISTS ──
+          # This ensures we don't have duplicates in the repository after identifier change
+          if [ -d "manifests/n/nina.plugin.aiweather" ]; then
+            echo "Deleting old plugin entry: manifests/n/nina.plugin.aiweather"
+            git rm -r --cached "manifests/n/nina.plugin.aiweather"
+            rm -rf "manifests/n/nina.plugin.aiweather"
+          fi
+
           git add .
-          git commit -m "Add manifest for release ${{ github.ref_name }}"
+          git commit -m "Add manifest for release ${{ github.ref_name }} (replaces old identifier)"
           git push origin "${{ env.PLUGIN_NAME_SANITIZED }}/${{ github.ref_name }}"
 
       - name: Create pull request

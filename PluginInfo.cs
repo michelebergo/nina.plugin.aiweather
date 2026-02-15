@@ -6,7 +6,7 @@ namespace AIWeather
     public static class PluginInfo
     {
         public const string PLUGIN_NAME = "AI Weather";
-        public const string PLUGIN_VERSION = "1.5.1.0";
+        public const string PLUGIN_VERSION = "1.5.2.0";
         public const string PLUGIN_AUTHOR = "Michele Bergo";
         public const string PLUGIN_DESCRIPTION = "AI-powered all-sky camera weather monitoring with automatic safety protection";
         
