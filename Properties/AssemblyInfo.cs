@@ -25,13 +25,13 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("MinimumApplicationVersion", "3.0.0.0")]
 
 // Required by the N.I.N.A. community plugin manifest repository
-[assembly: AssemblyMetadata("Identifier", "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D")]
+[assembly: AssemblyMetadata("Identifier", "AI Weather")]
 [assembly: AssemblyMetadata("Author", "Michele Bergo")]
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.5.2.0")]
-[assembly: AssemblyFileVersion("1.5.2.0")]
+[assembly: AssemblyVersion("1.5.2.1")]
+[assembly: AssemblyFileVersion("1.5.2.1")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MIT")]

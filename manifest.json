@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.5.2.0",
+  "Version": "1.5.2.1",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,13 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.5.2.1",
+      "Date": "2026-02-15",
+      "Changes": [
+        "Fixed plugin identifier metadata in AssemblyInfo to match manifest"
+      ]
+    },
     {
       "Version": "1.5.2.0",
       "Date": "2026-02-15",
