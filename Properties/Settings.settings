@@ -20,6 +20,9 @@
     <Setting Name="CloudCoverageThreshold" Type="System.Double" Scope="User">
       <Value Profile="(Default)">70.0</Value>
     </Setting>
+    <Setting Name="CloudCoverageSafeThreshold" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">60.0</Value>
+    </Setting>
     <Setting Name="UseGitHubModels" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>

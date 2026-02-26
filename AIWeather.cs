@@ -1004,6 +1004,22 @@ namespace AIWeather
         }
 
         /// <summary>
+        /// Cloud coverage safe lower limit percentage (0-100)
+        /// </summary>
+        public double CloudCoverageSafeThreshold
+        {
+            get => Properties.Settings.Default.CloudCoverageSafeThreshold;
+            set
+            {
+                if (value < 0) value = 0;
+                if (value > 100) value = 100;
+                Properties.Settings.Default.CloudCoverageSafeThreshold = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>
         /// Whether to use GitHub Models AI for analysis
         /// </summary>
         public bool UseGitHubModels

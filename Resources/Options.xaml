@@ -86,8 +86,13 @@
                      Width="100" HorizontalAlignment="Left"/>
             
             <!-- Cloud Coverage Threshold -->
-            <TextBlock Text="Cloud Coverage Threshold (%):" Margin="0,10,0,2"/>
+            <TextBlock Text="Cloud Coverage High Threshold (%):" Margin="0,10,0,2"/>
             <TextBox Text="{Binding CloudCoverageThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                     Width="100" HorizontalAlignment="Left"/>
+
+            <!-- Cloud Coverage Safe Threshold -->
+            <TextBlock Text="Cloud Coverage Low Threshold (%):" Margin="0,10,0,2"/>
+            <TextBox Text="{Binding CloudCoverageSafeThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                      Width="100" HorizontalAlignment="Left"/>
 
                     <!-- Generic File SafetyMonitor output file -->

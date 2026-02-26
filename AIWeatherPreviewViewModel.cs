@@ -74,10 +74,7 @@ namespace AIWeather
         public AIWeatherPreviewViewModel(IProfileService profileService, ICameraMediator cameraMediator) : base(profileService)
         {
             // Use shared static instance to persist across navigation
-            if (_sharedSafetyMonitor == null)
-            {
-                _sharedSafetyMonitor = new AIWeatherSafetyMonitor();
-            }
+            _sharedSafetyMonitor = AIWeatherSafetyMonitor.Instance;
             _safetyMonitor = _sharedSafetyMonitor;
             
             this.Title = "AI Weather Monitor";
@@ -195,11 +192,45 @@ namespace AIWeather
             RestoreMonitoringState();
 
             // Subscribe to safety monitor updates
-            _safetyMonitor.PropertyChanged += (s, e) =>
+            _safetyMonitor.PropertyChanged += async (s, e) =>
             {
                 if (e.PropertyName == nameof(AIWeatherSafetyMonitor.Connected))
                 {
-                    RunOnUiThread(() => { IsConnected = _safetyMonitor.Connected; });
+                    bool isNowConnected = _safetyMonitor.Connected;
+                    if (isNowConnected)
+                    {
+                        RunOnUiThread(() => 
+                        { 
+                            IsConnected = true;
+                            RestoreMonitoringState();
+                        });
+                    }
+                    else
+                    {
+                        // Stop UI components fully asynchronously if stream is running
+                        var view = GetVideoView();
+                        if (view != null)
+                        {
+                            await view.StopStreamAsync();
+                        }
+                        
+                        RunOnUiThread(() => 
+                        {
+                            _refreshTimer.Stop();
+                            IsConnected = false;
+                            IsRunning = false;
+                            StatusMessage = "Disconnected";
+                            
+                            if (Sources != null)
+                            {
+                                foreach (var source in Sources)
+                                {
+                                    source.IsRunning = false;
+                                }
+                            }
+                            AddLog("⏹ Monitoring stopped");
+                        });
+                    }
                 }
             };
 
@@ -473,6 +504,8 @@ namespace AIWeather
         public string WeatherCondition => _currentAnalysis?.Condition.ToString() ?? "Unknown";
         public double CloudCoverage => _currentAnalysis?.CloudCoverage ?? 0;
         public double Confidence => _currentAnalysis?.Confidence ?? 0;
+        public double HighThreshold => Properties.Settings.Default.CloudCoverageThreshold;
+        public double LowThreshold => Properties.Settings.Default.CloudCoverageSafeThreshold;
         public bool RainDetected => _currentAnalysis?.RainDetected ?? false;
         public bool FogDetected => _currentAnalysis?.FogDetected ?? false;
         public string Description => _currentAnalysis?.Description ?? "No analysis available";
@@ -506,13 +539,14 @@ namespace AIWeather
 
                 var model = Properties.Settings.Default.SelectedModel;
                 var intervalMinutes = GetCheckIntervalMinutesClamped();
-                var threshold = Properties.Settings.Default.CloudCoverageThreshold;
+                var highThreshold = Properties.Settings.Default.CloudCoverageThreshold;
+                var lowThreshold = Properties.Settings.Default.CloudCoverageSafeThreshold;
 
                 var aiLabel = string.IsNullOrWhiteSpace(model)
                     ? provider
                     : $"{provider} - {model}";
 
-                return $"AI: {aiLabel} | Check: {intervalMinutes}m | Cloud thresh: {threshold:F0}%";
+                return $"AI: {aiLabel} | Check: {intervalMinutes}m | Cloud Limits: {highThreshold:F0}% / {lowThreshold:F0}%";
             }
         }
 
@@ -918,6 +952,8 @@ namespace AIWeather
             RaisePropertyChanged(nameof(SafetyStatus));
             RaisePropertyChanged(nameof(WeatherCondition));
             RaisePropertyChanged(nameof(CloudCoverage));
+            RaisePropertyChanged(nameof(HighThreshold));
+            RaisePropertyChanged(nameof(LowThreshold));
             RaisePropertyChanged(nameof(Confidence));
             RaisePropertyChanged(nameof(RainDetected));
             RaisePropertyChanged(nameof(FogDetected));

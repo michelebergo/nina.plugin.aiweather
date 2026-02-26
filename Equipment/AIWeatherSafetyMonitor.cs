@@ -20,12 +20,16 @@ namespace AIWeather.Equipment
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public class AIWeatherSafetyMonitor : BaseINPC, ISafetyMonitor
     {
+        private static AIWeatherSafetyMonitor? _instance;
+        public static AIWeatherSafetyMonitor Instance => _instance ??= new AIWeatherSafetyMonitor();
+
         private readonly UnifiedCaptureService _captureService;
         private IWeatherAnalysisService _analysisService;
         private Timer? _monitoringTimer;
         private WeatherAnalysisResult? _lastResult;
         private Bitmap? _lastImage;
         private bool _isMonitoring = false;
+        private bool _isCurrentlySafe = false;
         private CancellationTokenSource? _cts;
         private readonly SemaphoreSlim _checkGate = new SemaphoreSlim(1, 1);
 
@@ -209,29 +213,50 @@ namespace AIWeather.Equipment
             }
         }
 
-        public bool IsSafe
+        public bool IsSafe => _isCurrentlySafe;
+
+        private void UpdateSafetyState(WeatherAnalysisResult result)
         {
-            get
+            if (result == null)
             {
-                if (_lastResult == null)
-                {
-                    // No analysis yet - assume unsafe until we have data
-                    return false;
-                }
-
-                // Check cloud coverage threshold
-                var threshold = Properties.Settings.Default.CloudCoverageThreshold;
-                var isSafe = _lastResult.IsSafeForImaging && 
-                            _lastResult.CloudCoverage < threshold &&
-                            !_lastResult.RainDetected;
-
-                Logger.Debug($"Safety check: {(isSafe ? "SAFE" : "UNSAFE")} - " +
-                           $"Cloud coverage: {_lastResult.CloudCoverage:F1}%, " +
-                           $"Threshold: {threshold}%, " +
-                           $"Condition: {_lastResult.Condition}");
-
-                return isSafe;
+                _isCurrentlySafe = false;
+                return;
             }
+
+            var unsafeThreshold = Properties.Settings.Default.CloudCoverageThreshold;
+            var safeThreshold = Properties.Settings.Default.CloudCoverageSafeThreshold;
+
+            bool baseConditionsSafe = result.IsSafeForImaging && !result.RainDetected;
+
+            if (!baseConditionsSafe)
+            {
+                _isCurrentlySafe = false;
+            }
+            else
+            {
+                // Hysteresis logic
+                if (_isCurrentlySafe)
+                {
+                    // Stay safe until coverage exceeds the high/unsafe threshold
+                    if (result.CloudCoverage >= unsafeThreshold)
+                    {
+                        _isCurrentlySafe = false;
+                    }
+                }
+                else
+                {
+                    // Stay unsafe until coverage drops below the low/safe threshold
+                    if (result.CloudCoverage < safeThreshold)
+                    {
+                        _isCurrentlySafe = true;
+                    }
+                }
+            }
+
+            Logger.Debug($"Safety check: {(_isCurrentlySafe ? "SAFE" : "UNSAFE")} - " +
+                       $"Cloud coverage: {result.CloudCoverage:F1}%, " +
+                       $"Safe Threshold: {safeThreshold}%, Unsafe Threshold: {unsafeThreshold}%, " +
+                       $"Condition: {result.Condition}");
         }
 
         // IDevice methods required by interface
@@ -355,6 +380,9 @@ namespace AIWeather.Equipment
                 // Store a copy of the image for UI restoration
                 _lastImage?.Dispose();
                 _lastImage = new Bitmap(frame);
+
+                // Update Safety State (Hysteresis)
+                UpdateSafetyState(result);
 
                 // Log the results
                 Logger.Info($"Weather Analysis - Condition: {result.Condition}, " +

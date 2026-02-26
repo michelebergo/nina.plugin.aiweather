@@ -150,6 +150,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             
                             <TextBlock Grid.Row="0" Text="{Binding SafetyStatus, Mode=OneWay}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,5"/>
@@ -161,7 +162,14 @@
                                 <Run Text="{Binding Confidence, Mode=OneWay, StringFormat={}{0:F0}%}"/>
                             </TextBlock>
 
-                            <TextBlock Grid.Row="3" Text="{Binding AiSettingsSummary, Mode=OneWay}" FontSize="9" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Row="3" FontSize="9" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,2,0,0">
+                                <Run Text="Limits (High/Low): "/>
+                                <Run Text="{Binding HighThreshold, Mode=OneWay, StringFormat={}{0:F0}%}"/>
+                                <Run Text=" / "/>
+                                <Run Text="{Binding LowThreshold, Mode=OneWay, StringFormat={}{0:F0}%}"/>
+                            </TextBlock>
+
+                            <TextBlock Grid.Row="4" Text="{Binding AiSettingsSummary, Mode=OneWay}" FontSize="9" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,6,0,0"/>
                         </Grid>
                     </Border>
                     

@@ -95,6 +95,18 @@ namespace AIWeather.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("60.0")]
+        public double CloudCoverageSafeThreshold {
+            get {
+                return ((double)(this["CloudCoverageSafeThreshold"]));
+            }
+            set {
+                this["CloudCoverageSafeThreshold"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool UseGitHubModels {
             get {

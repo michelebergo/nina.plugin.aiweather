@@ -30,6 +30,7 @@ namespace AIWeather
                 Properties.Settings.Default.RtspUrl = "rtsp://192.168.1.100:554/stream";
                 Properties.Settings.Default.CheckIntervalMinutes = 5;
                 Properties.Settings.Default.CloudCoverageThreshold = 70.0;
+                Properties.Settings.Default.CloudCoverageSafeThreshold = 60.0;
                 Properties.Settings.Default.UseGitHubModels = false;
                 Properties.Settings.Default.SelectedModel = "gpt-4o";
                 Properties.Settings.Default.CaptureMode = 0; // Default to RTSP
@@ -94,6 +95,17 @@ namespace AIWeather
             set
             {
                 Properties.Settings.Default.CloudCoverageThreshold = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        public double CloudCoverageSafeThreshold
+        {
+            get => Properties.Settings.Default.CloudCoverageSafeThreshold;
+            set
+            {
+                Properties.Settings.Default.CloudCoverageSafeThreshold = value;
                 CoreUtil.SaveSettings(Properties.Settings.Default);
                 RaisePropertyChanged();
             }
