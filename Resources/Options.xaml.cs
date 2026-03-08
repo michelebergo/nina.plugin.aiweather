@@ -204,7 +204,7 @@ namespace AIWeather
             {
                 if (sender is FrameworkElement fe && fe.DataContext is AIWeather plugin)
                 {
-                    await plugin.RefreshAvailableModelsAsync();
+                    await plugin.RefreshAvailableModelsAsync(forceRefresh: true);
                 }
             }
             catch
@@ -275,16 +275,24 @@ namespace AIWeather
 
         private async void ModelComboBox_Loaded(object sender, RoutedEventArgs e)
         {
-            // Opportunistically refresh when the options UI is opened,
-            // but only if the model list is empty (first load).
-            // Skip if models are already loaded to avoid resetting the ComboBox
-            // scroll position and blanking the selected item.
+            // Refresh model list when the Options UI is opened:
+            //  - If empty: first load, always fetch.
+            //  - If cache is stale (>1 hour): background refresh without blanking.
+            //  - If cache is fresh: skip (keeps scroll position & selection intact).
             try
             {
-                if (sender is FrameworkElement fe && fe.DataContext is AIWeather plugin
-                    && plugin.AvailableModels.Count == 0)
+                if (sender is FrameworkElement fe && fe.DataContext is AIWeather plugin)
                 {
-                    await plugin.RefreshAvailableModelsAsync();
+                    if (plugin.AvailableModels.Count == 0)
+                    {
+                        await plugin.RefreshAvailableModelsAsync();
+                    }
+                    else
+                    {
+                        // Silently refresh if cache is stale; SyncModelsCollection
+                        // updates in-place without blanking.
+                        await plugin.RefreshAvailableModelsAsync();
+                    }
                 }
             }
             catch

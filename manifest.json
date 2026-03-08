@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.7.0.0",
+  "Version": "1.7.1.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,16 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.7.1.0",
+      "Date": "2026-03-08",
+      "Changes": [
+        "Filter model lists to only show vision-capable models (image analysis support)",
+        "Exclude text-only, audio, embedding, preview, and non-vision model variants",
+        "Anthropic: only show Claude 3+ models (Claude 2.x does not support vision)",
+        "OpenAI: exclude preview and audio variants from model list"
+      ]
+    },
     {
       "Version": "1.7.0.0",
       "Date": "2026-03-08",

@@ -72,22 +72,39 @@ namespace AIWeather
         // (e.g. "claude-sonnet-4-5-20250929") to pass the filter automatically.
         private static readonly string[] SupportedVisionModelPrefixes = new[]
         {
-            // OpenAI
+            // OpenAI — all GPT-4o/4.1 and o-series support vision
             "gpt-4o",
             "gpt-4.1",
             "o1",
             "o3",
             "o4-mini",
-            // Anthropic (via GitHub)
+            // Anthropic (via GitHub) — only Claude 3+ supports vision
             "claude-sonnet-4",
-            "claude-haiku",
+            "claude-haiku-4",
             "claude-3.5-sonnet",
             "claude-3-5-sonnet",
             "claude-3-opus",
-            // Google (via GitHub)
+            "claude-3-sonnet",
+            "claude-3-haiku",
+            // Google (via GitHub) — all Gemini 1.5+ support vision
             "gemini-1.5",
             "gemini-2.0",
             "gemini-2.5",
+        };
+
+        // Models/patterns to exclude even if they match a vision prefix above.
+        // These are text-only, audio-only, or otherwise non-vision variants.
+        private static readonly string[] NonVisionExcludePatterns = new[]
+        {
+            "embed",      // embedding models
+            "tts",        // text-to-speech
+            "whisper",    // speech recognition
+            "dall-e",     // image generation (not analysis)
+            "realtime",   // realtime API variants
+            "audio",      // audio-only models
+            "search",     // search-optimized (no vision)
+            "preview",    // preview models (often lack vision)
+            "-mini-high", // reasoning variants without vision
         };
 
         // Per-provider default/fallback model lists. These are shown when the provider's
@@ -316,7 +333,7 @@ namespace AIWeather
         public bool IsLocalProvider => string.Equals(AnalysisProvider, "Local", StringComparison.OrdinalIgnoreCase);
         public bool IsNonLocalProvider => !IsLocalProvider;
 
-        public async Task RefreshAvailableModelsAsync()
+        public async Task RefreshAvailableModelsAsync(bool forceRefresh = false)
         {
             var currentProvider = AnalysisProvider ?? "Local";
 
@@ -334,19 +351,25 @@ namespace AIWeather
             try
             {
                 // ── Check cache first (1-hour TTL) ──────────────────────────────
-                if (_modelCache.TryGetValue(currentProvider, out var cached) &&
+                if (!forceRefresh &&
+                    _modelCache.TryGetValue(currentProvider, out var cached) &&
                     DateTime.UtcNow - cached.fetchedAt < ModelCacheDuration &&
                     cached.models.Length > 0)
                 {
                     Logger.Debug($"Returning {cached.models.Length} cached models for {currentProvider}");
                     RunOnUiThread(() =>
                     {
-                        AvailableModels.Clear();
-                        foreach (var m in cached.models) AvailableModels.Add(m);
+                        SyncModelsCollection(cached.models);
                         ModelsStatus = $"Loaded {cached.models.Length} models (cached)";
                         EnsureSelectedModelIsValid();
                     });
                     return;
+                }
+
+                // Clear cache for this provider when forcing.
+                if (forceRefresh)
+                {
+                    _modelCache.Remove(currentProvider);
                 }
 
                 RunOnUiThread(() => { ModelsStatus = $"Fetching models from {currentProvider}..."; });
@@ -373,6 +396,8 @@ namespace AIWeather
                         finalModels = liveModels
                             .Where(m => SupportedVisionModelPrefixes.Any(prefix =>
                                 m.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+                            .Where(m => !NonVisionExcludePatterns.Any(excl =>
+                                m.Contains(excl, StringComparison.OrdinalIgnoreCase)))
                             .Distinct(StringComparer.OrdinalIgnoreCase)
                             .OrderBy(m => m)
                             .ToList();
@@ -388,13 +413,13 @@ namespace AIWeather
                     }
                     else
                     {
-                        // Other providers: use the live list as-is (they're already relevant).
+                        // Other providers: use the live list as-is (already vision-filtered by their fetch methods).
                         finalModels = liveModels.ToList();
                     }
 
                     // Cache the result.
                     _modelCache[currentProvider] = (finalModels.ToArray(), DateTime.UtcNow);
-                    Logger.Info($"Cached {finalModels.Count} models for {currentProvider}");
+                    Logger.Info($"Cached {finalModels.Count} vision-capable models for {currentProvider}");
                 }
                 else
                 {
@@ -405,16 +430,12 @@ namespace AIWeather
                 }
 
                 var statusMsg = liveModels != null && liveModels.Length > 0
-                    ? $"Loaded {finalModels.Count} models from {currentProvider}"
+                    ? $"Loaded {finalModels.Count} vision-capable models from {currentProvider}"
                     : $"Using built-in {currentProvider} model list ({finalModels.Count} models)";
 
                 RunOnUiThread(() =>
                 {
-                    AvailableModels.Clear();
-                    foreach (var model in finalModels)
-                    {
-                        AvailableModels.Add(model);
-                    }
+                    SyncModelsCollection(finalModels);
 
                     ModelsStatus = statusMsg;
                     EnsureSelectedModelIsValid();
@@ -428,6 +449,52 @@ namespace AIWeather
                     EnsureSelectedModelIsValid();
                 });
                 Logger.Warning($"Failed to refresh model list: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Synchronize AvailableModels in-place to avoid blanking the ComboBox.
+        /// Adds new models, removes stale ones, preserves scroll position and selection.
+        /// </summary>
+        private void SyncModelsCollection(System.Collections.Generic.IList<string> newModels)
+        {
+            // Remove models no longer in the new list.
+            for (int i = AvailableModels.Count - 1; i >= 0; i--)
+            {
+                if (!newModels.Contains(AvailableModels[i], StringComparer.OrdinalIgnoreCase))
+                {
+                    AvailableModels.RemoveAt(i);
+                }
+            }
+
+            // Add new models that aren't in the current list.
+            foreach (var model in newModels)
+            {
+                if (!AvailableModels.Any(m => string.Equals(m, model, StringComparison.OrdinalIgnoreCase)))
+                {
+                    AvailableModels.Add(model);
+                }
+            }
+
+            // Reorder to match new list order.
+            for (int i = 0; i < newModels.Count && i < AvailableModels.Count; i++)
+            {
+                if (!string.Equals(AvailableModels[i], newModels[i], StringComparison.OrdinalIgnoreCase))
+                {
+                    var idx = -1;
+                    for (int j = i + 1; j < AvailableModels.Count; j++)
+                    {
+                        if (string.Equals(AvailableModels[j], newModels[i], StringComparison.OrdinalIgnoreCase))
+                        {
+                            idx = j;
+                            break;
+                        }
+                    }
+                    if (idx >= 0)
+                    {
+                        AvailableModels.Move(idx, i);
+                    }
+                }
             }
         }
 
@@ -498,7 +565,7 @@ namespace AIWeather
 
             // Keep only GPT-4o+ and o-series vision models (exclude embeddings, whisper, dall-e, tts, etc.)
             var visionPrefixes = new[] { "gpt-4o", "gpt-4.1", "o1", "o3", "o4-mini" };
-            var excludePatterns = new[] { "embed", "whisper", "dall-e", "tts", "realtime", "audio", "search" };
+            var excludePatterns = new[] { "embed", "whisper", "dall-e", "tts", "realtime", "audio", "search", "preview" };
 
             var result = new System.Collections.Generic.List<string>();
             foreach (var m in models.EnumerateArray())
@@ -597,8 +664,13 @@ namespace AIWeather
                     {
                         var id = m.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
                         if (string.IsNullOrEmpty(id)) continue;
-                        // Only include Claude models that support vision (claude-3+ and claude-4+).
-                        if (!id.StartsWith("claude-", StringComparison.OrdinalIgnoreCase)) continue;
+                        // Only include Claude 3+ models that support vision.
+                        // Claude 2.x, claude-instant, etc. are text-only.
+                        if (!id.StartsWith("claude-3", StringComparison.OrdinalIgnoreCase)
+                            && !id.StartsWith("claude-sonnet-4", StringComparison.OrdinalIgnoreCase)
+                            && !id.StartsWith("claude-haiku-4", StringComparison.OrdinalIgnoreCase)
+                            && !id.StartsWith("claude-opus-4", StringComparison.OrdinalIgnoreCase))
+                            continue;
 
                         result.Add(id);
                     }
@@ -1075,7 +1147,7 @@ namespace AIWeather
                 RaisePropertyChanged(nameof(IsNonLocalProvider));
 
                 // Update model suggestions for the selected provider.
-                _ = RefreshAvailableModelsAsync();
+                _ = RefreshAvailableModelsAsync(forceRefresh: true);
             }
         }
 
