@@ -52,6 +52,7 @@ namespace AIWeather
                     ShowNewFolderButton = false
                 };
 
+                // Try to pre-populate from current path via DataContext
                 if (sender is FrameworkElement fe && fe.DataContext is AIWeather plugin
                     && !string.IsNullOrEmpty(plugin.Options.FolderPath))
                 {
@@ -61,9 +62,19 @@ namespace AIWeather
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK
                     && !string.IsNullOrEmpty(dialog.SelectedPath))
                 {
-                    if (sender is FrameworkElement fe2 && fe2.DataContext is AIWeather p)
+                    // Set value via sibling TextBox in the DockPanel - the TwoWay binding
+                    // with UpdateSourceTrigger=PropertyChanged pushes the value to the model.
+                    // This avoids depending on the DataContext type which may differ across NINA versions.
+                    if (sender is FrameworkElement btn && btn.Parent is System.Windows.Controls.Panel panel)
                     {
-                        p.Options.FolderPath = dialog.SelectedPath;
+                        foreach (UIElement child in panel.Children)
+                        {
+                            if (child is TextBox tb)
+                            {
+                                tb.Text = dialog.SelectedPath;
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -282,30 +293,32 @@ namespace AIWeather
         {
             try
             {
-                if (sender is not FrameworkElement fe || fe.DataContext is not AIWeather plugin)
-                {
-                    return;
-                }
-
-                var existingPath = plugin.Options.SafetyStatusFilePath;
                 var initialDirectory = string.Empty;
                 var initialFileName = "sky_conditions.txt";
 
-                try
+                // Try to get existing path from sibling TextBox
+                if (sender is FrameworkElement btn && btn.Parent is System.Windows.Controls.Panel parentPanel)
                 {
-                    if (!string.IsNullOrWhiteSpace(existingPath))
+                    foreach (UIElement child in parentPanel.Children)
                     {
-                        initialDirectory = System.IO.Path.GetDirectoryName(existingPath) ?? string.Empty;
-                        var name = System.IO.Path.GetFileName(existingPath);
-                        if (!string.IsNullOrWhiteSpace(name))
+                        if (child is TextBox existingTb && !string.IsNullOrWhiteSpace(existingTb.Text))
                         {
-                            initialFileName = name;
+                            try
+                            {
+                                initialDirectory = System.IO.Path.GetDirectoryName(existingTb.Text) ?? string.Empty;
+                                var name = System.IO.Path.GetFileName(existingTb.Text);
+                                if (!string.IsNullOrWhiteSpace(name))
+                                {
+                                    initialFileName = name;
+                                }
+                            }
+                            catch
+                            {
+                                // best-effort
+                            }
+                            break;
                         }
                     }
-                }
-                catch
-                {
-                    // best-effort
                 }
 
                 var dialog = new SaveFileDialog
@@ -325,12 +338,23 @@ namespace AIWeather
 
                 if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.FileName))
                 {
-                    plugin.Options.SafetyStatusFilePath = dialog.FileName;
+                    // Set value via sibling TextBox — binding pushes to model
+                    if (sender is FrameworkElement btn2 && btn2.Parent is System.Windows.Controls.Panel panel2)
+                    {
+                        foreach (UIElement child in panel2.Children)
+                        {
+                            if (child is TextBox tb)
+                            {
+                                tb.Text = dialog.FileName;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
-            catch
+            catch (System.Exception ex)
             {
-                // best-effort
+                NINA.Core.Utility.Logger.Error($"BrowseSafetyStatusFile error: {ex.Message}");
             }
         }
     }

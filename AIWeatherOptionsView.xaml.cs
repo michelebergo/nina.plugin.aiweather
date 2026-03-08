@@ -71,9 +71,17 @@ namespace AIWeather
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK
                     && !string.IsNullOrEmpty(dialog.SelectedPath))
                 {
-                    if (DataContext is AIWeatherOptions opts)
+                    // Set value via sibling TextBox — binding pushes to model
+                    if (sender is System.Windows.FrameworkElement btn && btn.Parent is System.Windows.Controls.Panel panel)
                     {
-                        opts.FolderPath = dialog.SelectedPath;
+                        foreach (System.Windows.UIElement child in panel.Children)
+                        {
+                            if (child is System.Windows.Controls.TextBox tb)
+                            {
+                                tb.Text = dialog.SelectedPath;
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -127,30 +135,32 @@ namespace AIWeather
         {
             try
             {
-                if (DataContext is not AIWeatherOptions opts)
-                {
-                    return;
-                }
-
-                var existingPath = opts.SafetyStatusFilePath;
                 var initialDirectory = string.Empty;
                 var initialFileName = "sky_conditions.txt";
 
-                try
+                // Try to get existing path from sibling TextBox
+                if (sender is System.Windows.FrameworkElement btn && btn.Parent is System.Windows.Controls.Panel parentPanel)
                 {
-                    if (!string.IsNullOrWhiteSpace(existingPath))
+                    foreach (System.Windows.UIElement child in parentPanel.Children)
                     {
-                        initialDirectory = System.IO.Path.GetDirectoryName(existingPath) ?? string.Empty;
-                        var name = System.IO.Path.GetFileName(existingPath);
-                        if (!string.IsNullOrWhiteSpace(name))
+                        if (child is System.Windows.Controls.TextBox existingTb && !string.IsNullOrWhiteSpace(existingTb.Text))
                         {
-                            initialFileName = name;
+                            try
+                            {
+                                initialDirectory = System.IO.Path.GetDirectoryName(existingTb.Text) ?? string.Empty;
+                                var name = System.IO.Path.GetFileName(existingTb.Text);
+                                if (!string.IsNullOrWhiteSpace(name))
+                                {
+                                    initialFileName = name;
+                                }
+                            }
+                            catch
+                            {
+                                // best-effort
+                            }
+                            break;
                         }
                     }
-                }
-                catch
-                {
-                    // best-effort
                 }
 
                 var dialog = new SaveFileDialog
@@ -170,11 +180,18 @@ namespace AIWeather
 
                 if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.FileName))
                 {
-                    opts.SafetyStatusFilePath = dialog.FileName;
-
-                    // Persist immediately for NINA's settings system.
-                    CoreUtil.SaveSettings(Properties.Settings.Default);
-                    Properties.Settings.Default.Save();
+                    // Set value via sibling TextBox — binding pushes to model
+                    if (sender is System.Windows.FrameworkElement btn2 && btn2.Parent is System.Windows.Controls.Panel panel2)
+                    {
+                        foreach (System.Windows.UIElement child in panel2.Children)
+                        {
+                            if (child is System.Windows.Controls.TextBox tb)
+                            {
+                                tb.Text = dialog.FileName;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception ex)
