@@ -66,29 +66,29 @@ namespace AIWeather
             new ProviderOption("Anthropic", "Anthropic Claude")
         };
 
-        // Vision-capable models known to work with image analysis via ChatCompletions.
-        // Used as the filter when querying the GitHub Models catalog (which contains many
-        // non-vision, non-chat models). Keep this list in sync with ModelMap in
-        // GitHubModelsAnalysisService so any model the user can select will actually work.
-        private static readonly System.Collections.Generic.HashSet<string> SupportedVisionModelIds =
-            new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                // OpenAI
-                "gpt-4o",
-                "gpt-4o-mini",
-                "gpt-4.1",
-                "gpt-4.1-mini",
-                "gpt-4.1-nano",
-                "o1",
-                "o3",
-                "o4-mini",
-                // Anthropic (via GitHub)
-                "claude-sonnet-4-5",
-                "claude-3.5-sonnet",
-                // Google (via GitHub)
-                "gemini-1.5-flash",
-                "gemini-1.5-pro",
-            };
+        // Vision-capable model prefixes known to work with image analysis via ChatCompletions.
+        // Used as a prefix filter when querying the GitHub Models catalog (which contains many
+        // non-vision, non-chat models). Prefix matching allows versioned variants
+        // (e.g. "claude-sonnet-4-5-20250929") to pass the filter automatically.
+        private static readonly string[] SupportedVisionModelPrefixes = new[]
+        {
+            // OpenAI
+            "gpt-4o",
+            "gpt-4.1",
+            "o1",
+            "o3",
+            "o4-mini",
+            // Anthropic (via GitHub)
+            "claude-sonnet-4",
+            "claude-haiku",
+            "claude-3.5-sonnet",
+            "claude-3-5-sonnet",
+            "claude-3-opus",
+            // Google (via GitHub)
+            "gemini-1.5",
+            "gemini-2.0",
+            "gemini-2.5",
+        };
 
         // Per-provider default/fallback model lists. These are shown when the provider's
         // live API cannot be reached, and serve as the initial list before the first fetch.
@@ -107,9 +107,15 @@ namespace AIWeather
                     "o3",
                     "o4-mini",
                     "claude-sonnet-4-5",
+                    "claude-sonnet-4",
+                    "claude-haiku-4-5",
                     "claude-3.5-sonnet",
+                    "claude-3-5-sonnet",
                     "gemini-1.5-flash",
                     "gemini-1.5-pro",
+                    "gemini-2.0-flash",
+                    "gemini-2.5-flash",
+                    "gemini-2.5-pro",
                 },
                 ["OpenAI"] = new[]
                 {
@@ -365,7 +371,8 @@ namespace AIWeather
                     if (string.Equals(currentProvider, "GitHubModels", StringComparison.OrdinalIgnoreCase))
                     {
                         finalModels = liveModels
-                            .Where(m => SupportedVisionModelIds.Contains(m))
+                            .Where(m => SupportedVisionModelPrefixes.Any(prefix =>
+                                m.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
                             .Distinct(StringComparer.OrdinalIgnoreCase)
                             .OrderBy(m => m)
                             .ToList();
@@ -836,7 +843,9 @@ namespace AIWeather
 
             // For GitHub Models we enforce membership to avoid accidental unsupported/unknown model calls.
             // For other providers the model box is editable; keep user-entered values even if not in the suggestion list.
-            if (IsGitHubModelsProvider && AvailableModels.Count > 0 && !AvailableModels.Any(m => string.Equals(m, selected, StringComparison.OrdinalIgnoreCase)))
+            if (IsGitHubModelsProvider && AvailableModels.Count > 0
+                && !AvailableModels.Any(m => string.Equals(m, selected, StringComparison.OrdinalIgnoreCase))
+                && !SupportedVisionModelPrefixes.Any(prefix => selected.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
             {
                 Properties.Settings.Default.SelectedModel = AvailableModels[0];
                 CoreUtil.SaveSettings(Properties.Settings.Default);

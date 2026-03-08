@@ -27,25 +27,9 @@ namespace AIWeather.Services
 
         private const string GITHUB_MODELS_ENDPOINT = "https://models.inference.ai.azure.com";
 
-        // Model mapping — keep in sync with SupportedVisionModelIds in AIWeather.cs
-        private static readonly Dictionary<string, string> ModelMap = new()
-        {
-            // OpenAI
-            { "gpt-4o", "gpt-4o" },
-            { "gpt-4o-mini", "gpt-4o-mini" },
-            { "gpt-4.1", "gpt-4.1" },
-            { "gpt-4.1-mini", "gpt-4.1-mini" },
-            { "gpt-4.1-nano", "gpt-4.1-nano" },
-            { "o1", "o1" },
-            { "o3", "o3" },
-            { "o4-mini", "o4-mini" },
-            // Anthropic (via GitHub)
-            { "claude-sonnet-4-5", "claude-sonnet-4-5" },
-            { "claude-3.5-sonnet", "claude-3.5-sonnet" },
-            // Google (via GitHub)
-            { "gemini-1.5-flash", "gemini-1.5-flash" },
-            { "gemini-1.5-pro", "gemini-1.5-pro" }
-        };
+        // Model name is passed directly to the GitHub Models API — no mapping needed.
+        // NormalizeModelName() handles AzureML-style IDs and other bad persisted values.
+        // The model list is filtered in AIWeather.cs using SupportedVisionModelPrefixes.
 
         public GitHubModelsAnalysisService(string githubToken, string modelName)
         {
@@ -99,16 +83,8 @@ namespace AIWeather.Services
 
                 // Get the chat client for the selected model
                 var normalizedModelName = NormalizeModelName(_modelName);
-                if (!ModelMap.ContainsKey(normalizedModelName))
-                {
-                    Logger.Warning($"Selected GitHub model '{normalizedModelName}' is not supported for vision analysis; falling back to local analysis");
-                    var fallback = new LocalWeatherAnalysisService();
-                    return await fallback.AnalyzeImageAsync(image, cancellationToken);
-                }
-
-                var modelId = ModelMap[normalizedModelName];
-                Logger.Debug($"Getting chat client for model: {modelId}");
-                var chatClient = _client.GetChatClient(modelId);
+                Logger.Debug($"Getting chat client for model: {normalizedModelName}");
+                var chatClient = _client.GetChatClient(normalizedModelName);
 
                 // Create the prompt for weather analysis
                 Logger.Debug("Creating chat messages with image...");

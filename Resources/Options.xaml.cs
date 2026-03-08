@@ -275,10 +275,14 @@ namespace AIWeather
 
         private async void ModelComboBox_Loaded(object sender, RoutedEventArgs e)
         {
-            // Opportunistically refresh when the options UI is opened.
+            // Opportunistically refresh when the options UI is opened,
+            // but only if the model list is empty (first load).
+            // Skip if models are already loaded to avoid resetting the ComboBox
+            // scroll position and blanking the selected item.
             try
             {
-                if (sender is FrameworkElement fe && fe.DataContext is AIWeather plugin)
+                if (sender is FrameworkElement fe && fe.DataContext is AIWeather plugin
+                    && plugin.AvailableModels.Count == 0)
                 {
                     await plugin.RefreshAvailableModelsAsync();
                 }

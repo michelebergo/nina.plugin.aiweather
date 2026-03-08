@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.6.2.0",
+  "Version": "1.7.0.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,16 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.7.0.0",
+      "Date": "2026-03-08",
+      "Changes": [
+        "Expanded GitHub Models list with newer Claude, Gemini, and GPT models",
+        "Switched to prefix-based model filtering (versioned variants auto-included)",
+        "Fixed model ComboBox resetting scroll position when opening Options tab",
+        "Removed unused ModelMap from GitHubModelsAnalysisService"
+      ]
+    },
     {
       "Version": "1.6.2.0",
       "Date": "2026-03-08",
