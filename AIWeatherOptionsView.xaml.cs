@@ -54,31 +54,32 @@ namespace AIWeather
 
         private void BrowseFolder_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            var dialog = new Microsoft.Win32.OpenFileDialog
+            try
             {
-                ValidateNames = false,
-                CheckFileExists = false,
-                CheckPathExists = true,
-                FileName = "Folder Selection",
-                Title = "Select folder to monitor for sky images"
-            };
-            
-            if (DataContext is AIWeatherOptions options && !string.IsNullOrEmpty(options.FolderPath))
-            {
-                dialog.InitialDirectory = options.FolderPath;
-            }
-
-            if (dialog.ShowDialog() == true)
-            {
-                if (DataContext is AIWeatherOptions opts)
+                using var dialog = new System.Windows.Forms.FolderBrowserDialog
                 {
-                    // Get the folder from the selected file path
-                    var folder = System.IO.Path.GetDirectoryName(dialog.FileName);
-                    if (!string.IsNullOrEmpty(folder))
+                    Description = "Select folder to monitor for sky images",
+                    UseDescriptionForTitle = true,
+                    ShowNewFolderButton = false
+                };
+
+                if (DataContext is AIWeatherOptions options && !string.IsNullOrEmpty(options.FolderPath))
+                {
+                    dialog.SelectedPath = options.FolderPath;
+                }
+
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK
+                    && !string.IsNullOrEmpty(dialog.SelectedPath))
+                {
+                    if (DataContext is AIWeatherOptions opts)
                     {
-                        opts.FolderPath = folder;
+                        opts.FolderPath = dialog.SelectedPath;
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"BrowseFolder error: {ex.Message}");
             }
         }
 

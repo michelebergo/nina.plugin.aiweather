@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.6.0.0",
+  "Version": "1.6.1.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,15 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.6.1.0",
+      "Date": "2026-03-08",
+      "Changes": [
+        "Fixed Browse button not working with network/mapped drives and on NINA 3.3",
+        "Replaced OpenFileDialog folder hack with proper FolderBrowserDialog",
+        "Added error logging to Browse handlers instead of silently swallowing exceptions"
+      ]
+    },
     {
       "Version": "1.6.0.0",
       "Date": "2026-02-26",

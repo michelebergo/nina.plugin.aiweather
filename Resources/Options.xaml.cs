@@ -45,35 +45,31 @@ namespace AIWeather
         {
             try
             {
-                var dialog = new Microsoft.Win32.OpenFileDialog
+                using var dialog = new System.Windows.Forms.FolderBrowserDialog
                 {
-                    ValidateNames = false,
-                    CheckFileExists = false,
-                    CheckPathExists = true,
-                    FileName = "Folder Selection",
-                    Title = "Select folder to monitor for sky images"
+                    Description = "Select folder to monitor for sky images",
+                    UseDescriptionForTitle = true,
+                    ShowNewFolderButton = false
                 };
 
-                if (sender is FrameworkElement fe && fe.DataContext is AIWeather plugin)
+                if (sender is FrameworkElement fe && fe.DataContext is AIWeather plugin
+                    && !string.IsNullOrEmpty(plugin.Options.FolderPath))
                 {
-                    if (!string.IsNullOrEmpty(plugin.Options.FolderPath))
-                    {
-                        dialog.InitialDirectory = plugin.Options.FolderPath;
-                    }
+                    dialog.SelectedPath = plugin.Options.FolderPath;
+                }
 
-                    if (dialog.ShowDialog() == true)
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK
+                    && !string.IsNullOrEmpty(dialog.SelectedPath))
+                {
+                    if (sender is FrameworkElement fe2 && fe2.DataContext is AIWeather p)
                     {
-                        var folder = System.IO.Path.GetDirectoryName(dialog.FileName);
-                        if (!string.IsNullOrEmpty(folder))
-                        {
-                            plugin.Options.FolderPath = folder;
-                        }
+                        p.Options.FolderPath = dialog.SelectedPath;
                     }
                 }
             }
-            catch
+            catch (System.Exception ex)
             {
-                // best-effort
+                NINA.Core.Utility.Logger.Error($"BrowseFolder error: {ex.Message}");
             }
         }
 
