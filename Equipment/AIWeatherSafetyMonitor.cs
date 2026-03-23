@@ -301,43 +301,43 @@ namespace AIWeather.Equipment
             var interval = TimeSpan.FromMinutes(intervalMinutes);
 
             var captureMode = (CaptureMode)Properties.Settings.Default.CaptureMode;
-            Logger.Info($"⏰ Starting periodic monitoring every {intervalMinutes} minutes (Mode: {captureMode})");
+            Logger.Debug($"Starting periodic monitoring every {intervalMinutes} minutes (Mode: {captureMode})");
 
             _monitoringTimer = new Timer(_ =>
             {
                 var currentMode = (CaptureMode)Properties.Settings.Default.CaptureMode;
-                Logger.Info($"🔔 Timer fired! Interval: {intervalMinutes} min, Mode: {currentMode}");
+                Logger.Debug($"Timer fired - Interval: {intervalMinutes} min, Mode: {currentMode}");
                 
                 if (_cts?.Token.IsCancellationRequested ?? true)
                 {
-                    Logger.Warning("⚠ Timer fired but cancellation was requested - skipping");
+                    Logger.Warning("Timer fired but cancellation was requested - skipping");
                     return;
                 }
 
                 try
                 {
-                    Logger.Info($"🚀 Launching weather check task from timer (Mode: {currentMode})...");
+                    Logger.Debug($"Launching weather check task from timer (Mode: {currentMode})");
                     Task.Run(async () =>
                     {
                         try
                         {
-                            Logger.Info($"📸 Executing periodic weather check (Mode: {currentMode})...");
+                            Logger.Debug($"Executing periodic weather check (Mode: {currentMode})");
                             await PerformWeatherCheckAsync(_cts.Token);
-                            Logger.Info($"✅ Weather check complete - next check in {intervalMinutes} min");
+                            Logger.Debug($"Weather check complete - next check in {intervalMinutes} min");
                         }
                         catch (Exception ex)
                         {
-                            Logger.Error($"❌ Error in periodic weather check: {ex.Message}", ex);
+                            Logger.Error($"Error in periodic weather check: {ex.Message}", ex);
                         }
                     });
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"❌ Failed to start weather check task: {ex.Message}", ex);
+                    Logger.Error($"Failed to start weather check task: {ex.Message}", ex);
                 }
             }, null, TimeSpan.Zero, interval);
             
-            Logger.Info($"✅ Timer created and started - first check will run immediately");
+            Logger.Debug($"Timer created and started - first check will run immediately");
         }
 
         private void StopPeriodicMonitoring()
@@ -355,26 +355,26 @@ namespace AIWeather.Equipment
             try
             {
                 var captureMode = (CaptureMode)Properties.Settings.Default.CaptureMode;
-                Logger.Info($"🎯 PerformWeatherCheckAsync - Mode: {captureMode}");
+                Logger.Debug($"PerformWeatherCheckAsync - Mode: {captureMode}");
 
                 Bitmap? frame = null;
 
                 // Capture image from all modes
-                Logger.Info($"📥 Capturing image from {captureMode} source...");
+                Logger.Debug($"Capturing image from {captureMode} source");
                 frame = await _captureService.CaptureImageAsync(cancellationToken);
 
                 if (frame == null)
                 {
-                    Logger.Warning($"❌ Failed to capture image from {captureMode} source");
+                    Logger.Warning($"Failed to capture image from {captureMode} source");
                     return;
                 }
 
-                Logger.Info($"✓ Image captured successfully from {captureMode}, size: {frame.Width}x{frame.Height}");
+                Logger.Debug($"Image captured from {captureMode}, size: {frame.Width}x{frame.Height}");
 
                 // Analyze the frame
-                Logger.Info($"🤖 Starting AI analysis using {_analysisService.GetType().Name}...");
+                Logger.Debug($"Starting AI analysis using {_analysisService.GetType().Name}");
                 var result = await _analysisService.AnalyzeImageAsync(frame, cancellationToken);
-                Logger.Info($"✅ AI analysis completed successfully");
+                Logger.Debug("AI analysis completed");
                 _lastResult = result;
 
                 // Store a copy of the image for UI restoration

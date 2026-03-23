@@ -25,6 +25,15 @@
   },
   "ChangeLog": [
     {
+      "Version": "1.7.2.0",
+      "Date": "2026-03-23",
+      "Changes": [
+        "Clean up logging: only weather analysis result logged at INFO level",
+        "Downgrade verbose monitoring messages to Debug level",
+        "Remove emoji characters from log messages"
+      ]
+    },
+    {
       "Version": "1.7.1.0",
       "Date": "2026-03-08",
       "Changes": [
