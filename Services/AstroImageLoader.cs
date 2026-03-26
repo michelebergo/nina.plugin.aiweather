@@ -70,6 +70,60 @@ namespace AIWeather.Services
         }
 
         /// <summary>
+        /// Loads a TIFF file, bypassing GDI+'s broken 16-bit handling.
+        /// Reads raw pixel data directly for 16-bit mono images (common from astro cameras).
+        /// Falls back to GDI+ for standard 8-bit/24-bit TIFFs.
+        /// </summary>
+        public static Bitmap LoadTiffFile(string path)
+        {
+            Logger.Info($"AstroImageLoader: loading TIFF file {Path.GetFileName(path)}");
+
+            byte[] fileBytes = File.ReadAllBytes(path);
+
+            // Parse TIFF header to check bit depth before letting GDI+ touch it
+            int width, height, bitsPerSample, samplesPerPixel;
+            int[] stripOffsets, stripByteCounts;
+            bool littleEndian;
+
+            if (TryParseTiffHeader(fileBytes, out width, out height, out bitsPerSample,
+                out samplesPerPixel, out stripOffsets, out stripByteCounts, out littleEndian))
+            {
+                Logger.Info($"AstroImageLoader: TIFF {width}x{height}, {bitsPerSample}-bit, {samplesPerPixel} channel(s)");
+
+                // Handle 16-bit mono (raw astro camera data) directly
+                if (bitsPerSample == 16 && samplesPerPixel == 1 && stripOffsets != null)
+                {
+                    double[] pixels = ReadTiffStrips16(fileBytes, width, height,
+                        stripOffsets, stripByteCounts, littleEndian);
+
+                    AutoStretch(pixels);
+                    return GrayscaleToBitmap(pixels, width, height);
+                }
+
+                // Handle 16-bit RGB (48-bit) directly
+                if (bitsPerSample == 16 && samplesPerPixel == 3 && stripOffsets != null)
+                {
+                    double[] pixels = ReadTiffStrips48(fileBytes, width, height,
+                        stripOffsets, stripByteCounts, littleEndian);
+
+                    AutoStretch(pixels);
+                    return GrayscaleToBitmap(pixels, width, height);
+                }
+            }
+
+            // Fall back to GDI+ for standard formats (8-bit, 24-bit, compressed TIFFs)
+            Logger.Info("AstroImageLoader: TIFF is standard format, using GDI+ loader");
+            using (var ms = new MemoryStream(fileBytes))
+            {
+                using (var original = new Bitmap(ms))
+                {
+                    // Make a detached copy (GDI+ needs the stream alive)
+                    return new Bitmap(original);
+                }
+            }
+        }
+
+        /// <summary>
         /// Normalizes a TIFF image that may be 16-bit or 32-bit (raw astro camera output).
         /// If the TIFF is already 8-bit/24-bit, returns the bitmap as-is.
         /// </summary>
@@ -150,6 +204,195 @@ namespace AIWeather.Services
                 source.UnlockBits(bmpData);
             }
         }
+
+        #region TIFF Direct Reader
+
+        /// <summary>
+        /// Parses basic TIFF IFD to extract image dimensions, bit depth, and strip layout.
+        /// Returns false if the file isn't a valid TIFF or uses unsupported features.
+        /// </summary>
+        private static bool TryParseTiffHeader(byte[] data, out int width, out int height,
+            out int bitsPerSample, out int samplesPerPixel,
+            out int[] stripOffsets, out int[] stripByteCounts, out bool littleEndian)
+        {
+            width = 0; height = 0; bitsPerSample = 0; samplesPerPixel = 1;
+            stripOffsets = null; stripByteCounts = null; littleEndian = true;
+
+            if (data.Length < 8) return false;
+
+            // Byte order mark
+            if (data[0] == 0x49 && data[1] == 0x49) littleEndian = true;       // "II"
+            else if (data[0] == 0x4D && data[1] == 0x4D) littleEndian = false; // "MM"
+            else return false;
+
+            ushort magic = ReadUInt16(data, 2, littleEndian);
+            if (magic != 42) return false;
+
+            uint ifdOffset = ReadUInt32(data, 4, littleEndian);
+            if (ifdOffset + 2 > data.Length) return false;
+
+            ushort entryCount = ReadUInt16(data, (int)ifdOffset, littleEndian);
+            int pos = (int)ifdOffset + 2;
+
+            int compression = 1;
+            uint soOffset = 0; uint soCount = 0; ushort soType = 0;
+            uint sbcOffset = 0; uint sbcCount = 0; ushort sbcType = 0;
+
+            for (int i = 0; i < entryCount && pos + 12 <= data.Length; i++, pos += 12)
+            {
+                ushort tag = ReadUInt16(data, pos, littleEndian);
+                ushort type = ReadUInt16(data, pos + 2, littleEndian);
+                uint count = ReadUInt32(data, pos + 4, littleEndian);
+                uint valueOrOffset = ReadUInt32(data, pos + 8, littleEndian);
+
+                // For values that fit in 4 bytes, valueOrOffset IS the value
+                // For larger values, it's an offset into the file
+                switch (tag)
+                {
+                    case 256: // ImageWidth
+                        width = (int)(type == 3 ? ReadUInt16(data, pos + 8, littleEndian) : valueOrOffset);
+                        break;
+                    case 257: // ImageLength (height)
+                        height = (int)(type == 3 ? ReadUInt16(data, pos + 8, littleEndian) : valueOrOffset);
+                        break;
+                    case 258: // BitsPerSample
+                        if (count == 1)
+                            bitsPerSample = type == 3 ? ReadUInt16(data, pos + 8, littleEndian) : (int)valueOrOffset;
+                        else if (count > 1 && valueOrOffset + 2 <= data.Length)
+                            bitsPerSample = ReadUInt16(data, (int)valueOrOffset, littleEndian);
+                        break;
+                    case 259: // Compression
+                        compression = type == 3 ? ReadUInt16(data, pos + 8, littleEndian) : (int)valueOrOffset;
+                        break;
+                    case 273: // StripOffsets
+                        soCount = count; soType = type; soOffset = valueOrOffset;
+                        break;
+                    case 277: // SamplesPerPixel
+                        samplesPerPixel = type == 3 ? ReadUInt16(data, pos + 8, littleEndian) : (int)valueOrOffset;
+                        break;
+                    case 279: // StripByteCounts
+                        sbcCount = count; sbcType = type; sbcOffset = valueOrOffset;
+                        break;
+                }
+            }
+
+            // Only handle uncompressed data
+            if (compression != 1)
+            {
+                Logger.Info($"AstroImageLoader: TIFF uses compression={compression}, falling back to GDI+");
+                return false;
+            }
+
+            // Read strip offsets array
+            stripOffsets = ReadIfdArray(data, soOffset, soCount, soType, littleEndian);
+            stripByteCounts = ReadIfdArray(data, sbcOffset, sbcCount, sbcType, littleEndian);
+
+            return width > 0 && height > 0 && bitsPerSample > 0 && stripOffsets != null;
+        }
+
+        /// <summary>
+        /// Reads an IFD value array (used for StripOffsets and StripByteCounts).
+        /// </summary>
+        private static int[] ReadIfdArray(byte[] data, uint valueOrOffset, uint count, ushort type, bool littleEndian)
+        {
+            if (count == 0) return null;
+
+            int[] result = new int[count];
+            int bytesPerValue = (type == 3) ? 2 : 4; // SHORT=2 bytes, LONG=4 bytes
+
+            if (count == 1)
+            {
+                // Single value stored inline
+                result[0] = (type == 3) ? ReadUInt16(data, (int)valueOrOffset, littleEndian) : (int)valueOrOffset;
+                // Actually for single values, valueOrOffset IS the value for count==1 when it fits in 4 bytes
+                result[0] = (int)valueOrOffset;
+                return result;
+            }
+
+            // Multiple values stored at offset
+            int offset = (int)valueOrOffset;
+            for (int i = 0; i < count && offset + bytesPerValue <= data.Length; i++)
+            {
+                result[i] = (type == 3) ? ReadUInt16(data, offset, littleEndian) : (int)ReadUInt32(data, offset, littleEndian);
+                offset += bytesPerValue;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Reads 16-bit mono pixel data from TIFF strips into a normalized double array.
+        /// </summary>
+        private static double[] ReadTiffStrips16(byte[] data, int width, int height,
+            int[] stripOffsets, int[] stripByteCounts, bool littleEndian)
+        {
+            int pixelCount = width * height;
+            double[] pixels = new double[pixelCount];
+            int pixelIdx = 0;
+
+            for (int s = 0; s < stripOffsets.Length && pixelIdx < pixelCount; s++)
+            {
+                int offset = stripOffsets[s];
+                int byteCount = (s < stripByteCounts.Length) ? stripByteCounts[s] : (pixelCount - pixelIdx) * 2;
+                int pixelsInStrip = byteCount / 2;
+
+                for (int i = 0; i < pixelsInStrip && pixelIdx < pixelCount && offset + 1 < data.Length; i++)
+                {
+                    ushort val = ReadUInt16(data, offset, littleEndian);
+                    pixels[pixelIdx++] = val / 65535.0;
+                    offset += 2;
+                }
+            }
+
+            return pixels;
+        }
+
+        /// <summary>
+        /// Reads 48-bit RGB pixel data from TIFF strips, converting to grayscale luminance.
+        /// </summary>
+        private static double[] ReadTiffStrips48(byte[] data, int width, int height,
+            int[] stripOffsets, int[] stripByteCounts, bool littleEndian)
+        {
+            int pixelCount = width * height;
+            double[] pixels = new double[pixelCount];
+            int pixelIdx = 0;
+
+            for (int s = 0; s < stripOffsets.Length && pixelIdx < pixelCount; s++)
+            {
+                int offset = stripOffsets[s];
+                int byteCount = (s < stripByteCounts.Length) ? stripByteCounts[s] : (pixelCount - pixelIdx) * 6;
+                int pixelsInStrip = byteCount / 6;
+
+                for (int i = 0; i < pixelsInStrip && pixelIdx < pixelCount && offset + 5 < data.Length; i++)
+                {
+                    ushort r = ReadUInt16(data, offset, littleEndian);
+                    ushort g = ReadUInt16(data, offset + 2, littleEndian);
+                    ushort b = ReadUInt16(data, offset + 4, littleEndian);
+                    pixels[pixelIdx++] = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 65535.0;
+                    offset += 6;
+                }
+            }
+
+            return pixels;
+        }
+
+        private static ushort ReadUInt16(byte[] data, int offset, bool littleEndian)
+        {
+            if (offset + 1 >= data.Length) return 0;
+            return littleEndian
+                ? (ushort)(data[offset] | (data[offset + 1] << 8))
+                : (ushort)((data[offset] << 8) | data[offset + 1]);
+        }
+
+        private static uint ReadUInt32(byte[] data, int offset, bool littleEndian)
+        {
+            if (offset + 3 >= data.Length) return 0;
+            return littleEndian
+                ? (uint)(data[offset] | (data[offset + 1] << 8) | (data[offset + 2] << 16) | (data[offset + 3] << 24))
+                : (uint)((data[offset] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8) | data[offset + 3]);
+        }
+
+        #endregion
 
         #region FITS Header Parsing
 

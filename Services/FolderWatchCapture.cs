@@ -52,22 +52,18 @@ namespace AIWeather.Services
                         return AstroImageLoader.LoadFitsFile(latestFile);
                     }
 
-                    // Load standard image formats
+                    // TIFF files: bypass GDI+ to handle 16-bit astro camera data correctly
+                    if (AstroImageLoader.IsTiffFile(latestFile))
+                    {
+                        return AstroImageLoader.LoadTiffFile(latestFile);
+                    }
+
+                    // Load standard image formats (JPG, PNG, BMP)
                     using (var fileStream = new FileStream(latestFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                     {
                         var image = new Bitmap(fileStream);
                         var copy = new Bitmap(image);
                         image.Dispose();
-
-                        // Normalize TIF/TIFF (may be 16-bit or 48-bit from astro cameras)
-                        if (AstroImageLoader.IsTiffFile(latestFile))
-                        {
-                            var normalized = AstroImageLoader.NormalizeTiff(copy);
-                            if (normalized != copy)
-                                copy.Dispose();
-                            return normalized;
-                        }
-
                         return copy;
                     }
                 }
