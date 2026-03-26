@@ -13,7 +13,7 @@ namespace AIWeather.Services
     public class FolderWatchCapture
     {
         private string _folderPath;
-        private readonly string[] _supportedExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff" };
+        private readonly string[] _supportedExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".fit", ".fits", ".fts" };
 
         public string FolderPath
         {
@@ -46,13 +46,28 @@ namespace AIWeather.Services
 
                     Logger.Info($"Folder watch: loading latest image: {Path.GetFileName(latestFile)}");
 
-                    // Load the image
+                    // FITS files need special handling
+                    if (AstroImageLoader.IsFitsFile(latestFile))
+                    {
+                        return AstroImageLoader.LoadFitsFile(latestFile);
+                    }
+
+                    // Load standard image formats
                     using (var fileStream = new FileStream(latestFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                     {
-                        // Create a copy so we can close the file stream
                         var image = new Bitmap(fileStream);
                         var copy = new Bitmap(image);
                         image.Dispose();
+
+                        // Normalize TIF/TIFF (may be 16-bit or 48-bit from astro cameras)
+                        if (AstroImageLoader.IsTiffFile(latestFile))
+                        {
+                            var normalized = AstroImageLoader.NormalizeTiff(copy);
+                            if (normalized != copy)
+                                copy.Dispose();
+                            return normalized;
+                        }
+
                         return copy;
                     }
                 }

@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.7.1.0",
+  "Version": "1.9.0.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,16 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.9.0.0",
+      "Date": "2026-03-26",
+      "Changes": [
+        "Added FITS file support (.fit, .fits, .fts) in Folder Watch mode",
+        "Improved TIFF handling: auto-stretch and normalization for 16-bit and 48-bit raw astro images",
+        "New AstroImageLoader with percentile-based auto-stretch and Bayer pattern debayering",
+        "FITS reader supports 8-bit, 16-bit, 32-bit integer and IEEE 754 float/double pixel data"
+      ]
+    },
     {
       "Version": "1.8.0.0",
       "Date": "2026-03-23",
