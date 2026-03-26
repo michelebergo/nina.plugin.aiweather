@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AIWeather.Models;
 using NINA.Core.Utility;
 using NINA.Equipment.Interfaces.Mediator;
+using NINA.Image.Interfaces;
 
 namespace AIWeather.Services
 {
@@ -60,6 +61,14 @@ namespace AIWeather.Services
         public void ConfigureFolderWatch(string folderPath)
         {
             _folderService.FolderPath = folderPath;
+        }
+
+        /// <summary>
+        /// Injects NINA's image data factory for proper FITS/TIFF loading.
+        /// </summary>
+        public void SetImageDataFactory(IImageDataFactory imageDataFactory)
+        {
+            _folderService.ImageDataFactory = imageDataFactory;
         }
 
         /// <summary>

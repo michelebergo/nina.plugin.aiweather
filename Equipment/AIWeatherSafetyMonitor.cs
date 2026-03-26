@@ -1,6 +1,7 @@
 using NINA.Equipment.Interfaces;
 using NINA.Core.Utility;
 using NINA.Profile.Interfaces;
+using NINA.Image.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
@@ -33,6 +34,11 @@ namespace AIWeather.Equipment
         private CancellationTokenSource? _cts;
         private readonly SemaphoreSlim _checkGate = new SemaphoreSlim(1, 1);
 
+        /// <summary>
+        /// Fired after Connect succeeds and periodic monitoring has started.
+        /// </summary>
+        public event EventHandler? MonitoringStarted;
+
         public AIWeatherSafetyMonitor()
         {
             _captureService = new UnifiedCaptureService(cameraMediator: null);
@@ -52,6 +58,15 @@ namespace AIWeather.Equipment
                     UpdateAnalysisService();
                 }
             };
+        }
+
+        /// <summary>
+        /// Injects NINA's image data factory for proper FITS/TIFF loading with debayering and stretching.
+        /// Called from the MEF-constructed provider.
+        /// </summary>
+        public void SetImageDataFactory(IImageDataFactory imageDataFactory)
+        {
+            _captureService.SetImageDataFactory(imageDataFactory);
         }
 
         private void UpdateAnalysisService()
@@ -181,11 +196,15 @@ namespace AIWeather.Equipment
                     await _analysisService.InitializeAsync(token);
                 }
 
-                // Start periodic monitoring
-                StartPeriodicMonitoring();
-
+                // Mark as connected BEFORE starting periodic monitoring
+                // so that UI handlers can see Connected=true when the first check completes
                 Connected = true;
                 Logger.Info($"All Sky Camera Safety Monitor connected using {captureMode} mode");
+
+                // Start periodic monitoring (first check runs immediately)
+                StartPeriodicMonitoring();
+
+                MonitoringStarted?.Invoke(this, EventArgs.Empty);
                 return true;
             }
             catch (Exception ex)

@@ -191,6 +191,17 @@ namespace AIWeather
             // Restore state if SafetyMonitor is already running
             RestoreMonitoringState();
 
+            // Direct event: fires reliably when safety monitor Connect() succeeds
+            _safetyMonitor.MonitoringStarted += (s, e) =>
+            {
+                Logger.Info("MonitoringStarted event received in ViewModel — scheduling RestoreMonitoringState");
+                RunOnUiThread(() =>
+                {
+                    Logger.Info("MonitoringStarted: now on UI thread, calling RestoreMonitoringState");
+                    RestoreMonitoringState();
+                });
+            };
+
             // Subscribe to safety monitor updates
             _safetyMonitor.PropertyChanged += async (s, e) =>
             {
@@ -229,6 +240,24 @@ namespace AIWeather
                                 }
                             }
                             AddLog("⏹ Monitoring stopped");
+                        });
+                    }
+                }
+                else if (e.PropertyName == nameof(AIWeatherSafetyMonitor.IsSafe))
+                {
+                    // Weather check completed — update UI with latest results
+                    if (_safetyMonitor.Connected)
+                    {
+                        // Ensure monitoring state is set if we haven't done so yet
+                        if (!IsRunning)
+                        {
+                            Logger.Info("IsSafe changed while not IsRunning — calling RestoreMonitoringState");
+                            RunOnUiThread(() => RestoreMonitoringState());
+                        }
+
+                        RunOnUiThread(async () =>
+                        {
+                            await UpdateFromLatestResultAsync(loadImage: true);
                         });
                     }
                 }
@@ -568,6 +597,7 @@ namespace AIWeather
             // Check if the shared SafetyMonitor is already connected and monitoring
             if (_safetyMonitor.Connected)
             {
+                Logger.Info("RestoreMonitoringState: SafetyMonitor is connected, restoring UI state");
                 AddLog("✓ Monitoring state restored - monitoring is active");
 
                 // Restore connection state
@@ -584,10 +614,24 @@ namespace AIWeather
                 ApplyRefreshIntervalFromSettings();
                 _refreshTimer.Start();
 
-                // Load latest analysis results and update UI
-                _ = UpdateFromLatestResultAsync(loadImage: true);
-
-                StatusMessage = "Monitoring active";
+                // Try to show cached results immediately, then wait for periodic check to update via IsSafe
+                var result = _safetyMonitor.GetLatestResult();
+                if (result != null)
+                {
+                    Logger.Info("RestoreMonitoringState: cached result available, updating display");
+                    _ = UpdateFromLatestResultAsync(loadImage: true);
+                    StatusMessage = "Monitoring active";
+                }
+                else
+                {
+                    Logger.Info("RestoreMonitoringState: no cached result yet — will update when first check completes");
+                    StatusMessage = "Waiting for first analysis...";
+                    AddLog("✓ Monitoring started — waiting for first weather check...");
+                }
+            }
+            else
+            {
+                Logger.Info("RestoreMonitoringState: SafetyMonitor not connected, skipping");
             }
         }
 
@@ -1228,7 +1272,12 @@ namespace AIWeather
             }
             else
             {
-                Logger.Info($"Not restoring state - IsRunning: {IsRunning}, Sources.Count: {Sources.Count}");
+                // Safety monitor may have connected before this view was opened.
+                // Check and restore monitoring state now.
+                if (_safetyMonitor.Connected)
+                {
+                    RestoreMonitoringState();
+                }
             }
         }
     }

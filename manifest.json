@@ -26,12 +26,11 @@
   "ChangeLog": [
     {
       "Version": "1.9.2.0",
-      "Date": "2026-03-26",
+      "Date": "2026-03-27",
       "Changes": [
-        "Fixed TIFF matrix/raster pattern: bypass GDI+ and read 16-bit pixel data directly from file",
-        "New TIFF direct reader handles uncompressed 16-bit mono and 48-bit RGB astro camera images",
-        "Auto-stretch applied to raw TIFF data for proper visualization",
-        "Falls back to GDI+ for standard 8-bit/compressed TIFFs"
+        "Replaced custom image loader with NINA native IImageDataFactory pipeline (fixes yellow tint on TIFF/FITS)",
+        "Fixed auto-start: connecting All Sky Camera Safety Monitor now correctly starts monitoring in the preview panel",
+        "Fixed deploy script to clean stale plugin directories that could shadow new builds"
       ]
     },
     {
