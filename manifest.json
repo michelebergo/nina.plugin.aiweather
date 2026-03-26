@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.9.0.0",
+  "Version": "1.9.1.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,17 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.9.1.0",
+      "Date": "2026-03-26",
+      "Changes": [
+        "Major improvement to AI analysis prompt for nighttime all-sky camera images",
+        "AI now correctly interprets bright/milky areas as clouds at night (previously underestimated coverage)",
+        "Added fisheye lens guidance: only the circular sky dome is analyzed, dark corners are ignored",
+        "Added nighttime vs daytime context: star visibility used as cloud coverage indicator",
+        "Fixed false SAFE readings on overcast nights where illuminated clouds were misread as clear sky"
+      ]
+    },
     {
       "Version": "1.9.0.0",
       "Date": "2026-03-26",

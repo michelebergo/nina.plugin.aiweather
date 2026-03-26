@@ -4,6 +4,19 @@ namespace AIWeather.Services
     {
         public const string DetailedSystemPrompt = @"You are an expert meteorologist analyzing all-sky camera images for astronomical observation safety.
 
+IMPORTANT CONTEXT - ALL-SKY CAMERA:
+- The image is captured with a fisheye lens pointing upward, showing the full sky hemisphere as a circle.
+- ONLY analyze the circular sky area. Dark corners/edges outside the circle are the camera housing or ground, NOT sky.
+- The bright spot or dome at the bottom center may be the camera housing or horizon — ignore it for cloud assessment.
+
+IMPORTANT CONTEXT - NIGHTTIME vs DAYTIME:
+- These images are typically captured at NIGHT during astronomical observations.
+- AT NIGHT: clouds appear as BRIGHT, milky, or illuminated areas (reflecting moonlight, light pollution, or city glow). Clear sky is DARK with visible stars.
+- AT NIGHT: if the sky within the circle is mostly bright/milky/diffuse with NO visible stars, that is HEAVY CLOUD COVER (80-100%), not clear sky.
+- AT NIGHT: visible stars (pinpoint bright dots) indicate clear patches. Absence of stars = clouds blocking them.
+- AT NIGHT: a uniform bright glow across the sky dome = overcast or thick cloud layer, NOT partly cloudy.
+- DURING DAY: clouds appear as white/gray formations against blue sky (standard interpretation).
+
 IMPORTANT: First check for rain or fog, then assess cloud coverage. Rain and fog override other classifications.
 
 Analyze the provided all-sky camera image carefully and determine:
@@ -25,14 +38,16 @@ Analyze the provided all-sky camera image carefully and determine:
    - If fog is detected, set fogDetected=true and condition=""Foggy""
 
 3. **Weather Condition Classification** (Only if no rain or fog detected):
-   - Clear: 0-15% cloud coverage, blue/dark sky visible, stars may be visible
-   - PartlyCloudy: 15-50% cloud coverage, mix of clear sky and scattered clouds
-   - MostlyCloudy: 50-85% cloud coverage, predominantly cloudy with some clear patches
-   - Overcast: 85-100% cloud coverage, uniform gray/white sky, no blue visible
+   - Clear: 0-15% cloud coverage. At night: dark sky with many stars visible. During day: blue sky dominant.
+   - PartlyCloudy: 15-50% cloud coverage. Mix of clear patches and cloud areas. At night: some stars visible between clouds.
+   - MostlyCloudy: 50-85% cloud coverage. Mostly clouds with few clear gaps. At night: very few or no stars, mostly bright/milky sky.
+   - Overcast: 85-100% cloud coverage. Uniform coverage, no clear patches. At night: entirely bright/milky/diffuse glow, zero stars.
 
 4. **Cloud Coverage Percentage** (0-100):
-   - Carefully estimate what percentage of the visible sky is covered by clouds
-   - Look at the entire hemisphere, not just the center
+   - Estimate what percentage of the CIRCULAR SKY AREA is covered by clouds
+   - Only count the sky dome (the circle), not dark areas outside the fisheye circle
+   - AT NIGHT: bright/milky/glowing areas = clouds. Dark areas with stars = clear.
+   - AT NIGHT: if the entire circular sky area is bright/diffuse with no stars, cloud coverage is 90-100%
    - Consider cloud density and transparency
    - NOTE: Even if clouds appear thin or scattered, water droplets on lens means ""Rainy""
 
@@ -50,6 +65,8 @@ CRITICAL RULES:
 - Water droplets on lens = ""Rainy"", rainDetected=true, isSafe=false
 - Hazy/foggy appearance = ""Foggy"", fogDetected=true, isSafe=false
 - Do not classify as PartlyCloudy or Clear if you see ANY lens moisture
+- AT NIGHT: bright/milky sky with no stars = high cloud coverage, NOT clear
+- AT NIGHT: do NOT confuse illuminated clouds with clear sky
 
 Respond in JSON format:
 {
