@@ -44,13 +44,13 @@ namespace AIWeather.Services
             return Task.FromResult(true);
         }
 
-        public async Task<WeatherAnalysisResult> AnalyzeImageAsync(Bitmap image, CancellationToken cancellationToken = default)
+        public async Task<WeatherAnalysisResult> AnalyzeImageAsync(Bitmap image, AstroContext? astroContext = null, CancellationToken cancellationToken = default)
         {
             if (!_isInitialized)
             {
                 Logger.Warning("OpenAI service not initialized, falling back to local analysis");
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, cancellationToken);
+                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
             }
 
             try
@@ -59,6 +59,10 @@ namespace AIWeather.Services
 
                 var base64Image = ConvertImageToBase64(image);
                 var imageUrl = $"data:image/jpeg;base64,{base64Image}";
+
+                var userText = "Analyze this all-sky camera image and provide weather assessment:";
+                if (astroContext != null)
+                    userText = WeatherAnalysisPrompts.BuildContextBlock(astroContext) + "\n" + userText;
 
                 var payload = new
                 {
@@ -72,7 +76,7 @@ namespace AIWeather.Services
                             role = "user",
                             content = new object[]
                             {
-                                new { type = "text", text = "Analyze this all-sky camera image and provide weather assessment:" },
+                                new { type = "text", text = userText },
                                 new { type = "image_url", image_url = new { url = imageUrl } }
                             }
                         }
@@ -113,13 +117,13 @@ namespace AIWeather.Services
             {
                 Logger.Warning($"OpenAI API call timed out or was cancelled: {ex.Message}");
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, cancellationToken);
+                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in OpenAI analysis: {ex.Message}", ex);
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, cancellationToken);
+                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
             }
         }
 

@@ -63,13 +63,13 @@ namespace AIWeather.Services
             }
         }
 
-        public async Task<WeatherAnalysisResult> AnalyzeImageAsync(Bitmap image, CancellationToken cancellationToken = default)
+        public async Task<WeatherAnalysisResult> AnalyzeImageAsync(Bitmap image, AstroContext? astroContext = null, CancellationToken cancellationToken = default)
         {
             if (!_isInitialized || _client == null)
             {
                 Logger.Warning("GitHub Models service not initialized, falling back to local analysis");
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, cancellationToken);
+                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
             }
 
             try
@@ -86,13 +86,18 @@ namespace AIWeather.Services
                 Logger.Debug($"Getting chat client for model: {normalizedModelName}");
                 var chatClient = _client.GetChatClient(normalizedModelName);
 
+                // Build user text with optional observation context
+                var userText = "Analyze this all-sky camera image and provide weather assessment:";
+                if (astroContext != null)
+                    userText = WeatherAnalysisPrompts.BuildContextBlock(astroContext) + "\n" + userText;
+
                 // Create the prompt for weather analysis
                 Logger.Debug("Creating chat messages with image...");
                 var messages = new List<ChatMessage>
                 {
                     new SystemChatMessage(WeatherAnalysisPrompts.DetailedSystemPrompt),
                     new UserChatMessage(
-                        ChatMessageContentPart.CreateTextPart("Analyze this all-sky camera image and provide weather assessment:"),
+                        ChatMessageContentPart.CreateTextPart(userText),
                         ChatMessageContentPart.CreateImagePart(BinaryData.FromBytes(Convert.FromBase64String(base64Image)), "image/jpeg")
                     )
                 };
@@ -122,7 +127,7 @@ namespace AIWeather.Services
 
                 // Fallback to local analysis
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, cancellationToken);
+                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -131,7 +136,7 @@ namespace AIWeather.Services
 
                 // Fallback to local analysis
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, cancellationToken);
+                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
             }
         }
 

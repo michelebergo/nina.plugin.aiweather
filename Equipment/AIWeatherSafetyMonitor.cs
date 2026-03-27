@@ -33,6 +33,7 @@ namespace AIWeather.Equipment
         private bool _isCurrentlySafe = false;
         private CancellationTokenSource? _cts;
         private readonly SemaphoreSlim _checkGate = new SemaphoreSlim(1, 1);
+        private IProfileService? _profileService;
 
         /// <summary>
         /// Fired after Connect succeeds and periodic monitoring has started.
@@ -67,6 +68,15 @@ namespace AIWeather.Equipment
         public void SetImageDataFactory(IImageDataFactory imageDataFactory)
         {
             _captureService.SetImageDataFactory(imageDataFactory);
+        }
+
+        /// <summary>
+        /// Injects NINA's profile service for accessing observer location (lat/lon/elevation).
+        /// Called from the MEF-constructed provider.
+        /// </summary>
+        public void SetProfileService(IProfileService profileService)
+        {
+            _profileService = profileService;
         }
 
         private void UpdateAnalysisService()
@@ -392,7 +402,26 @@ namespace AIWeather.Equipment
 
                 // Analyze the frame
                 Logger.Debug($"Starting AI analysis using {_analysisService.GetType().Name}");
-                var result = await _analysisService.AnalyzeImageAsync(frame, cancellationToken);
+
+                // Compute astronomical context from observer location
+                AstroContext? astroContext = null;
+                try
+                {
+                    if (_profileService != null)
+                    {
+                        var astro = _profileService.ActiveProfile.AstrometrySettings;
+                        astroContext = AstroContext.Compute(
+                            astro.Latitude, astro.Longitude, astro.Elevation, DateTime.UtcNow);
+                        Logger.Info($"Astro context: Sun {astroContext.SunAltitude:F1}° ({astroContext.SunState}), " +
+                                   $"Moon {astroContext.MoonIllumination:F0}% {astroContext.MoonPhase} at {astroContext.MoonAltitude:F1}°");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"Failed to compute astronomical context: {ex.Message}");
+                }
+
+                var result = await _analysisService.AnalyzeImageAsync(frame, astroContext, cancellationToken);
                 Logger.Debug("AI analysis completed");
                 _lastResult = result;
 

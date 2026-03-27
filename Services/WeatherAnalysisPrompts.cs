@@ -1,3 +1,5 @@
+using System;
+
 namespace AIWeather.Services
 {
     public static class WeatherAnalysisPrompts
@@ -10,11 +12,13 @@ IMPORTANT CONTEXT - ALL-SKY CAMERA:
 - The bright spot or dome at the bottom center may be the camera housing or horizon — ignore it for cloud assessment.
 
 IMPORTANT CONTEXT - NIGHTTIME vs DAYTIME:
-- These images are typically captured at NIGHT during astronomical observations.
+- Use the OBSERVATION CONTEXT provided below (if available) to determine whether this is a daytime or nighttime image.
+- If no observation context is provided, assume nighttime unless the image clearly shows a blue daytime sky.
 - AT NIGHT: clouds appear as BRIGHT, milky, or illuminated areas (reflecting moonlight, light pollution, or city glow). Clear sky is DARK with visible stars.
 - AT NIGHT: if the sky within the circle is mostly bright/milky/diffuse with NO visible stars, that is HEAVY CLOUD COVER (80-100%), not clear sky.
 - AT NIGHT: visible stars (pinpoint bright dots) indicate clear patches. Absence of stars = clouds blocking them.
 - AT NIGHT: a uniform bright glow across the sky dome = overcast or thick cloud layer, NOT partly cloudy.
+- AT NIGHT: a bright disc in the sky is the MOON, not the sun. The moon can illuminate clouds during nighttime.
 - DURING DAY: clouds appear as white/gray formations against blue sky (standard interpretation).
 
 IMPORTANT: First check for rain or fog, then assess cloud coverage. Rain and fog override other classifications.
@@ -78,5 +82,30 @@ Respond in JSON format:
   ""description"": ""brief description of observed conditions"",
   ""confidence"": 0-100
 }";
-    }
+        /// <summary>
+        /// Build a dynamic observation context block from astronomical data.
+        /// This is prepended to the user message so the AI knows day/night state, moon, etc.
+        /// </summary>
+        public static string BuildContextBlock(AstroContext ctx)
+        {
+            var lat = ctx.Latitude >= 0 ? $"{ctx.Latitude:F2}°N" : $"{Math.Abs(ctx.Latitude):F2}°S";
+            var lon = ctx.Longitude >= 0 ? $"{ctx.Longitude:F2}°E" : $"{Math.Abs(ctx.Longitude):F2}°W";
+
+            var expectation = ctx.SunState switch
+            {
+                "Day" => "Expect a bright daytime sky.",
+                "Civil Twilight" => "Expect a dim sky near sunrise/sunset.",
+                _ when ctx.MoonAltitude > 10 && ctx.MoonIllumination > 40
+                    => $"Expect a dark sky with possible moon-lit clouds (moon is {ctx.MoonIllumination:F0}% illuminated at {ctx.MoonAltitude:F1}° altitude).",
+                _ => "Expect a dark sky. Any bright disc is NOT the sun."
+            };
+
+            return $@"OBSERVATION CONTEXT:
+- Date/Time: {ctx.UtcTime:yyyy-MM-dd HH:mm} UTC ({ctx.LocalTime:HH:mm} {ctx.TimeZone})
+- Location: {lat}, {lon}, {ctx.Elevation:F0}m elevation
+- Sun: {ctx.SunAltitude:F1}° altitude ({ctx.SunState})
+- Moon: {ctx.MoonIllumination:F0}% illuminated ({ctx.MoonPhase}), {ctx.MoonAltitude:F1}° altitude
+- {expectation}
+";
+        }    }
 }

@@ -25,7 +25,7 @@ namespace AIWeather.Services
             return Task.FromResult(true);
         }
 
-        public async Task<WeatherAnalysisResult> AnalyzeImageAsync(Bitmap image, CancellationToken cancellationToken = default)
+        public async Task<WeatherAnalysisResult> AnalyzeImageAsync(Bitmap image, AstroContext? astroContext = null, CancellationToken cancellationToken = default)
         {
             if (!_isInitialized)
             {

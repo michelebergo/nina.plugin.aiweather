@@ -41,13 +41,13 @@ namespace AIWeather.Services
             return Task.FromResult(true);
         }
 
-        public async Task<WeatherAnalysisResult> AnalyzeImageAsync(Bitmap image, CancellationToken cancellationToken = default)
+        public async Task<WeatherAnalysisResult> AnalyzeImageAsync(Bitmap image, AstroContext? astroContext = null, CancellationToken cancellationToken = default)
         {
             if (!_isInitialized)
             {
                 Logger.Warning("Gemini service not initialized, falling back to local analysis");
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, cancellationToken);
+                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
             }
 
             try
@@ -56,6 +56,10 @@ namespace AIWeather.Services
 
                 var base64Image = ConvertImageToBase64(image);
                 var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(_modelName)}:generateContent";
+
+                var promptText = PromptText.FullPrompt;
+                if (astroContext != null)
+                    promptText = WeatherAnalysisPrompts.BuildContextBlock(astroContext) + "\n" + promptText;
 
                 var payload = new
                 {
@@ -66,7 +70,7 @@ namespace AIWeather.Services
                             role = "user",
                             parts = new object[]
                             {
-                                new { text = PromptText.FullPrompt },
+                                new { text = promptText },
                                 new
                                 {
                                     inlineData = new
@@ -118,13 +122,13 @@ namespace AIWeather.Services
             {
                 Logger.Warning($"Gemini API call timed out or was cancelled: {ex.Message}");
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, cancellationToken);
+                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
             }
             catch (Exception ex)
             {
                 Logger.Error($"Error in Gemini analysis: {ex.Message}", ex);
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, cancellationToken);
+                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
             }
         }
 

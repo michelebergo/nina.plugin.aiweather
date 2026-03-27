@@ -3,6 +3,7 @@ using System.ComponentModel.Composition;
 using NINA.Equipment.Interfaces;
 using NINA.Equipment.Interfaces.ViewModel;
 using NINA.Image.Interfaces;
+using NINA.Profile.Interfaces;
 
 namespace AIWeather.Equipment
 {
@@ -12,9 +13,10 @@ namespace AIWeather.Equipment
         public string Name => "AI Weather";
 
         [ImportingConstructor]
-        public AIWeatherSafetyMonitorProvider(IImageDataFactory imageDataFactory)
+        public AIWeatherSafetyMonitorProvider(IImageDataFactory imageDataFactory, IProfileService profileService)
         {
             AIWeatherSafetyMonitor.Instance.SetImageDataFactory(imageDataFactory);
+            AIWeatherSafetyMonitor.Instance.SetProfileService(profileService);
         }
 
         public IList<ISafetyMonitor> GetEquipment()

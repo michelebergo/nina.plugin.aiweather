@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.9.2.0",
+  "Version": "1.10.0.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,15 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.10.0.0",
+      "Date": "2026-03-27",
+      "Changes": [
+        "Added astronomical context to AI prompt: date/time, observer location, sun altitude, moon phase and illumination",
+        "AI now reliably distinguishes day from night using computed sun position instead of guessing",
+        "AI correctly identifies moon-lit clouds at night instead of confusing them with daytime conditions"
+      ]
+    },
     {
       "Version": "1.9.2.0",
       "Date": "2026-03-27",
