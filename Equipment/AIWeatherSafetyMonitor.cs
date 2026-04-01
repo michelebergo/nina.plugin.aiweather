@@ -255,7 +255,7 @@ namespace AIWeather.Equipment
             var unsafeThreshold = Properties.Settings.Default.CloudCoverageThreshold;
             var safeThreshold = Properties.Settings.Default.CloudCoverageSafeThreshold;
 
-            bool baseConditionsSafe = result.IsSafeForImaging && !result.RainDetected;
+            bool baseConditionsSafe = result.IsSafeForImaging && !result.RainDetected && !result.FogDetected;
 
             if (!baseConditionsSafe)
             {
@@ -285,6 +285,7 @@ namespace AIWeather.Equipment
             Logger.Debug($"Safety check: {(_isCurrentlySafe ? "SAFE" : "UNSAFE")} - " +
                        $"Cloud coverage: {result.CloudCoverage:F1}%, " +
                        $"Safe Threshold: {safeThreshold}%, Unsafe Threshold: {unsafeThreshold}%, " +
+                       $"Rain: {result.RainDetected}, Fog: {result.FogDetected}, " +
                        $"Condition: {result.Condition}");
         }
 

@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.10.0.0",
+  "Version": "1.11.0.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,17 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.11.0.0",
+      "Date": "2026-04-01",
+      "Changes": [
+        "Fixed: fog detection now correctly marks NINA safety monitor as Unsafe (was only updating external status file)",
+        "Improved AI prompt: tightened fog detection criteria to reduce false positives (fog vs overcast vs moon glow)",
+        "Improved AI prompt: moon glow/halo no longer counted as cloud coverage",
+        "Improved AI prompt: cloud coverage percentage must be consistent with condition classification",
+        "Added rain/fog status to safety check debug log"
+      ]
+    },
     {
       "Version": "1.10.0.0",
       "Date": "2026-03-27",
