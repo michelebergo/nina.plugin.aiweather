@@ -23,6 +23,7 @@ permissions:
   contents: write
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   PLUGIN_NAME: "AI Weather"
   PLUGIN_SLN_NAME: "AIWeather"
   PLUGIN_DLL_NAME: "NINA.Plugin.AIWeather"

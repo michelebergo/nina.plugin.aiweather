@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.11.0.0",
+  "Version": "1.11.1.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,16 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.11.1.0",
+      "Date": "2026-04-03",
+      "Changes": [
+        "Fixed: daytime overcast sky (all white/gray, no blue) was severely underestimated (e.g. 20% instead of 95%)",
+        "Added detailed daytime cloud coverage rules — AI now anchors on blue sky presence to judge coverage",
+        "Added AI self-verification step: model must cross-check coverage estimate against visible clear sky areas",
+        "Fixed GitHub Actions Node.js 20 deprecation warning (opted into Node.js 24)"
+      ]
+    },
     {
       "Version": "1.11.0.0",
       "Date": "2026-04-01",

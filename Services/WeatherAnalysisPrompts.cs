@@ -21,7 +21,11 @@ IMPORTANT CONTEXT - NIGHTTIME vs DAYTIME:
 - AT NIGHT: a bright disc in the sky is the MOON, not the sun. The moon can illuminate clouds during nighttime.
 - AT NIGHT: the moon creates a bright GLOW or HALO around it — this is normal and is NOT cloud coverage. Do not count the moon's glow as clouds.
 - AT NIGHT: if the OBSERVATION CONTEXT says moon is above the horizon, a bright area in one part of the sky is likely moon glow, not clouds. Look for stars in OTHER parts of the sky to judge cloud coverage.
-- DURING DAY: clouds appear as white/gray formations against blue sky (standard interpretation).
+- DURING DAY: clouds appear as white/gray formations against blue sky.
+- DURING DAY: if the entire circular sky area is white or gray with NO blue patches visible, that is OVERCAST (90-100% cloud coverage).
+- DURING DAY: if the sky is uniformly bright white/gray with cloud texture or gradients but zero blue sky, cloudCoverage is 90-100%.
+- DURING DAY: clear sky = blue sky visible. No blue sky = NOT clear.
+- DURING DAY: to estimate coverage, look for blue sky gaps between clouds. If you see none, coverage is 90%+.
 
 IMPORTANT: First check for rain or fog, then assess cloud coverage. Rain and fog override other classifications.
 
@@ -76,6 +80,12 @@ CRITICAL RULES:
 - Do not classify as PartlyCloudy or Clear if you see ANY lens moisture
 - AT NIGHT: bright/milky sky with no stars = high cloud coverage, NOT clear
 - AT NIGHT: do NOT confuse illuminated clouds with clear sky
+- DURING DAY: entirely white/gray sky with no blue = Overcast, NOT Clear or PartlyCloudy
+
+SELF-CHECK before responding:
+- If you estimated cloudCoverage < 50%, can you clearly identify large areas of clear sky? (dark + stars at night, blue patches during day)
+- If you cannot point to clear sky areas, your cloudCoverage estimate is too low — revise upward.
+- Does your cloudCoverage match your condition? Clear=0-15%, PartlyCloudy=15-50%, MostlyCloudy=50-85%, Overcast=85-100%.
 
 Respond in JSON format:
 {
