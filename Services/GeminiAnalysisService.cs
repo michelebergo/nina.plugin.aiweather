@@ -120,15 +120,19 @@ namespace AIWeather.Services
             }
             catch (OperationCanceledException ex)
             {
-                Logger.Warning($"Gemini API call timed out or was cancelled: {ex.Message}");
+                Logger.Warning($"Gemini API call timed out or was cancelled, falling back to local analysis: {ex.Message}");
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                result.Description = $"[Fallback: Local] Gemini timed out. {result.Description}";
+                return result;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in Gemini analysis: {ex.Message}", ex);
+                Logger.Error($"Error in Gemini analysis, falling back to local analysis: {ex.Message}", ex);
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                result.Description = $"[Fallback: Local] Gemini error. {result.Description}";
+                return result;
             }
         }
 

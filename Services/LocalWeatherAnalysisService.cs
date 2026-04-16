@@ -47,8 +47,11 @@ namespace AIWeather.Services
                     // Detect fog (uniform grayness, low contrast)
                     var fogDetected = DetectFog(avgBrightness, cloudScore);
 
+                    // Determine if it's nighttime from astro context
+                    bool isNighttime = astroContext != null && astroContext.SunAltitude < -6;
+
                     // Determine cloud coverage based on brightness variance and color
-                    var cloudCoverage = CalculateCloudCoverage(avgBrightness, avgBlue, cloudScore);
+                    var cloudCoverage = CalculateCloudCoverage(avgBrightness, avgBlue, cloudScore, isNighttime);
 
                     // Classify the weather condition
                     var condition = ClassifyWeatherCondition(cloudCoverage, rainDetected, fogDetected);
@@ -98,6 +101,13 @@ namespace AIWeather.Services
             // Sample pixels (for performance, we don't analyze every pixel)
             int stepSize = Math.Max(1, image.Width / 100); // Sample ~100x100 grid
 
+            // Fisheye circle masking: only sample pixels within the inscribed circle
+            // to avoid black corners that bias averages downward
+            int centerX = image.Width / 2;
+            int centerY = image.Height / 2;
+            int radius = Math.Min(centerX, centerY);
+            int radiusSq = radius * radius;
+
             BitmapData data = image.LockBits(
                 new Rectangle(0, 0, image.Width, image.Height),
                 ImageLockMode.ReadOnly,
@@ -113,15 +123,24 @@ namespace AIWeather.Services
                     for (int y = 0; y < image.Height; y += stepSize)
                     {
                         byte* row = ptr + (y * data.Stride);
+                        int dy = y - centerY;
                         for (int x = 0; x < image.Width; x += stepSize)
                         {
+                            // Skip pixels outside the inscribed circle (fisheye mask)
+                            int dx = x - centerX;
+                            if (dx * dx + dy * dy > radiusSq)
+                                continue;
+
                             int offset = x * bytesPerPixel;
                             byte b = row[offset];
                             byte g = row[offset + 1];
                             byte r = row[offset + 2];
 
-                            // Calculate brightness
+                            // Skip very dark pixels (likely outside fisheye or lens obstruction)
                             double brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+                            if (brightness < 3)
+                                continue;
+
                             totalBrightness += brightness;
                             totalBlue += b;
 
@@ -136,6 +155,11 @@ namespace AIWeather.Services
             finally
             {
                 image.UnlockBits(data);
+            }
+
+            if (pixelCount == 0)
+            {
+                return (0, 0, 0);
             }
 
             double avgBrightness = totalBrightness / pixelCount;
@@ -166,30 +190,60 @@ namespace AIWeather.Services
             return cloudScore < 15 && brightness > 80 && brightness < 180;
         }
 
-        private double CalculateCloudCoverage(double brightness, double blue, double cloudScore)
+        private double CalculateCloudCoverage(double brightness, double blue, double cloudScore, bool isNighttime)
         {
-            // Clear night sky: low brightness, high blue content in dark sky
-            // Cloudy sky: higher brightness, lower blue, higher variance
-            
             double coverage = 0;
 
-            // Factor 1: Brightness (clouds reflect light)
-            if (brightness > 100)
+            if (isNighttime)
             {
-                coverage += (brightness - 100) / 1.55; // Max 100% at brightness 255
+                // Nighttime analysis: clear sky is dark with low brightness.
+                // Clouds at night scatter light pollution and moonlight, making the sky BRIGHTER.
+                // Higher brightness = more clouds. Low brightness = clear.
+                
+                // Factor 1: Brightness is the primary indicator at night
+                // Clear night sky: brightness ~5-30, Cloudy night sky: brightness ~60-180
+                if (brightness > 20)
+                {
+                    coverage += Math.Min(60, (brightness - 20) * 0.5);
+                }
+
+                // Factor 2: Cloud structures create color variance
+                if (cloudScore > 15)
+                {
+                    coverage += Math.Min(25, (cloudScore - 15) * 0.8);
+                }
+
+                // Factor 3: Uniform gray (low variance + moderate brightness) suggests overcast
+                if (cloudScore < 10 && brightness > 80)
+                {
+                    coverage += 20;
+                }
+            }
+            else
+            {
+                // Daytime analysis: clouds are bright and reduce blue channel
+                
+                // Factor 1: Brightness (clouds reflect sunlight)
+                if (brightness > 100)
+                {
+                    coverage += (brightness - 100) / 1.55;
+                }
+
+                // Factor 2: Low blue relative to brightness indicates clouds
+                double blueRatio = blue / Math.Max(1, brightness);
+                if (blueRatio < 0.8)
+                {
+                    coverage += Math.Min(40, (0.8 - blueRatio) * 100);
+                }
+
+                // Factor 3: High variance suggests cloud structures
+                if (cloudScore > 20)
+                {
+                    coverage += Math.Min(30, cloudScore / 2);
+                }
             }
 
-            // Factor 2: Low blue content indicates clouds
-            coverage += (255 - blue) / 5.1; // Max 50% contribution
-
-            // Factor 3: High variance suggests cloud structures
-            if (cloudScore > 20)
-            {
-                coverage += Math.Min(30, cloudScore / 2); // Max 30% contribution
-            }
-
-            // Normalize to 0-100
-            return Math.Min(100, Math.Max(0, coverage / 1.8));
+            return Math.Min(100, Math.Max(0, coverage));
         }
 
         private WeatherCondition ClassifyWeatherCondition(double cloudCoverage, bool rainDetected, bool fogDetected)

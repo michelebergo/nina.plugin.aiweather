@@ -123,20 +123,22 @@ namespace AIWeather.Services
             }
             catch (OperationCanceledException ex)
             {
-                Logger.Warning($"GitHub Models API call timed out or was cancelled: {ex.Message}");
+                Logger.Warning($"GitHub Models API call timed out or was cancelled, falling back to local analysis: {ex.Message}");
 
-                // Fallback to local analysis
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                result.Description = $"[Fallback: Local] GitHub Models timed out. {result.Description}";
+                return result;
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error in GitHub Models analysis: {ex.Message}", ex);
+                Logger.Error($"Error in GitHub Models analysis, falling back to local analysis: {ex.Message}", ex);
                 Logger.Debug($"Exception type: {ex.GetType().Name}, StackTrace: {ex.StackTrace}");
 
-                // Fallback to local analysis
                 var fallback = new LocalWeatherAnalysisService();
-                return await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                result.Description = $"[Fallback: Local] GitHub Models error. {result.Description}";
+                return result;
             }
         }
 

@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.11.1.0",
+  "Version": "1.12.0.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,17 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.12.0.0",
+      "Date": "2026-04-16",
+      "Changes": [
+        "Fixed: cloud coverage was always ~30-40% regardless of actual conditions (GitHub issues #7, #8)",
+        "Fixed: local analysis nighttime formula was inverted — clear dark sky was misread as cloudy",
+        "Fixed: local analysis now uses separate day/night algorithms based on sun altitude",
+        "Added fisheye circle masking — black corners outside the all-sky lens are now excluded from analysis",
+        "Improved: fallback to local analysis now clearly indicated in description with [Fallback: Local] prefix"
+      ]
+    },
     {
       "Version": "1.11.1.0",
       "Date": "2026-04-03",
