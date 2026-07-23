@@ -301,6 +301,21 @@
                 <TextBlock TextWrapping="Wrap" Margin="0,5,0,0">
                     <Bold>GitHub Models:</Bold> Advanced AI analysis using Claude, GPT-4, or Gemini (free for development, requires GitHub token).
                 </TextBlock>
+                <StackPanel Margin="0,16,0,0">
+                    <TextBlock
+                        Text="This plugin is developed and maintained independently by michelebergo."
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,4,0,0"
+                        Text="If you find it useful, you can support its continued development."
+                        TextWrapping="Wrap" />
+                    <Button
+                        Margin="0,12,0,0"
+                        Padding="12,6"
+                        HorizontalAlignment="Left"
+                        Command="{Binding OpenSupportPageCommand}"
+                        Content="☕ Support development" />
+                </StackPanel>
             </StackPanel>
         </Border>
     </Grid>

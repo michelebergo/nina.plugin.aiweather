@@ -145,6 +145,16 @@ dotnet restore
 dotnet build
 ```
 
+## Support the project
+
+This plugin is developed and maintained independently in my free time.
+
+If it is useful for your astrophotography or automation workflow, you can support its continued development:
+
+[☕ Support development on Buy Me a Coffee](https://buymeacoffee.com/michelebergo)
+
+Your support helps cover development tools, testing hardware, hosting and future features.
+
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.

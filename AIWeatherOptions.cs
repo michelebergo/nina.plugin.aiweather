@@ -14,6 +14,32 @@ namespace AIWeather
     {
         private readonly IProfileService _profileService;
 
+        // Centralized external link (single point of truth; see .github/FUNDING.yml and README)
+        public const string BuyMeACoffeeUrl = "https://buymeacoffee.com/michelebergo";
+
+        public System.Windows.Input.ICommand OpenSupportPageCommand { get; } = new RelayCommand(_ => OpenExternalUrl(BuyMeACoffeeUrl));
+
+        private static void OpenExternalUrl(string url)
+        {
+            if (!System.Uri.TryCreate(url, System.UriKind.Absolute, out var uri))
+            {
+                return;
+            }
+
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = uri.AbsoluteUri,
+                    UseShellExecute = true
+                });
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Error($"Unable to open external URL: {uri}", ex);
+            }
+        }
+
         public AIWeatherOptions(IProfileService profileService)
         {
             _profileService = profileService;
