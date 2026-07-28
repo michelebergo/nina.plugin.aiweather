@@ -446,13 +446,15 @@ namespace AIWeather.Equipment
                 WriteSafetyStatusFile(result);
 
                 // Save frame for debugging/logging (optional)
+                var captureFolder = Path.Combine(CoreUtil.APPLICATIONTEMPPATH, "AllSkyCameraPlugin");
                 var imagePath = Path.Combine(
-                    CoreUtil.APPLICATIONTEMPPATH,
-                    "AllSkyCameraPlugin",
+                    captureFolder,
                     $"capture_{DateTime.Now:yyyyMMdd_HHmmss}.jpg");
 
                 // Save image (HTTP/Folder modes only, RTSP handled above)
                 await _captureService.SaveImageAsync(frame, imagePath, cancellationToken);
+
+                PruneCaptureFolder(captureFolder);
 
                 frame.Dispose();
             }
@@ -463,6 +465,46 @@ namespace AIWeather.Equipment
             finally
             {
                 _checkGate.Release();
+            }
+        }
+
+        // Debug captures are only needed for recent history; keep the folder bounded
+        // so an always-on monitor cannot fill the disk over long sessions.
+        private const int MaxSavedCaptures = 25;
+
+        private static void PruneCaptureFolder(string folder)
+        {
+            try
+            {
+                if (!Directory.Exists(folder))
+                {
+                    return;
+                }
+
+                var files = new DirectoryInfo(folder).GetFiles("capture_*.jpg");
+                if (files.Length <= MaxSavedCaptures)
+                {
+                    return;
+                }
+
+                Array.Sort(files, (a, b) => b.LastWriteTimeUtc.CompareTo(a.LastWriteTimeUtc));
+                for (var i = MaxSavedCaptures; i < files.Length; i++)
+                {
+                    try
+                    {
+                        files[i].Delete();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Debug($"Failed to delete old capture {files[i].Name}: {ex.Message}");
+                    }
+                }
+
+                Logger.Debug($"Pruned capture folder to {MaxSavedCaptures} most recent images ({files.Length - MaxSavedCaptures} deleted)");
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Failed to prune capture folder: {ex.Message}");
             }
         }
 
