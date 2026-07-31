@@ -38,6 +38,7 @@ Choose how the plugin acquires sky images based on your camera setup:
 | **OpenAI** | GPT-4o, GPT-4o Mini | API key |
 | **Google Gemini** | Gemini 1.5 Flash, 1.5 Pro, 2.0 Flash | API key |
 | **Anthropic Claude** | Claude 3.5 Sonnet, Claude 3.5 Haiku, Claude 3 Opus | API key |
+| **Ollama / Custom** | Any vision model served by Ollama, LM Studio, llama.cpp or LocalAI (e.g. LLaVA, Qwen2.5-VL) | Local server URL (no API key) |
 
 If a cloud AI provider fails or times out (60-second limit), the plugin automatically falls back to local analysis so that safety monitoring is never interrupted.
 
@@ -87,6 +88,7 @@ In the plugin options, choose the capture mode that matches your camera:
 - **Local** requires no setup and works offline. It uses image processing heuristics (brightness, color distribution, pattern detection) to estimate cloud coverage.
 - **GitHub Models** is recommended for getting started: create a [GitHub Personal Access Token](https://github.com/settings/tokens) and paste it into the settings. This gives free access to multiple vision models.
 - **OpenAI**, **Gemini**, and **Anthropic** require their respective API keys from each provider's developer portal.
+- **Ollama / Custom** runs fully local: point it to your server URL (default `http://localhost:11434/v1`) and pick a vision model (e.g. `llava`, `qwen2.5vl`). Works with Ollama, LM Studio, llama.cpp, and LocalAI — no API key needed.
 
 ### 3. Set Monitoring Parameters
 

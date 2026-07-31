@@ -186,6 +186,18 @@
                 <TextBlock Text="{Binding AnthropicKeyStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
                 <TextBlock Text="Used with https://api.anthropic.com" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
             </StackPanel>
+
+            <!-- Ollama Base URL -->
+            <StackPanel Margin="0,10,0,0"
+                        Visibility="{Binding IsOllamaProvider, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="Ollama Base URL:" Margin="0,0,0,2"/>
+                <TextBox Text="{Binding OllamaBaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Width="360"
+                         HorizontalAlignment="Left"/>
+                <TextBlock Text="Default: http://localhost:11434/v1" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="Also works with LM Studio, llama.cpp, and LocalAI endpoints" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="No API key required. Use a vision-capable model (e.g. llava, qwen2.5vl)" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+            </StackPanel>
             
                 <!-- Model Selection (non-local providers) -->
                 <StackPanel Margin="0,10,0,0"
@@ -234,6 +246,7 @@
                 <TextBlock Text="○   OpenAI - GPT-4o, GPT-4.1, o1, o3, o4-mini (models fetched live)" Margin="0,3"/>
                 <TextBlock Text="○   Google Gemini - Gemini 2.0/2.5 Flash, 2.5 Pro, 1.5 Flash/Pro (models fetched live)" Margin="0,3"/>
                 <TextBlock Text="○   Anthropic Claude - Claude Sonnet 4.5, Sonnet 4, Haiku 4.5, 3.5 series (models fetched live)" Margin="0,3"/>
+                <TextBlock Text="○   Ollama - local OpenAI-compatible server, no API key (LM Studio, llama.cpp, LocalAI also work)" Margin="0,3"/>
             </StackPanel>
 
             <TextBlock Text="Safety Features" FontWeight="Bold" Margin="0,5,0,5"/>

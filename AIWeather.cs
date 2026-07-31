@@ -63,7 +63,8 @@ namespace AIWeather
             new ProviderOption("GitHubModels", "GitHub Models"),
             new ProviderOption("OpenAI", "OpenAI"),
             new ProviderOption("Gemini", "Google Gemini"),
-            new ProviderOption("Anthropic", "Anthropic Claude")
+            new ProviderOption("Anthropic", "Anthropic Claude"),
+            new ProviderOption("Ollama", "Ollama / Custom (local server)")
         };
 
         // Vision-capable model prefixes known to work with image analysis via ChatCompletions.
@@ -161,6 +162,14 @@ namespace AIWeather
                     "claude-3-5-sonnet-20241022",
                     "claude-3-5-haiku-20241022",
                     "claude-3-opus-20240229",
+                },
+                // Local servers don't advertise vision capability; these are common
+                // vision-capable Ollama models used only when /v1/models is unreachable.
+                ["Ollama"] = new[]
+                {
+                    "llava",
+                    "qwen2.5vl",
+                    "minicpm-v",
                 }
             };
 
@@ -330,6 +339,7 @@ namespace AIWeather
         public bool IsOpenAIProvider => string.Equals(AnalysisProvider, "OpenAI", StringComparison.OrdinalIgnoreCase);
         public bool IsGeminiProvider => string.Equals(AnalysisProvider, "Gemini", StringComparison.OrdinalIgnoreCase);
         public bool IsAnthropicProvider => string.Equals(AnalysisProvider, "Anthropic", StringComparison.OrdinalIgnoreCase);
+        public bool IsOllamaProvider => string.Equals(AnalysisProvider, "Ollama", StringComparison.OrdinalIgnoreCase);
         public bool IsLocalProvider => string.Equals(AnalysisProvider, "Local", StringComparison.OrdinalIgnoreCase);
         public bool IsNonLocalProvider => !IsLocalProvider;
 
@@ -542,6 +552,15 @@ namespace AIWeather
                 return await FetchAnthropicModelsAsync(key.Trim());
             }
 
+            // ── Ollama ──────────────────────────────────────────────────────────
+            if (string.Equals(provider, "Ollama", StringComparison.OrdinalIgnoreCase))
+            {
+                var baseUrl = Properties.Settings.Default.OllamaBaseUrl;
+                if (string.IsNullOrWhiteSpace(baseUrl)) return null;
+
+                return await FetchOllamaModelsAsync(baseUrl.Trim());
+            }
+
             return null;
         }
 
@@ -687,6 +706,50 @@ namespace AIWeather
 
             // /v1/models may not be available for all accounts — return null to use defaults.
             return null!;
+        }
+
+        /// <summary>
+        /// Fetch available models from an Ollama (or OpenAI-compatible local) server via {baseUrl}/models.
+        /// Local servers don't advertise vision capability, so all discovered model ids are returned
+        /// unfiltered. Returns null on any failure so the caller falls back to the default list.
+        /// </summary>
+        private static async Task<string[]> FetchOllamaModelsAsync(string baseUrl)
+        {
+            using var http = new HttpClient();
+            http.Timeout = TimeSpan.FromSeconds(10);
+            // Dummy bearer token: local servers ignore it, but some OpenAI-compatible
+            // frontends reject requests without an Authorization header.
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "ollama");
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("NINA-AIWeather/1.0");
+
+            var url = baseUrl.TrimEnd('/') + "/models";
+            using var response = await http.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+                return null!;
+
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+
+            if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+                return null!;
+
+            var result = new System.Collections.Generic.List<string>();
+            foreach (var m in data.EnumerateArray())
+            {
+                var id = m.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
+                if (string.IsNullOrEmpty(id)) continue;
+
+                result.Add(id);
+            }
+
+            if (result.Count == 0)
+                return null!;
+
+            return result
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(m => m, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
 
         public async Task TryGitHubTokenAsync()
@@ -1118,6 +1181,7 @@ namespace AIWeather
                 RaisePropertyChanged(nameof(IsOpenAIProvider));
                 RaisePropertyChanged(nameof(IsGeminiProvider));
                 RaisePropertyChanged(nameof(IsAnthropicProvider));
+                RaisePropertyChanged(nameof(IsOllamaProvider));
                 RaisePropertyChanged(nameof(IsLocalProvider));
                 RaisePropertyChanged(nameof(IsNonLocalProvider));
             }
@@ -1143,6 +1207,7 @@ namespace AIWeather
                 RaisePropertyChanged(nameof(IsOpenAIProvider));
                 RaisePropertyChanged(nameof(IsGeminiProvider));
                 RaisePropertyChanged(nameof(IsAnthropicProvider));
+                RaisePropertyChanged(nameof(IsOllamaProvider));
                 RaisePropertyChanged(nameof(IsLocalProvider));
                 RaisePropertyChanged(nameof(IsNonLocalProvider));
 
@@ -1179,6 +1244,20 @@ namespace AIWeather
             set
             {
                 Properties.Settings.Default.AnthropicKey = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Base URL of the Ollama (or OpenAI-compatible local) server, e.g. http://localhost:11434/v1
+        /// </summary>
+        public string OllamaBaseUrl
+        {
+            get => Properties.Settings.Default.OllamaBaseUrl;
+            set
+            {
+                Properties.Settings.Default.OllamaBaseUrl = value;
                 CoreUtil.SaveSettings(Properties.Settings.Default);
                 RaisePropertyChanged();
             }

@@ -122,6 +122,14 @@ namespace AIWeather.Equipment
                 return;
             }
 
+            if (string.Equals(provider, "Ollama", StringComparison.OrdinalIgnoreCase))
+            {
+                _analysisService = new OllamaAnalysisService(
+                    Properties.Settings.Default.OllamaBaseUrl,
+                    model);
+                return;
+            }
+
             _analysisService = new LocalWeatherAnalysisService();
         }
 
