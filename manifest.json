@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.12.0.0",
+  "Version": "1.13.0.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -20,10 +20,33 @@
       "EN": "AI-powered all-sky camera weather monitoring with automatic safety protection"
     },
     "long": {
-      "EN": "Analyzes all-sky camera images using AI vision models to determine real-time weather conditions including cloud coverage, rain, and fog detection. Supports three capture modes (RTSP stream, HTTP image download, folder watch) and five AI providers (Local offline, GitHub Models, OpenAI, Google Gemini, Anthropic Claude). Integrates with NINA's safety monitor to automatically pause or abort imaging sequences when conditions become unsafe. Features automatic fallback to local analysis if cloud AI providers fail, optional ASCOM Generic File SafetyMonitor output, and a live preview panel with real-time activity logging."
+      "EN": "Analyzes all-sky camera images using AI vision models to determine real-time weather conditions including cloud coverage, rain, and fog detection. Supports three capture modes (RTSP stream, HTTP image download, folder watch) and six AI providers (Local offline, GitHub Models, OpenAI, Google Gemini, Anthropic Claude, Ollama/custom local servers). Integrates with NINA's safety monitor to automatically pause or abort imaging sequences when conditions become unsafe. Features automatic fallback to local analysis if cloud AI providers fail, optional ASCOM Generic File SafetyMonitor output, and a live preview panel with real-time activity logging."
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.13.0.0",
+      "Date": "2026-07-31",
+      "Changes": [
+        "Added Ollama / Custom provider: analyze all-sky images with any vision model on a local OpenAI-compatible server (Ollama, LM Studio, llama.cpp, LocalAI)",
+        "No API key required — configurable server URL (default http://localhost:11434/v1) with live model discovery and built-in fallback list (llava, qwen2.5vl, minicpm-v)",
+        "Automatic fallback to local offline analysis if the server is unreachable or times out"
+      ]
+    },
+    {
+      "Version": "1.12.2.0",
+      "Date": "2026-07-28",
+      "Changes": [
+        "Bound debug capture folder to the 25 most recent images (#11)"
+      ]
+    },
+    {
+      "Version": "1.12.1.0",
+      "Date": "2026-07-23",
+      "Changes": [
+        "Added optional Buy Me a Coffee support (FUNDING.yml, README section, Options block)"
+      ]
+    },
     {
       "Version": "1.12.0.0",
       "Date": "2026-04-16",
