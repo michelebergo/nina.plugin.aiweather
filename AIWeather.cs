@@ -254,6 +254,10 @@ namespace AIWeather
             Options = new AIWeatherOptions(_profileService);
 
             EnsureDefaults();
+
+            // Make the AIWeather category visible in the sequencer Symbols sidebar right
+            // away (N.I.N.A. 3.3+), with blank values until the first analysis fills them.
+            Services.SequencerSymbolPublisher.TryRegisterAtStartup();
             
             // Load resource dictionaries for NINA to discover DataTemplates
             try

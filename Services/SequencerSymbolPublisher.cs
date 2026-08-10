@@ -55,6 +55,44 @@ namespace AIWeather.Services
         }
 
         /// <summary>
+        /// Registers the provider and defines the six symbols with empty values as soon as
+        /// the host's symbol broker exists, retrying for a while because the sequencer may
+        /// construct after the plugin loads. Without this the AIWeather category only
+        /// appeared in the Symbols sidebar after the first completed analysis — which reads
+        /// as "the feature doesn't work" to anyone who checks the sidebar right after
+        /// installing, before connecting the safety monitor (first field report did).
+        /// Null-valued symbols are how N.I.N.A. itself represents a device that is not
+        /// delivering data yet, so the blanks match core behaviour.
+        /// </summary>
+        public static void TryRegisterAtStartup()
+        {
+            _ = System.Threading.Tasks.Task.Run(async () =>
+            {
+                try
+                {
+                    // ~2 minutes of patience covers even a slow cold start.
+                    for (var attempt = 0; attempt < 12; attempt++)
+                    {
+                        if (EnsureProvider())
+                        {
+                            ClearValues();
+                            return;
+                        }
+                        if (_initialized)
+                        {
+                            return; // host has no symbol broker (N.I.N.A. < 3.3): stop retrying
+                        }
+                        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"Startup registration of sequencer symbols failed: {ex.Message}");
+                }
+            });
+        }
+
+        /// <summary>
         /// Clears the values (keeps the symbols defined) when monitoring stops, so an
         /// expression cannot keep acting on a reading that is no longer being refreshed.
         /// This mirrors how N.I.N.A. treats symbols of a disconnected device.
@@ -96,8 +134,11 @@ namespace AIWeather.Services
                     if (brokerType == null)
                     {
                         // Host older than 3.3: no expression system, nothing to publish to.
+                        // This is a permanent condition for the session, so latch it —
+                        // otherwise the message would repeat on every monitoring cycle.
                         Logger.Info("Sequencer symbol broker not present (N.I.N.A. < 3.3); AI Weather symbols are not published");
                         _available = false;
+                        _initialized = true;
                         return false;
                     }
 

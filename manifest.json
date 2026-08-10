@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.14.1.0",
+  "Version": "1.14.2.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,14 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.14.2.0",
+      "Date": "2026-08-10",
+      "Changes": [
+        "The AIWeather category now appears in the sequencer Symbols sidebar right at N.I.N.A. startup (3.3+), with blank values until the first analysis fills them - previously it only appeared after the first completed analysis, which read as 'nothing there' before connecting the safety monitor",
+        "The 'symbol broker not present' notice on N.I.N.A. versions before 3.3 is now logged once instead of on every monitoring cycle"
+      ]
+    },
     {
       "Version": "1.14.1.0",
       "Date": "2026-08-10",
