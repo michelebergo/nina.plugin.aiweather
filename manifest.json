@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.14.0.0",
+  "Version": "1.14.1.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -20,10 +20,19 @@
       "EN": "AI-powered all-sky camera weather monitoring with automatic safety protection"
     },
     "long": {
-      "EN": "Analyzes all-sky camera images using AI vision models to determine real-time weather conditions including cloud coverage, rain, and fog detection. Supports three capture modes (RTSP stream, HTTP image download, folder watch) and six AI providers (Local offline, GitHub Models, OpenAI, Google Gemini, Anthropic Claude, Ollama/custom local servers). Integrates with NINA's safety monitor to automatically pause or abort imaging sequences when conditions become unsafe. Features automatic fallback to local analysis if cloud AI providers fail, optional ASCOM Generic File SafetyMonitor output, and a live preview panel with real-time activity logging."
+      "EN": "Analyzes all-sky camera images using AI vision models to determine real-time weather conditions including cloud coverage, rain, and fog detection. Supports three capture modes (RTSP stream, HTTP image download, folder watch) and five AI providers (Local offline, Google Gemini, OpenAI, Anthropic Claude, Ollama/custom local servers; GitHub Models was retired by GitHub in July 2026). Integrates with NINA's safety monitor to automatically pause or abort imaging sequences when conditions become unsafe. Features automatic fallback to local analysis if cloud AI providers fail, optional ASCOM Generic File SafetyMonitor output, and a live preview panel with real-time activity logging."
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.14.1.0",
+      "Date": "2026-08-10",
+      "Changes": [
+        "GitHub Models provider marked as retired: GitHub shut the service down for everyone on July 30, 2026. No more failed network calls - analyses fall back to the Local heuristic with a clear explanation, and the options panel says why and where to go (Ollama/Custom local, Google Gemini free tier, OpenAI)",
+        "Gemini defaults refreshed: fallback model is now the gemini-flash-latest alias (always points to Google's latest stable Flash, cannot expire); static list updated to the current generation - Gemini 1.x/2.0 were shut down by Google",
+        "Google Gemini is now the recommended getting-started provider in the docs"
+      ]
+    },
     {
       "Version": "1.14.0.0",
       "Date": "2026-08-10",

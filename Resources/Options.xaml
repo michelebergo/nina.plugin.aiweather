@@ -119,6 +119,8 @@
             <!-- GitHub Models Token -->
             <StackPanel Margin="0,10,0,0"
                         Visibility="{Binding IsGitHubModelsProvider, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="GitHub retired this service on July 30, 2026 — it no longer works for anyone. Analyses fall back to the Local heuristic; switch to Ollama/Custom (local, free), Google Gemini or OpenAI."
+                           FontSize="10" Foreground="Salmon" TextWrapping="Wrap" Margin="0,0,0,6"/>
                 <TextBlock Text="GitHub Personal Access Token:" Margin="0,0,0,2"/>
                 <StackPanel Orientation="Horizontal">
                     <PasswordBox Width="360"
@@ -242,9 +244,9 @@
             <TextBlock Text="AI Providers" FontWeight="Bold" Margin="0,5,0,5"/>
             <StackPanel Margin="15,0,0,10">
                 <TextBlock Text="○   Local - offline heuristic analysis using brightness, color, and pattern detection" Margin="0,3"/>
-                <TextBlock Text="○   GitHub Models - free access to GPT-4o/4.1, Claude, Gemini via GitHub token" Margin="0,3"/>
+                <TextBlock Text="○   GitHub Models - RETIRED by GitHub on July 30, 2026; analyses fall back to Local" Margin="0,3"/>
                 <TextBlock Text="○   OpenAI - GPT-4o, GPT-4.1, o1, o3, o4-mini (models fetched live)" Margin="0,3"/>
-                <TextBlock Text="○   Google Gemini - Gemini 2.0/2.5 Flash, 2.5 Pro, 1.5 Flash/Pro (models fetched live)" Margin="0,3"/>
+                <TextBlock Text="○   Google Gemini - free API tier, Flash/Pro vision models (fetched live)" Margin="0,3"/>
                 <TextBlock Text="○   Anthropic Claude - Claude Sonnet 4.5, Sonnet 4, Haiku 4.5, 3.5 series (models fetched live)" Margin="0,3"/>
                 <TextBlock Text="○   Ollama - local OpenAI-compatible server, no API key (LM Studio, llama.cpp, LocalAI also work)" Margin="0,3"/>
             </StackPanel>

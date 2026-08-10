@@ -30,8 +30,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.14.0.0")]
-[assembly: AssemblyFileVersion("1.14.0.0")]
+[assembly: AssemblyVersion("1.14.1.0")]
+[assembly: AssemblyFileVersion("1.14.1.0")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MIT")]
@@ -70,13 +70,13 @@ using System.Runtime.InteropServices;
 • HTTP Image Download: Periodic image download from any URL — works with indi-allsky, AllSky, web cameras, and any HTTP-accessible image
 • Folder Watch: Monitors a local directory for the latest image saved by any camera software — perfect for USB cameras or custom setups
 
-🤖 6 AI PROVIDERS (Free to Advanced):
+🤖 5 AI PROVIDERS (Free to Advanced):
 • Local (FREE, Offline): Built-in heuristic analysis using brightness, color distribution, and edge detection — no internet needed, no API costs
-• GitHub Models (FREE): Access GPT-4o and GPT-4o-mini vision models with just a GitHub token — no credit card required
-• OpenAI: GPT-4o and GPT-4o Mini for high-accuracy cloud and weather analysis
-• Google Gemini: Gemini 1.5 Flash, 1.5 Pro, 2.0 Flash — fast and capable vision models
-• Anthropic Claude: Claude 3.5 Sonnet, 3.5 Haiku, 3 Opus — excellent at detailed image understanding
+• Google Gemini (free API tier): fast and capable Flash/Pro vision models
 • Ollama / Custom (FREE, Local): Any vision model on a local OpenAI-compatible server (Ollama, LM Studio, llama.cpp, LocalAI) — no API key, full privacy
+• OpenAI: GPT-4o and GPT-4o Mini for high-accuracy cloud and weather analysis
+• Anthropic Claude: excellent at detailed image understanding
+(GitHub Models was retired by GitHub on July 30, 2026 and no longer works.)
 
 🛡️ SAFETY FEATURES:
 • Configurable Cloud Threshold: Set the cloud coverage percentage that triggers an Unsafe status (e.g., 50%, 70%, 90%)
@@ -95,7 +95,7 @@ using System.Runtime.InteropServices;
 
 💡 BEGINNER-FRIENDLY:
 • Start with Local (offline) mode — no API keys needed, works out of the box
-• Upgrade to GitHub Models for free AI-powered analysis with just a GitHub account
+• Upgrade to Google Gemini (free API tier) or a local Ollama vision model for AI-powered analysis
 • Detailed activity log shows every analysis result for easy troubleshooting
 • Works with any all-sky camera that provides RTSP, HTTP, or file-based output
 

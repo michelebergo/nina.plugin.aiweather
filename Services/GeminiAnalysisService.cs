@@ -24,7 +24,9 @@ namespace AIWeather.Services
         public GeminiAnalysisService(string apiKey, string modelName)
         {
             _apiKey = apiKey;
-            _modelName = string.IsNullOrWhiteSpace(modelName) ? "gemini-2.0-flash" : modelName.Trim();
+            // The alias tracks Google's latest stable Flash release; concrete version IDs
+            // get retired out from under a hardcoded fallback (gemini-2.0-flash was).
+            _modelName = string.IsNullOrWhiteSpace(modelName) ? "gemini-flash-latest" : modelName.Trim();
         }
 
         public Task<bool> InitializeAsync(CancellationToken cancellationToken = default)

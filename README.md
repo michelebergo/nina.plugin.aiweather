@@ -34,7 +34,7 @@ Choose how the plugin acquires sky images based on your camera setup:
 | Provider | Models | Requirements |
 |----------|--------|--------------|
 | **Local** | Built-in heuristic analysis | None (works offline) |
-| **GitHub Models** | GPT-4o, GPT-4o Mini, Claude 3.5 Sonnet, Gemini 1.5 Flash/Pro | GitHub Personal Access Token (free) |
+| **GitHub Models** | ⚠️ Retired by GitHub on July 30, 2026 — no longer works; analyses fall back to Local | — |
 | **OpenAI** | GPT-4o, GPT-4o Mini | API key |
 | **Google Gemini** | Gemini 1.5 Flash, 1.5 Pro, 2.0 Flash | API key |
 | **Anthropic Claude** | Claude 3.5 Sonnet, Claude 3.5 Haiku, Claude 3 Opus | API key |
@@ -86,8 +86,9 @@ In the plugin options, choose the capture mode that matches your camera:
 ### 2. Choose an AI Provider
 
 - **Local** requires no setup and works offline. It uses image processing heuristics (brightness, color distribution, pattern detection) to estimate cloud coverage.
-- **GitHub Models** is recommended for getting started: create a [GitHub Personal Access Token](https://github.com/settings/tokens) and paste it into the settings. This gives free access to multiple vision models.
-- **OpenAI**, **Gemini**, and **Anthropic** require their respective API keys from each provider's developer portal.
+- **Google Gemini** is recommended for getting started: it has a free API tier with strong vision models — get a key at [Google AI Studio](https://aistudio.google.com/apikey).
+- **OpenAI** and **Anthropic** require their respective API keys from each provider's developer portal.
+- **GitHub Models** was retired by GitHub on July 30, 2026 and no longer works for anyone; if selected, analyses fall back to the Local heuristic.
 - **Ollama / Custom** runs fully local: point it to your server URL (default `http://localhost:11434/v1`) and pick a vision model (e.g. `llava`, `qwen2.5vl`). Works with Ollama, LM Studio, llama.cpp, and LocalAI — no API key needed.
 
 ### 3. Set Monitoring Parameters

@@ -60,7 +60,7 @@ namespace AIWeather
         public ObservableCollection<ProviderOption> ProviderOptions { get; } = new ObservableCollection<ProviderOption>
         {
             new ProviderOption("Local", "Local (offline heuristic)"),
-            new ProviderOption("GitHubModels", "GitHub Models"),
+            new ProviderOption("GitHubModels", "GitHub Models (RETIRED)"),
             new ProviderOption("OpenAI", "OpenAI"),
             new ProviderOption("Gemini", "Google Gemini"),
             new ProviderOption("Anthropic", "Anthropic Claude"),
@@ -148,11 +148,13 @@ namespace AIWeather
                 },
                 ["Gemini"] = new[]
                 {
-                    "gemini-2.0-flash",
+                    // The -latest alias always points at Google's newest stable Flash and
+                    // cannot expire; Gemini 1.x/2.0 were shut down by Google in 2026.
+                    "gemini-flash-latest",
+                    "gemini-3.6-flash",
+                    "gemini-3.5-flash",
                     "gemini-2.5-flash",
                     "gemini-2.5-pro",
-                    "gemini-1.5-flash",
-                    "gemini-1.5-pro",
                 },
                 ["Anthropic"] = new[]
                 {
@@ -518,11 +520,9 @@ namespace AIWeather
             // ── GitHub Models ───────────────────────────────────────────────────
             if (string.Equals(provider, "GitHubModels", StringComparison.OrdinalIgnoreCase))
             {
-                var token = Properties.Settings.Default.GitHubToken;
-                if (string.IsNullOrWhiteSpace(token)) return null;
-
-                var models = await FetchGitHubModelsAsync(token);
-                return models?.ToArray();
+                // Retired by GitHub on 2026-07-30: the catalog endpoint returns 404 for
+                // everyone. Skip the network and let the caller use the static defaults.
+                return null;
             }
 
             // ── OpenAI ──────────────────────────────────────────────────────────
@@ -752,34 +752,12 @@ namespace AIWeather
                 .ToArray();
         }
 
-        public async Task TryGitHubTokenAsync()
+        public Task TryGitHubTokenAsync()
         {
-            try
-            {
-                var token = Properties.Settings.Default.GitHubToken;
-                if (string.IsNullOrWhiteSpace(token))
-                {
-                    GitHubTokenStatus = "Token is empty";
-                    return;
-                }
-
-                GitHubTokenStatus = "Testing token...";
-                var models = await FetchGitHubModelsAsync(token);
-                if (models == null)
-                {
-                    GitHubTokenStatus = "Token test failed (no response)";
-                    return;
-                }
-
-                GitHubTokenStatus = $"Token OK (fetched {models.Count} models)";
-
-                // Opportunistically refresh the filtered dropdown list.
-                await RefreshAvailableModelsAsync();
-            }
-            catch (Exception ex)
-            {
-                GitHubTokenStatus = $"Token test failed: {ex.Message}";
-            }
+            // Retired by GitHub on 2026-07-30 for every customer, valid token or not:
+            // testing against the dead endpoint would only produce a confusing 404.
+            GitHubTokenStatus = Services.GitHubModelsAnalysisService.RetirementMessage;
+            return Task.CompletedTask;
         }
 
         public async Task TryOpenAIKeyAsync()
@@ -986,89 +964,6 @@ namespace AIWeather
                 CoreUtil.SaveSettings(Properties.Settings.Default);
                 RaisePropertyChanged(nameof(SelectedModel));
             }
-        }
-
-        private static async Task<System.Collections.Generic.List<string>> FetchGitHubModelsAsync(string githubToken)
-        {
-            using var http = new HttpClient();
-            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", githubToken);
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("NINA-AIWeather/1.0");
-
-            // GitHub Models endpoint. Response shape can be array or object; we parse both.
-            var url = "https://models.inference.ai.azure.com/models";
-            using var response = await http.GetAsync(url);
-            var json = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException($"HTTP {(int)response.StatusCode}: {json}");
-            }
-
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-            var results = new System.Collections.Generic.List<string>();
-
-            void AddFromArray(JsonElement arr)
-            {
-                foreach (var el in arr.EnumerateArray())
-                {
-                    if (el.ValueKind == JsonValueKind.String)
-                    {
-                        var s = el.GetString();
-                        if (!string.IsNullOrWhiteSpace(s)) results.Add(s);
-                        continue;
-                    }
-
-                    if (el.ValueKind == JsonValueKind.Object)
-                    {
-                        // Prefer short names like "gpt-4o-mini" over AzureML-style IDs.
-                        if (el.TryGetProperty("name", out var nameProp) && nameProp.ValueKind == JsonValueKind.String)
-                        {
-                            var name = nameProp.GetString();
-                            if (!string.IsNullOrWhiteSpace(name)) results.Add(name);
-                            continue;
-                        }
-
-                        if (el.TryGetProperty("model", out var modelProp) && modelProp.ValueKind == JsonValueKind.String)
-                        {
-                            var model = modelProp.GetString();
-                            if (!string.IsNullOrWhiteSpace(model)) results.Add(model);
-                            continue;
-                        }
-
-                        if (el.TryGetProperty("id", out var idProp) && idProp.ValueKind == JsonValueKind.String)
-                        {
-                            var id = idProp.GetString();
-                            if (!string.IsNullOrWhiteSpace(id) && !id.StartsWith("azureml://", StringComparison.OrdinalIgnoreCase))
-                            {
-                                results.Add(id);
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (root.ValueKind == JsonValueKind.Array)
-            {
-                AddFromArray(root);
-            }
-            else if (root.ValueKind == JsonValueKind.Object)
-            {
-                if (root.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.Array)
-                {
-                    AddFromArray(dataProp);
-                }
-                else if (root.TryGetProperty("models", out var modelsProp) && modelsProp.ValueKind == JsonValueKind.Array)
-                {
-                    AddFromArray(modelsProp);
-                }
-                else if (root.TryGetProperty("items", out var itemsProp) && itemsProp.ValueKind == JsonValueKind.Array)
-                {
-                    AddFromArray(itemsProp);
-                }
-            }
-
-            return results;
         }
 
         #region Plugin Settings Properties
