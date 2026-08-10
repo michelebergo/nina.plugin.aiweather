@@ -133,6 +133,21 @@ Use the **Refresh** button to trigger an immediate capture and analysis outside 
 
 Rain and fog always trigger an Unsafe status regardless of the cloud coverage threshold.
 
+### Sequencer Symbols (N.I.N.A. 3.3+)
+
+On N.I.N.A. 3.3 and later, every analysis publishes its values to the Advanced Sequencer's **Symbols** sidebar under an **AIWeather** category, so they can be used in expressions and message templates (for example in Discord/notification instructions):
+
+| Symbol | Type | Meaning |
+|--------|------|---------|
+| `Cloud` | number | Cloud coverage of the last analysis, 0-100 % |
+| `Confidence` | number | The AI's confidence in that analysis, 0-100 % |
+| `Condition` | text | `Clear`, `PartlyCloudy`, `MostlyCloudy`, `Overcast`, `Rainy`, `Foggy`, `Unknown` |
+| `Rain` | boolean | Rain detected in the last image |
+| `Fog` | boolean | Fog detected in the last image |
+| `Safe` | boolean | The monitor's current verdict (including hysteresis) |
+
+Reference them directly (`Cloud`, `Confidence`), or as `AIWeather_Cloud` if another plugin ever defines a symbol with the same name. The values refresh with every monitoring cycle while the safety monitor is connected, and are blanked when it disconnects so an expression can never act on a stale reading. On N.I.N.A. versions before 3.3 the plugin behaves exactly as before — no symbols, no errors.
+
 ## Building from Source
 
 **Requirements:**

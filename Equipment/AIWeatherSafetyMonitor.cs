@@ -241,6 +241,10 @@ namespace AIWeather.Equipment
                 StopPeriodicMonitoring();
                 _captureService.Dispose();
 
+                // Values are no longer being refreshed: blank the sequencer symbols so an
+                // expression cannot keep acting on a stale reading.
+                SequencerSymbolPublisher.ClearValues();
+
                 Connected = false;
                 Logger.Info("All Sky Camera Safety Monitor disconnected");
             }
@@ -440,6 +444,9 @@ namespace AIWeather.Equipment
 
                 // Update Safety State (Hysteresis)
                 UpdateSafetyState(result);
+
+                // Expose the reading to the Advanced Sequencer's Symbols sidebar (N.I.N.A. 3.3+)
+                SequencerSymbolPublisher.Publish(result, _isCurrentlySafe);
 
                 // Log the results
                 Logger.Info($"Weather Analysis - Condition: {result.Condition}, " +

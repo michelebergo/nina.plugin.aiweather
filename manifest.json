@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.13.0.0",
+  "Version": "1.14.0.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,15 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.14.0.0",
+      "Date": "2026-08-10",
+      "Changes": [
+        "Advanced Sequencer symbols (N.I.N.A. 3.3+): every analysis publishes Cloud, Confidence, Condition, Rain, Fog and Safe under an 'AIWeather' category in the sequencer's Symbols sidebar, usable in expressions and message templates",
+        "Symbol values refresh on every monitoring cycle and are blanked when the safety monitor disconnects, so expressions never act on a stale reading",
+        "On N.I.N.A. versions before 3.3 the plugin behaves exactly as before (integration is detected at runtime; minimum version stays 3.0)"
+      ]
+    },
     {
       "Version": "1.13.0.0",
       "Date": "2026-07-31",
