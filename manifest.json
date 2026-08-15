@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.14.3.0",
+  "Version": "1.14.4.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,14 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.14.4.0",
+      "Date": "2026-08-15",
+      "Changes": [
+        "Shared knowledge wiki: the plugin now appends a compact daily sky digest (condition and safety CHANGES only, not one line per polling cycle) to %LOCALAPPDATA%\\NINA\\llmwiki\\raw\\ — the same local second brain the AI Assistant plugin consults and the nina.autopilot ingest agent consolidates into observing-site pages. Append-only and fully local",
+        "Options panel: button rows are now consistently left-aligned; the Folder Path browse row matches the other rows"
+      ]
+    },
     {
       "Version": "1.14.3.0",
       "Date": "2026-08-15",

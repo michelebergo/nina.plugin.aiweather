@@ -455,6 +455,9 @@ namespace AIWeather.Equipment
                           $"Safe: {result.IsSafeForImaging}, " +
                           $"Confidence: {result.Confidence:F1}%");
 
+                // Append state changes to the shared LLM wiki daily digest (raw/)
+                LlmWikiRawWriter.RecordAnalysis(result);
+
                 // Raise property changed to notify NINA of safety status change
                 RaisePropertyChanged(nameof(IsSafe));
 

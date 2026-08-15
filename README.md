@@ -91,6 +91,17 @@ In the plugin options, choose the capture mode that matches your camera:
 - **GitHub Models** was retired by GitHub on July 30, 2026 and no longer works for anyone; if selected, analyses fall back to the Local heuristic.
 - **Ollama / Custom** runs fully local: point it to your server URL (default `http://localhost:11434/v1`) and pick a vision model (e.g. `llava`, `qwen2.5vl`). Works with Ollama, LM Studio, llama.cpp, and LocalAI — no API key needed. Thinking-capable models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering by default, which can multiply analysis times past the timeout: the "Disable model thinking" option (on by default) turns that off. Uncheck it only on fast hardware.
 
+### Shared knowledge wiki
+
+While monitoring, the plugin appends a compact daily sky digest (condition and
+safety changes only) to the shared NINA LLM wiki at `%LOCALAPPDATA%\NINA\llmwiki\raw\`.
+The [AI Assistant](https://github.com/michelebergo/nina.plugin.aiassistant) plugin
+reads that wiki to answer questions about your site, and the
+[nina.autopilot](https://github.com/michelebergo/nina.autopilot) ingest agent
+consolidates the digests into observing-site pages (fog patterns, typical
+seeing, seasonal transparency). Purely append-only and local — no data leaves
+your machine.
+
 ### 3. Set Monitoring Parameters
 
 - **Check Interval** (minutes): How often the plugin captures and analyzes an image. 5-10 minutes is recommended for active monitoring.

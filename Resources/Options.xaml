@@ -63,12 +63,13 @@
                     <Binding Path="Options.CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="2"/>
                 </StackPanel.Visibility>
                 <TextBlock Text="Folder Path:" Margin="0,0,0,2"/>
-                <DockPanel>
-                    <Button Content="Browse..." DockPanel.Dock="Right" Margin="5,0,0,0" Padding="10,2"
-                            Click="BrowseFolder_Click"/>
-                    <TextBox Text="{Binding Options.FolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <TextBox Text="{Binding Options.FolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             Width="360"
                              VerticalContentAlignment="Center"/>
-                </DockPanel>
+                    <Button Content="Browse..." Margin="8,0,0,0" Padding="10,2"
+                            Click="BrowseFolder_Click"/>
+                </StackPanel>
                 <TextBlock Text="Folder containing latest all-sky images" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
             </StackPanel>
 
@@ -122,7 +123,7 @@
                 <TextBlock Text="GitHub retired this service on July 30, 2026 — it no longer works for anyone. Analyses fall back to the Local heuristic; switch to Ollama/Custom (local, free), Google Gemini or OpenAI."
                            FontSize="10" Foreground="Salmon" TextWrapping="Wrap" Margin="0,0,0,6"/>
                 <TextBlock Text="GitHub Personal Access Token:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                     <PasswordBox Width="360"
                                  HorizontalAlignment="Left"
                                  Loaded="GitHubTokenBox_Loaded"
@@ -139,7 +140,7 @@
             <StackPanel Margin="0,10,0,0"
                         Visibility="{Binding IsOpenAIProvider, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="OpenAI API Key:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                     <PasswordBox Width="360"
                                  HorizontalAlignment="Left"
                                  Loaded="OpenAIKeyBox_Loaded"
@@ -157,7 +158,7 @@
             <StackPanel Margin="0,10,0,0"
                         Visibility="{Binding IsGeminiProvider, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="Google Gemini API Key:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                     <PasswordBox Width="360"
                                  HorizontalAlignment="Left"
                                  Loaded="GeminiKeyBox_Loaded"
@@ -175,7 +176,7 @@
             <StackPanel Margin="0,10,0,0"
                         Visibility="{Binding IsAnthropicProvider, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="Anthropic API Key:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                     <PasswordBox Width="360"
                                  HorizontalAlignment="Left"
                                  Loaded="AnthropicKeyBox_Loaded"
@@ -211,7 +212,7 @@
                 <StackPanel Margin="0,10,0,0"
                     Visibility="{Binding IsNonLocalProvider, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="AI Model:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                     <ComboBox x:Name="ModelComboBox"
                           ItemsSource="{Binding AvailableModels}"
                           SelectedItem="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
