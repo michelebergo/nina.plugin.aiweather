@@ -26,6 +26,14 @@
   "ChangeLog": [
     {
       "Version": "1.14.3.0",
+      "Date": "2026-08-15",
+      "Changes": [
+        "Ollama: new 'Disable model thinking' option (on by default). Newer models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering by default - analyses took 5x longer (77.6s vs 14.2s measured on the same image) and blew past the timeout. Requests now send reasoning_effort 'none'",
+        "Ollama: the response parser now recovers answers that land in a reasoning field instead of content (the 'no JSON tokens' error), strips inline think blocks, and accepts prose around the JSON"
+      ]
+    },
+    {
+      "Version": "1.14.2.0",
       "Date": "2026-08-10",
       "Changes": [
         "The AIWeather category now appears in the sequencer Symbols sidebar right at N.I.N.A. startup (3.3+), with blank values until the first analysis fills them - previously it only appeared after the first completed analysis, which read as 'nothing there' before connecting the safety monitor",
