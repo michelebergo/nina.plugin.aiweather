@@ -199,6 +199,10 @@
                 <TextBlock Text="Default: http://localhost:11434/v1" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
                 <TextBlock Text="Also works with LM Studio, llama.cpp, and LocalAI endpoints" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
                 <TextBlock Text="No API key required. Use a vision-capable model (e.g. llava, qwen2.5vl)" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <CheckBox Content="Disable model thinking (recommended)"
+                          IsChecked="{Binding OllamaDisableThinking, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          Margin="0,8,0,0"/>
+                <TextBlock Text="Thinking-capable models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering, which can multiply response times. Uncheck only on fast hardware." Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
             </StackPanel>
             
                 <!-- Model Selection (non-local providers) -->

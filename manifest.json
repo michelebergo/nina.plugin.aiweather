@@ -1,7 +1,7 @@
-{
+﻿{
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.14.2.0",
+  "Version": "1.14.3.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -25,7 +25,7 @@
   },
   "ChangeLog": [
     {
-      "Version": "1.14.2.0",
+      "Version": "1.14.3.0",
       "Date": "2026-08-10",
       "Changes": [
         "The AIWeather category now appears in the sequencer Symbols sidebar right at N.I.N.A. startup (3.3+), with blank values until the first analysis fills them - previously it only appeared after the first completed analysis, which read as 'nothing there' before connecting the safety monitor",
@@ -55,7 +55,7 @@
       "Date": "2026-07-31",
       "Changes": [
         "Added Ollama / Custom provider: analyze all-sky images with any vision model on a local OpenAI-compatible server (Ollama, LM Studio, llama.cpp, LocalAI)",
-        "No API key required — configurable server URL (default http://localhost:11434/v1) with live model discovery and built-in fallback list (llava, qwen2.5vl, minicpm-v)",
+        "No API key required â€” configurable server URL (default http://localhost:11434/v1) with live model discovery and built-in fallback list (llava, qwen2.5vl, minicpm-v)",
         "Automatic fallback to local offline analysis if the server is unreachable or times out"
       ]
     },
@@ -78,9 +78,9 @@
       "Date": "2026-04-16",
       "Changes": [
         "Fixed: cloud coverage was always ~30-40% regardless of actual conditions (GitHub issues #7, #8)",
-        "Fixed: local analysis nighttime formula was inverted — clear dark sky was misread as cloudy",
+        "Fixed: local analysis nighttime formula was inverted â€” clear dark sky was misread as cloudy",
         "Fixed: local analysis now uses separate day/night algorithms based on sun altitude",
-        "Added fisheye circle masking — black corners outside the all-sky lens are now excluded from analysis",
+        "Added fisheye circle masking â€” black corners outside the all-sky lens are now excluded from analysis",
         "Improved: fallback to local analysis now clearly indicated in description with [Fallback: Local] prefix"
       ]
     },
@@ -89,7 +89,7 @@
       "Date": "2026-04-03",
       "Changes": [
         "Fixed: daytime overcast sky (all white/gray, no blue) was severely underestimated (e.g. 20% instead of 95%)",
-        "Added detailed daytime cloud coverage rules — AI now anchors on blue sky presence to judge coverage",
+        "Added detailed daytime cloud coverage rules â€” AI now anchors on blue sky presence to judge coverage",
         "Added AI self-verification step: model must cross-check coverage estimate against visible clear sky areas",
         "Fixed GitHub Actions Node.js 20 deprecation warning (opted into Node.js 24)"
       ]
@@ -287,3 +287,4 @@
     ]
   }
 }
+

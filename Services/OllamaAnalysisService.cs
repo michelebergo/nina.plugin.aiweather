@@ -25,15 +25,17 @@ namespace AIWeather.Services
 
         private readonly string _endpoint;
         private readonly string _modelName;
+        private readonly bool _disableThinking;
         private bool _isInitialized;
 
         private const string DefaultBaseUrl = "http://localhost:11434/v1";
 
-        public OllamaAnalysisService(string baseUrl, string modelName)
+        public OllamaAnalysisService(string baseUrl, string modelName, bool disableThinking = true)
         {
             var normalized = string.IsNullOrWhiteSpace(baseUrl) ? DefaultBaseUrl : baseUrl.Trim();
             _endpoint = normalized.TrimEnd('/') + "/chat/completions";
             _modelName = string.IsNullOrWhiteSpace(modelName) ? "llava" : modelName.Trim();
+            _disableThinking = disableThinking;
         }
 
         public Task<bool> InitializeAsync(CancellationToken cancellationToken = default)
@@ -63,12 +65,12 @@ namespace AIWeather.Services
                 if (astroContext != null)
                     userText = WeatherAnalysisPrompts.BuildContextBlock(astroContext) + "\n" + userText;
 
-                var payload = new
+                var payload = new System.Collections.Generic.Dictionary<string, object>
                 {
-                    model = _modelName,
-                    temperature = 0.1,
-                    max_tokens = 512,
-                    messages = new object[]
+                    ["model"] = _modelName,
+                    ["temperature"] = 0.1,
+                    ["max_tokens"] = 512,
+                    ["messages"] = new object[]
                     {
                         new { role = "system", content = PromptText.SystemPrompt },
                         new {
@@ -81,6 +83,16 @@ namespace AIWeather.Services
                         }
                     }
                 };
+
+                if (_disableThinking)
+                {
+                    // Newer Ollama models (Gemma 4, Qwen 3.x, DeepSeek) enable a "thinking"
+                    // phase by default, multiplying response times (77s vs 14s measured in
+                    // the field on the same image) and sometimes leaving the actual answer
+                    // in a separate reasoning field. Servers that do not know this
+                    // parameter ignore it.
+                    payload["reasoning_effort"] = "none";
+                }
 
                 using var request = new HttpRequestMessage(HttpMethod.Post, _endpoint);
                 // Dummy bearer token: local servers ignore it, but some OpenAI-compatible
@@ -144,7 +156,11 @@ namespace AIWeather.Services
                     {
                         if (content.ValueKind == JsonValueKind.String)
                         {
-                            return content.GetString() ?? string.Empty;
+                            var text = StripThinkingTags(content.GetString() ?? string.Empty);
+                            if (!string.IsNullOrWhiteSpace(text))
+                            {
+                                return text;
+                            }
                         }
 
                         if (content.ValueKind == JsonValueKind.Array)
@@ -157,7 +173,26 @@ namespace AIWeather.Services
                                     sb.AppendLine(textProp.GetString());
                                 }
                             }
-                            return sb.ToString().Trim();
+                            var joined = StripThinkingTags(sb.ToString().Trim());
+                            if (!string.IsNullOrWhiteSpace(joined))
+                            {
+                                return joined;
+                            }
+                        }
+                    }
+
+                    // Thinking-capable models can leave content empty and put the actual
+                    // answer in a reasoning field instead - recover it from there.
+                    foreach (var field in new[] { "reasoning", "reasoning_content", "thinking" })
+                    {
+                        if (message.TryGetProperty(field, out var reasoning) && reasoning.ValueKind == JsonValueKind.String)
+                        {
+                            var text = reasoning.GetString() ?? string.Empty;
+                            if (!string.IsNullOrWhiteSpace(text))
+                            {
+                                Logger.Info($"Ollama response content was empty; recovered answer from '{field}' field");
+                                return text;
+                            }
                         }
                     }
                 }
@@ -168,6 +203,23 @@ namespace AIWeather.Services
             }
 
             return string.Empty;
+        }
+
+        /// <summary>
+        /// Some models (e.g. Qwen 3.x) emit their reasoning inline as &lt;think&gt;...&lt;/think&gt;
+        /// blocks inside the content; the answer follows the closing tag.
+        /// </summary>
+        private static string StripThinkingTags(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text;
+            }
+
+            var result = System.Text.RegularExpressions.Regex.Replace(
+                text, "<think>.*?</think>", string.Empty,
+                System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            return result.Trim();
         }
 
         private static string ConvertImageToBase64(Bitmap image)
@@ -199,6 +251,18 @@ namespace AIWeather.Services
                         jsonResponse = jsonResponse.Substring(0, jsonResponse.Length - 3);
                     }
                     jsonResponse = jsonResponse.Trim();
+
+                    // Tolerate prose around the JSON (e.g. an answer recovered from a
+                    // reasoning field): fall back to the outermost {...} block.
+                    if (!jsonResponse.StartsWith("{", StringComparison.Ordinal))
+                    {
+                        var start = jsonResponse.IndexOf('{');
+                        var end = jsonResponse.LastIndexOf('}');
+                        if (start >= 0 && end > start)
+                        {
+                            jsonResponse = jsonResponse.Substring(start, end - start + 1);
+                        }
+                    }
 
                     using var json = JsonDocument.Parse(jsonResponse);
                     var root = json.RootElement;

@@ -1163,6 +1163,22 @@ namespace AIWeather
         }
 
         /// <summary>
+        /// When true (default), asks the local server to skip the model's "thinking"
+        /// phase. Newer Ollama models (Gemma 4, Qwen 3.x, DeepSeek) reason at length
+        /// by default, which can multiply response times and push past the timeout.
+        /// </summary>
+        public bool OllamaDisableThinking
+        {
+            get => Properties.Settings.Default.OllamaDisableThinking;
+            set
+            {
+                Properties.Settings.Default.OllamaDisableThinking = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>
         /// GitHub Models API token
         /// </summary>
         public string GitHubToken

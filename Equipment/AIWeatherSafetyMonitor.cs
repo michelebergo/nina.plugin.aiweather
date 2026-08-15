@@ -126,7 +126,8 @@ namespace AIWeather.Equipment
             {
                 _analysisService = new OllamaAnalysisService(
                     Properties.Settings.Default.OllamaBaseUrl,
-                    model);
+                    model,
+                    Properties.Settings.Default.OllamaDisableThinking);
                 return;
             }
 
