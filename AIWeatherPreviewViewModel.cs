@@ -151,14 +151,22 @@ namespace AIWeather
             
             Sources = new ObservableCollection<CameraSource>
             {
-                new CameraSource 
-                { 
-                    Protocol = protocol, 
+                new CameraSource
+                {
+                    Protocol = protocol,
                     MediaUrl = mediaUrl,
                     Username = Properties.Settings.Default.RtspUsername ?? "",
                     Password = Properties.Settings.Default.RtspPassword ?? ""
                 }
             };
+
+            // The username typed in the panel grid has to reach the settings the moment it
+            // is entered, exactly like the password does through its PasswordChanged handler.
+            // Without this it lived only on the in-memory source: the safety monitor read an
+            // empty username and opened the stream unauthenticated, and the next settings
+            // sync (triggered by saving the password, or by a mode change) overwrote the
+            // typed text with the empty stored value - so it also vanished from the grid.
+            Sources[0].PropertyChanged += PersistCredentialToSettings;
 
             RefreshCommand = new CommunityToolkit.Mvvm.Input.AsyncRelayCommand(async () => { await RefreshAsync(); });
             _saveImageCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(SaveImage, () => HasImage);
@@ -368,6 +376,47 @@ namespace AIWeather
             SyncPrimarySourceFromSettings();
         }
 
+        /// <summary>
+        /// Mirrors the primary source's credentials into the plugin settings as they are
+        /// edited. The settings are what the safety monitor reads when it connects from the
+        /// Equipment tab, which is a different path from the panel's own Connect button.
+        /// Writing the same value back is harmless: CameraSource only raises a change when
+        /// the value actually differs, so the settings sync cannot loop.
+        /// </summary>
+        private void PersistCredentialToSettings(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (sender is not CameraSource source)
+            {
+                return;
+            }
+
+            try
+            {
+                if (e.PropertyName == nameof(CameraSource.Username))
+                {
+                    var value = source.Username ?? string.Empty;
+                    if (!string.Equals(Properties.Settings.Default.RtspUsername ?? string.Empty, value))
+                    {
+                        Properties.Settings.Default.RtspUsername = value;
+                        CoreUtil.SaveSettings(Properties.Settings.Default);
+                    }
+                }
+                else if (e.PropertyName == nameof(CameraSource.Password))
+                {
+                    var value = source.Password ?? string.Empty;
+                    if (!string.Equals(Properties.Settings.Default.RtspPassword ?? string.Empty, value))
+                    {
+                        Properties.Settings.Default.RtspPassword = value;
+                        CoreUtil.SaveSettings(Properties.Settings.Default);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to persist camera credentials from the panel: {ex.Message}");
+            }
+        }
+
         private void SyncPrimarySourceFromSettings()
         {
             if (Sources == null || Sources.Count == 0)
@@ -530,6 +579,13 @@ namespace AIWeather
         // Safety state comes from the safety monitor (optionally ASCOM-backed).
         public bool IsSafe => _safetyMonitor?.IsSafe ?? (_currentAnalysis?.IsSafeForImaging ?? false);
         public string SafetyStatus => IsSafe ? "✅ SAFE" : "⛔ UNSAFE";
+
+        /// <summary>
+        /// One line saying *why* the monitor reports what it reports - a cloudy sky, a
+        /// camera that stopped delivering, an unreachable external device. Without it an
+        /// UNSAFE on a visibly clear night is indistinguishable from a broken pipeline.
+        /// </summary>
+        public string SafetyReason => _safetyMonitor?.SafetyStateReason ?? string.Empty;
         public string WeatherCondition => _currentAnalysis?.Condition.ToString() ?? "Unknown";
         public double CloudCoverage => _currentAnalysis?.CloudCoverage ?? 0;
         public double Confidence => _currentAnalysis?.Confidence ?? 0;
@@ -994,6 +1050,7 @@ namespace AIWeather
         {
             RaisePropertyChanged(nameof(IsSafe));
             RaisePropertyChanged(nameof(SafetyStatus));
+            RaisePropertyChanged(nameof(SafetyReason));
             RaisePropertyChanged(nameof(WeatherCondition));
             RaisePropertyChanged(nameof(CloudCoverage));
             RaisePropertyChanged(nameof(HighThreshold));

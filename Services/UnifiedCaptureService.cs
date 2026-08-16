@@ -138,7 +138,15 @@ namespace AIWeather.Services
             }
 
             var urlWithoutProtocol = rtspUrl.Substring(7); // Remove "rtsp://"
-            return $"rtsp://{username}:{password}@{urlWithoutProtocol}";
+
+            // Credentials must be percent-encoded before they go into the URL. Camera
+            // accounts routinely contain characters that are structural in a URL - '@'
+            // ends the credentials, ':' separates them, '/' ends the host - so an
+            // unencoded password silently produced a malformed URL and the stream failed
+            // to open with no hint that the password was the cause.
+            var user = Uri.EscapeDataString(username);
+            var secret = Uri.EscapeDataString(password ?? string.Empty);
+            return $"rtsp://{user}:{secret}@{urlWithoutProtocol}";
         }
 
         private static string RedactRtspUrl(string url)

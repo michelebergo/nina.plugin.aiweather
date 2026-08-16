@@ -192,6 +192,23 @@ namespace AIWeather
             }
         }
 
+        /// <summary>
+        /// How old the latest successful analysis may be before the safety monitor reports
+        /// UNSAFE, in minutes. 0 means automatic: three check intervals, never below ten
+        /// minutes. A safety monitor that keeps reporting the last known state after its
+        /// camera died is worse than one that reports nothing, so the state always expires.
+        /// </summary>
+        public int MaxDataAgeMinutes
+        {
+            get => Properties.Settings.Default.MaxDataAgeMinutes;
+            set
+            {
+                Properties.Settings.Default.MaxDataAgeMinutes = value < 0 ? 0 : value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
         public bool UseAscomSafetyMonitor
         {
             get => Properties.Settings.Default.UseAscomSafetyMonitor;

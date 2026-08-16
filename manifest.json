@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.14.5.0",
+  "Version": "1.15.0.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,19 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.15.0.0",
+      "Date": "2026-08-16",
+      "Changes": [
+        "FAIL-SAFE: the safety state now expires. A failed capture used to leave the previous verdict standing, so a camera that died while the state was Safe kept reporting Safe indefinitely. If no analysis succeeds within the new Maximum data age (configurable; 0 = automatic, three check intervals and never below 10 minutes), the monitor reports Unsafe. Disconnecting also clears the verdict, so a reconnect starts Unsafe until the first successful analysis",
+        "External ASCOM Safety Monitor is now actually wired in: enable it and pick a device with the ASCOM chooser, and its verdict is combined with AND — imaging is Safe only when both the sky analysis and the external device say so. Any failure (not configured, driver missing, connection lost, read error) reports Unsafe. Previously the client class existed but was never instantiated, its settings were never read, and its UI was on a page the plugin does not show",
+        "The panel now says WHY the state is what it is: a cloudy sky, stale data with the age and limit, or an unreachable external device. That reason previously existed only in the log",
+        "RTSP: the username typed in the panel was never saved to the settings (only the password was), so the safety monitor connected with no credentials and the stream failed to open; the field was also blanked by the next settings sync. It is now persisted the moment it is entered",
+        "RTSP: credentials are percent-encoded before being placed in the URL. A password containing @, : or / — common in camera accounts — produced a malformed URL and a stream that would not open, with nothing in the log pointing at the password",
+        "The exported Safe/Unsafe status file and the Safe sequencer symbol now carry the same combined state NINA acts on; the file used to recompute its own verdict and could disagree",
+        "README rewritten around what actually ships, including a table of exactly what makes the state unsafe"
+      ]
+    },
     {
       "Version": "1.14.5.0",
       "Date": "2026-08-16",

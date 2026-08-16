@@ -116,7 +116,39 @@
                     </StackPanel>
                     <TextBlock Text="Writes a single line: Safe or Unsafe" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,4"/>
                     <TextBlock Text="Point your ASCOM Generic File SafetyMonitor to this file" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,8"/>
-            
+
+            <!-- Maximum data age: the sky verdict expires instead of being trusted forever -->
+            <TextBlock Text="Fail-safe" Margin="0,20,0,2" FontWeight="Bold"/>
+            <TextBlock Text="Maximum data age (minutes, 0 = automatic):" Margin="0,0,0,2"/>
+            <TextBox Text="{Binding Options.MaxDataAgeMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Width="100" HorizontalAlignment="Left"/>
+            <TextBlock Text="If no sky analysis succeeds within this time — a dead camera, an unreachable stream — the monitor reports Unsafe instead of holding the last known state. Automatic means three check intervals, never less than 10 minutes."
+                       Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+
+            <!-- External ASCOM safety monitor, ANDed with the sky verdict -->
+            <TextBlock Text="External ASCOM Safety Monitor" Margin="0,20,0,2" FontWeight="Bold"/>
+            <TextBlock Text="Combine with an external safety monitor:" Margin="0,0,0,6"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
+                <CheckBox IsChecked="{Binding Options.UseAscomSafetyMonitor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          VerticalAlignment="Center"
+                          Width="64"
+                          Margin="0,0,8,0"/>
+                <TextBox Text="{Binding Options.AscomSafetyMonitorProgId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="{Binding Options.UseAscomSafetyMonitor}"
+                         Width="360"
+                         VerticalContentAlignment="Center"/>
+                <Button Content="Choose..."
+                        Margin="8,0,0,0"
+                        Padding="10,2"
+                        IsEnabled="{Binding Options.UseAscomSafetyMonitor}"
+                        Click="ChooseAscomSafetyMonitor_Click"/>
+            </StackPanel>
+            <TextBlock Text="The result is combined with AND: imaging is Safe only when both the sky analysis and the external device report Safe. Use it to pair all-sky cloud/rain/fog detection with an environmental monitor (humidity, dew point, rain sensor)."
+                       Margin="0,0,0,4" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+            <TextBlock Text="If the external device cannot be connected or read, the monitor reports Unsafe."
+                       Margin="0,0,0,8" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+
+
             <!-- GitHub Models Token -->
             <StackPanel Margin="0,10,0,0"
                         Visibility="{Binding IsGitHubModelsProvider, Converter={StaticResource BoolToVisibility}}">

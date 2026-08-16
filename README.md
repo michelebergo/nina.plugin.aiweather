@@ -51,6 +51,23 @@ The plugin registers as a NINA Safety Monitor device. When connected:
 - NINA's sequencer can automatically pause or abort imaging when the status changes to Unsafe.
 - An optional status file can be written for integration with ASCOM Generic File SafetyMonitor or external automation tools.
 
+The reported state is the AND of three independent conditions — **anything unknown counts
+as unsafe**, because a missing answer is not permission to keep imaging:
+
+| Condition | Unsafe when |
+|---|---|
+| Sky verdict | cloud coverage above the threshold, rain, or fog (with hysteresis between the high and low thresholds) |
+| Data freshness | no successful analysis within the maximum data age — a dead camera or unreachable stream can never leave a stale **Safe** standing |
+| External monitor | the optional ASCOM safety monitor reports unsafe, or cannot be connected or read |
+
+The preview panel shows the **reason** under the Safe/Unsafe line, so a cloudy sky, a
+camera that stopped delivering and an unreachable external device are never confused for
+one another.
+
+A cloud AI provider failing or timing out does **not** make the state unsafe on its own:
+every provider falls back internally to the offline local analyzer, so the same image still
+produces a verdict. Only the absence of a *new analysis* ages the state out.
+
 ### Live Preview Panel
 
 The preview panel in NINA shows:
@@ -122,10 +139,28 @@ local models. Leave it empty and nothing changes.
 - **Check Interval** (minutes): How often the plugin captures and analyzes an image. 5-10 minutes is recommended for active monitoring.
 - **Cloud Coverage Threshold** (%): The maximum cloud coverage considered safe for imaging. Default is 70%. Lower values are more conservative.
 
-### 5. Optional: ASCOM and Status File
+### 5. Fail-safe
 
-- Enable **ASCOM SafetyMonitor** integration to query an additional hardware safety monitor alongside AI analysis.
-- Enable **Write Safety Status File** to output the current status to a text file, useful for external scripts or the ASCOM Generic File SafetyMonitor driver.
+- **Maximum data age** (minutes, 0 = automatic): if no analysis succeeds within this time,
+  the monitor reports **Unsafe** instead of holding the last known state. Automatic means
+  three check intervals, never below 10 minutes. This is what makes a camera that dies at
+  midnight stop the sequence instead of reporting the sky it saw before it died.
+
+### 6. Optional: External ASCOM Safety Monitor
+
+- Enable **Combine with an external safety monitor** and pick a device with **Choose...**
+  (or type its ProgID). The verdicts are combined with AND: imaging is **Safe** only when
+  the sky analysis *and* the external device both say so.
+- The intended pairing for unattended operation: this plugin watches the sky
+  (cloud/rain/fog) while the external device watches the environment (humidity, dew point,
+  a rain sensor). NINA keeps a single Safety Monitor selected — this one — and gets both
+  protections through it.
+- If the external device cannot be connected or read, the state is **Unsafe**. A driver
+  that stops answering is exactly the situation its owner installed it for.
+
+### 7. Optional: Status File
+
+- Enable **Write Safety Status File** to output the current status to a text file, useful for external scripts or the ASCOM Generic File SafetyMonitor driver. The file carries the same combined state NINA acts on.
 
 ## Usage
 

@@ -301,6 +301,62 @@ namespace AIWeather
             }
         }
 
+        /// <summary>
+        /// Opens the standard ASCOM chooser filtered to SafetyMonitor devices, so the user
+        /// picks the external monitor from a list instead of typing a ProgID. Falls back
+        /// silently to manual entry when the ASCOM Platform is not installed.
+        /// </summary>
+        private void ChooseAscomSafetyMonitor_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var chooserType = System.Type.GetTypeFromProgID("ASCOM.Utilities.Chooser", throwOnError: false);
+                if (chooserType == null)
+                {
+                    NINA.Core.Utility.Logger.Warning("ASCOM Chooser not available; enter the SafetyMonitor ProgID manually");
+                    return;
+                }
+
+                dynamic chooser = System.Activator.CreateInstance(chooserType);
+                try
+                {
+                    chooser.DeviceType = "SafetyMonitor";
+                    var current = Properties.Settings.Default.AscomSafetyMonitorProgId ?? string.Empty;
+                    var selected = (string)chooser.Choose(current);
+
+                    if (!string.IsNullOrWhiteSpace(selected)
+                        && sender is FrameworkElement btn && btn.Parent is System.Windows.Controls.Panel panel)
+                    {
+                        // Push through the sibling TextBox so the TwoWay binding saves it,
+                        // the same pattern the other browse buttons in this page use.
+                        foreach (UIElement child in panel.Children)
+                        {
+                            if (child is TextBox tb)
+                            {
+                                tb.Text = selected;
+                                break;
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    try
+                    {
+                        System.Runtime.InteropServices.Marshal.FinalReleaseComObject(chooser);
+                    }
+                    catch
+                    {
+                        // best-effort
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                NINA.Core.Utility.Logger.Error($"ASCOM SafetyMonitor chooser error: {ex.Message}");
+            }
+        }
+
         private void BrowseSafetyStatusFile_Click(object sender, RoutedEventArgs e)
         {
             try

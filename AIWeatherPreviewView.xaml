@@ -151,25 +151,32 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            
+
                             <TextBlock Grid.Row="0" Text="{Binding SafetyStatus, Mode=OneWay}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,5"/>
-                            <TextBlock Grid.Row="1" Text="{Binding WeatherCondition, Mode=OneWay}" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,5"/>
-                            <TextBlock Grid.Row="2" FontSize="10" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center">
+
+                            <!-- Why the monitor says what it says: a cloudy sky, a camera that
+                                 stopped delivering, or an unreachable external device look
+                                 identical without this line. -->
+                            <TextBlock Grid.Row="1" Text="{Binding SafetyReason, Mode=OneWay}" FontSize="10" FontStyle="Italic" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,0,0,5"/>
+
+                            <TextBlock Grid.Row="2" Text="{Binding WeatherCondition, Mode=OneWay}" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                            <TextBlock Grid.Row="3" FontSize="10" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center">
                                 <Run Text="Cloud: "/>
                                 <Run Text="{Binding CloudCoverage, Mode=OneWay, StringFormat={}{0:F0}%}"/>
                                 <Run Text=" | Confidence: "/>
                                 <Run Text="{Binding Confidence, Mode=OneWay, StringFormat={}{0:F0}%}"/>
                             </TextBlock>
 
-                            <TextBlock Grid.Row="3" FontSize="9" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,2,0,0">
+                            <TextBlock Grid.Row="4" FontSize="9" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,2,0,0">
                                 <Run Text="Limits (High/Low): "/>
                                 <Run Text="{Binding HighThreshold, Mode=OneWay, StringFormat={}{0:F0}%}"/>
                                 <Run Text=" / "/>
                                 <Run Text="{Binding LowThreshold, Mode=OneWay, StringFormat={}{0:F0}%}"/>
                             </TextBlock>
 
-                            <TextBlock Grid.Row="4" Text="{Binding AiSettingsSummary, Mode=OneWay}" FontSize="9" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Row="5" Text="{Binding AiSettingsSummary, Mode=OneWay}" FontSize="9" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,6,0,0"/>
                         </Grid>
                     </Border>
                     

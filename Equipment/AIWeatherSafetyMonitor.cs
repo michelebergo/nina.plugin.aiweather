@@ -35,6 +35,32 @@ namespace AIWeather.Equipment
         private readonly SemaphoreSlim _checkGate = new SemaphoreSlim(1, 1);
         private IProfileService? _profileService;
 
+        // When the last analysis actually succeeded. The sky verdict expires: a monitor that
+        // keeps answering with the last known state after its camera died reports SAFE all
+        // night on data from before the failure, which is the one thing a safety monitor
+        // must never do.
+        private DateTime _lastAnalysisUtc = DateTime.MinValue;
+        private bool _staleLogged;
+
+        // Optional external ASCOM safety monitor, ANDed with the sky verdict so the two
+        // protections are independent: this plugin watches the sky, the external device
+        // watches whatever it was built to watch (humidity, dew point, rain sensor).
+        private readonly AscomSafetyMonitorClient _externalMonitor = new AscomSafetyMonitorClient();
+        private readonly object _externalGate = new object();
+        private bool _externalSafeCached;
+        private DateTime _externalReadUtc = DateTime.MinValue;
+        private DateTime _externalConnectAttemptUtc = DateTime.MinValue;
+        private bool _externalFailureLogged;
+
+        /// <summary>IsSafe is polled often; a COM read per poll would hammer the driver.</summary>
+        private static readonly TimeSpan ExternalReadCacheDuration = TimeSpan.FromSeconds(5);
+
+        /// <summary>How long to wait before retrying a driver that failed to connect or read.</summary>
+        private static readonly TimeSpan ExternalReconnectInterval = TimeSpan.FromSeconds(30);
+
+        /// <summary>Floor for the automatic data-age limit, whatever the check interval.</summary>
+        private static readonly TimeSpan MinimumAutomaticDataAge = TimeSpan.FromMinutes(10);
+
         /// <summary>
         /// Fired after Connect succeeds and periodic monitoring has started.
         /// </summary>
@@ -215,6 +241,28 @@ namespace AIWeather.Equipment
                     await _analysisService.InitializeAsync(token);
                 }
 
+                // A fresh connection starts with no verdict at all: unsafe until the first
+                // analysis succeeds, never inheriting the state of a previous session.
+                _lastAnalysisUtc = DateTime.MinValue;
+                _isCurrentlySafe = false;
+                _staleLogged = false;
+
+                // Best-effort: the lazy path in IsExternalMonitorSafe retries on its own
+                // schedule, but connecting here surfaces a wrong ProgID in the log at once.
+                if (Properties.Settings.Default.UseAscomSafetyMonitor)
+                {
+                    var progId = Properties.Settings.Default.AscomSafetyMonitorProgId;
+                    lock (_externalGate)
+                    {
+                        _externalConnectAttemptUtc = DateTime.UtcNow;
+                        _externalSafeCached = _externalMonitor.TryConnect(progId ?? string.Empty)
+                                              && _externalMonitor.TryGetIsSafe(out var s) && s;
+                        _externalReadUtc = DateTime.UtcNow;
+                    }
+                    Logger.Info($"External ASCOM safety monitor enabled ('{progId}'): " +
+                                $"{(_externalMonitor.Connected ? "connected" : "NOT connected - the monitor will report UNSAFE until it is")}");
+                }
+
                 // Mark as connected BEFORE starting periodic monitoring
                 // so that UI handlers can see Connected=true when the first check completes
                 Connected = true;
@@ -246,6 +294,18 @@ namespace AIWeather.Equipment
                 // expression cannot keep acting on a stale reading.
                 SequencerSymbolPublisher.ClearValues();
 
+                // Drop the verdict with the connection, so a reconnect cannot start from a
+                // SAFE inherited from before the disconnect.
+                _lastAnalysisUtc = DateTime.MinValue;
+                _isCurrentlySafe = false;
+
+                lock (_externalGate)
+                {
+                    _externalMonitor.Disconnect();
+                    _externalSafeCached = false;
+                    _externalReadUtc = DateTime.MinValue;
+                }
+
                 Connected = false;
                 Logger.Info("All Sky Camera Safety Monitor disconnected");
             }
@@ -255,7 +315,196 @@ namespace AIWeather.Equipment
             }
         }
 
-        public bool IsSafe => _isCurrentlySafe;
+        /// <summary>
+        /// The state NINA acts on. Three independent conditions, all of which must hold:
+        /// the sky verdict from the latest analysis, that verdict still being recent enough
+        /// to describe the current sky, and the external ASCOM safety monitor (when one is
+        /// configured). Anything unknown counts as unsafe — a missing answer is not a
+        /// permission to keep imaging.
+        /// </summary>
+        public bool IsSafe => _isCurrentlySafe && IsAnalysisFresh() && IsExternalMonitorSafe();
+
+        /// <summary>The sky verdict alone, without freshness or the external monitor.</summary>
+        public bool IsSkyConditionSafe => _isCurrentlySafe;
+
+        /// <summary>
+        /// Why the monitor is reporting what it reports, in one line for the panel. Until
+        /// now this only existed in the log, which meant a user seeing UNSAFE on a clear
+        /// night had no way to tell a cloudy verdict from a dead camera or an unreachable
+        /// external device. Conditions are reported in the order they are evaluated, so the
+        /// first thing that is actually wrong is the thing shown.
+        /// </summary>
+        public string SafetyStateReason
+        {
+            get
+            {
+                if (!Connected)
+                {
+                    return "Not connected";
+                }
+
+                if (_lastAnalysisUtc == DateTime.MinValue)
+                {
+                    return "Waiting for the first sky analysis";
+                }
+
+                if (!IsAnalysisFresh())
+                {
+                    var age = (DateTime.UtcNow - _lastAnalysisUtc).TotalMinutes;
+                    return $"Stale data: last analysis {age:F0} min ago, limit {MaxDataAge().TotalMinutes:F0} min — check the camera source";
+                }
+
+                if (Properties.Settings.Default.UseAscomSafetyMonitor && !IsExternalMonitorSafe())
+                {
+                    return _externalMonitor.Connected
+                        ? "External safety monitor reports unsafe"
+                        : "External safety monitor cannot be connected or read";
+                }
+
+                if (!_isCurrentlySafe)
+                {
+                    var r = _lastResult;
+                    if (r == null)
+                    {
+                        return "No usable analysis";
+                    }
+                    if (r.RainDetected)
+                    {
+                        return "Rain detected";
+                    }
+                    if (r.FogDetected)
+                    {
+                        return "Fog detected";
+                    }
+                    return $"Cloud coverage {r.CloudCoverage:F0}% (safe below {Properties.Settings.Default.CloudCoverageSafeThreshold}%)";
+                }
+
+                return "Sky clear and data current";
+            }
+        }
+
+        /// <summary>
+        /// Maximum age of the latest successful analysis. Configurable; 0 means automatic
+        /// (three check intervals, never below ten minutes) so a long polling interval
+        /// cannot make the state permanently stale by construction.
+        /// </summary>
+        private static TimeSpan MaxDataAge()
+        {
+            var configured = Properties.Settings.Default.MaxDataAgeMinutes;
+            if (configured > 0)
+            {
+                return TimeSpan.FromMinutes(configured);
+            }
+
+            var interval = Math.Max(1, Properties.Settings.Default.CheckIntervalMinutes);
+            var automatic = TimeSpan.FromMinutes(interval * 3);
+            return automatic < MinimumAutomaticDataAge ? MinimumAutomaticDataAge : automatic;
+        }
+
+        /// <summary>
+        /// Whether the latest analysis is recent enough to be acted upon. Logged once per
+        /// transition rather than per call: NINA polls IsSafe continuously.
+        /// </summary>
+        private bool IsAnalysisFresh()
+        {
+            if (_lastAnalysisUtc == DateTime.MinValue)
+            {
+                return false; // nothing analysed yet since connecting
+            }
+
+            var age = DateTime.UtcNow - _lastAnalysisUtc;
+            if (age <= MaxDataAge())
+            {
+                return true;
+            }
+
+            if (!_staleLogged)
+            {
+                _staleLogged = true;
+                Logger.Warning($"Safety monitor reporting UNSAFE: no successful sky analysis for {age.TotalMinutes:F1} minutes " +
+                               $"(limit {MaxDataAge().TotalMinutes:F0} min). Check the all-sky camera source.");
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// The external ASCOM safety monitor's verdict, or true when the feature is off.
+        /// Every failure mode - not configured, driver missing, connection lost, read error -
+        /// reports unsafe, because an external monitor that cannot be read is exactly the
+        /// situation its user installed it to be protected from. Reads are cached briefly
+        /// and reconnects are rate-limited so a polled property cannot hammer a COM driver.
+        /// </summary>
+        private bool IsExternalMonitorSafe()
+        {
+            if (!Properties.Settings.Default.UseAscomSafetyMonitor)
+            {
+                return true;
+            }
+
+            lock (_externalGate)
+            {
+                var now = DateTime.UtcNow;
+                if (now - _externalReadUtc < ExternalReadCacheDuration)
+                {
+                    return _externalSafeCached;
+                }
+                _externalReadUtc = now;
+
+                var progId = Properties.Settings.Default.AscomSafetyMonitorProgId;
+                if (string.IsNullOrWhiteSpace(progId))
+                {
+                    _externalSafeCached = false;
+                    LogExternalFailureOnce("the external ASCOM safety monitor is enabled but no driver is selected");
+                    return false;
+                }
+
+                if (!_externalMonitor.Connected || !string.Equals(_externalMonitor.ProgId, progId, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (now - _externalConnectAttemptUtc < ExternalReconnectInterval)
+                    {
+                        _externalSafeCached = false;
+                        return false;
+                    }
+
+                    _externalConnectAttemptUtc = now;
+                    if (!_externalMonitor.TryConnect(progId))
+                    {
+                        _externalSafeCached = false;
+                        LogExternalFailureOnce($"cannot connect to the external ASCOM safety monitor '{progId}'");
+                        return false;
+                    }
+                }
+
+                if (!_externalMonitor.TryGetIsSafe(out var externalSafe))
+                {
+                    // The driver answered before and does not now: drop the connection so the
+                    // next cycle rebuilds it instead of polling a dead object forever.
+                    _externalMonitor.Disconnect();
+                    _externalSafeCached = false;
+                    LogExternalFailureOnce($"cannot read IsSafe from the external ASCOM safety monitor '{progId}'");
+                    return false;
+                }
+
+                if (_externalFailureLogged)
+                {
+                    _externalFailureLogged = false;
+                    Logger.Info($"External ASCOM safety monitor '{progId}' is readable again");
+                }
+
+                _externalSafeCached = externalSafe;
+                return externalSafe;
+            }
+        }
+
+        private void LogExternalFailureOnce(string message)
+        {
+            if (_externalFailureLogged)
+            {
+                return;
+            }
+            _externalFailureLogged = true;
+            Logger.Warning($"Safety monitor reporting UNSAFE: {message}");
+        }
 
         private void UpdateSafetyState(WeatherAnalysisResult result)
         {
@@ -408,7 +657,14 @@ namespace AIWeather.Equipment
 
                 if (frame == null)
                 {
-                    Logger.Warning($"Failed to capture image from {captureMode} source");
+                    // No new data. The state is deliberately NOT flipped here on a single
+                    // miss - a dropped frame on an RTSP stream would make the monitor flap
+                    // and abort sequences - but it is not silently kept either: the analysis
+                    // ages, and IsSafe turns unsafe once it passes the maximum data age.
+                    Logger.Warning($"Failed to capture image from {captureMode} source; " +
+                                   $"last successful analysis is {LastAnalysisAgeDescription()} old");
+                    RaisePropertyChanged(nameof(IsSafe));
+                RaisePropertyChanged(nameof(SafetyStateReason));
                     return;
                 }
 
@@ -439,6 +695,12 @@ namespace AIWeather.Equipment
                 Logger.Debug("AI analysis completed");
                 _lastResult = result;
 
+                // The clock the freshness check runs against. Set only on a real result:
+                // every provider falls back to the offline local analyzer internally, so
+                // reaching this line means the sky was actually assessed.
+                _lastAnalysisUtc = DateTime.UtcNow;
+                _staleLogged = false;
+
                 // Store a copy of the image for UI restoration
                 _lastImage?.Dispose();
                 _lastImage = new Bitmap(frame);
@@ -446,8 +708,10 @@ namespace AIWeather.Equipment
                 // Update Safety State (Hysteresis)
                 UpdateSafetyState(result);
 
-                // Expose the reading to the Advanced Sequencer's Symbols sidebar (N.I.N.A. 3.3+)
-                SequencerSymbolPublisher.Publish(result, _isCurrentlySafe);
+                // Expose the reading to the Advanced Sequencer's Symbols sidebar (N.I.N.A. 3.3+).
+                // The published Safe symbol is the composite state, so an expression in the
+                // sequencer sees the same verdict NINA's safety monitor sees.
+                SequencerSymbolPublisher.Publish(result, IsSafe);
 
                 // Log the results
                 Logger.Info($"Weather Analysis - Condition: {result.Condition}, " +
@@ -455,14 +719,22 @@ namespace AIWeather.Equipment
                           $"Safe: {result.IsSafeForImaging}, " +
                           $"Confidence: {result.Confidence:F1}%");
 
+                if (Properties.Settings.Default.UseAscomSafetyMonitor)
+                {
+                    Logger.Info($"Safety state - sky: {(_isCurrentlySafe ? "SAFE" : "UNSAFE")}, " +
+                                $"external ASCOM monitor: {(IsExternalMonitorSafe() ? "SAFE" : "UNSAFE")}, " +
+                                $"combined: {(IsSafe ? "SAFE" : "UNSAFE")}");
+                }
+
                 // Append state changes to the shared LLM wiki daily digest (raw/)
                 LlmWikiRawWriter.RecordAnalysis(result);
 
                 // Raise property changed to notify NINA of safety status change
                 RaisePropertyChanged(nameof(IsSafe));
+                RaisePropertyChanged(nameof(SafetyStateReason));
 
                 // Write safety status to file if enabled
-                WriteSafetyStatusFile(result);
+                WriteSafetyStatusFile();
 
                 // Save frame for debugging/logging (optional)
                 var captureFolder = Path.Combine(CoreUtil.APPLICATIONTEMPPATH, "AllSkyCameraPlugin");
@@ -479,12 +751,23 @@ namespace AIWeather.Equipment
             }
             catch (Exception ex)
             {
+                // Same contract as a failed capture: no new verdict, so the existing one
+                // keeps ageing toward the freshness limit rather than being trusted forever.
                 Logger.Error($"Error performing weather check: {ex.Message}", ex);
+                RaisePropertyChanged(nameof(IsSafe));
+                RaisePropertyChanged(nameof(SafetyStateReason));
             }
             finally
             {
                 _checkGate.Release();
             }
+        }
+
+        private string LastAnalysisAgeDescription()
+        {
+            return _lastAnalysisUtc == DateTime.MinValue
+                ? "no analysis yet"
+                : $"{(DateTime.UtcNow - _lastAnalysisUtc).TotalMinutes:F1} min";
         }
 
         // Debug captures are only needed for recent history; keep the folder bounded
@@ -556,7 +839,7 @@ namespace AIWeather.Equipment
         /// <summary>
         /// Write safety status to file if enabled
         /// </summary>
-        private void WriteSafetyStatusFile(WeatherAnalysisResult result)
+        private void WriteSafetyStatusFile()
         {
             try
             {
@@ -572,14 +855,11 @@ namespace AIWeather.Equipment
                     return;
                 }
 
-                // Determine safety status
-                var threshold = Properties.Settings.Default.CloudCoverageThreshold;
-                var isSafe = result.IsSafeForImaging &&
-                            result.CloudCoverage < threshold &&
-                            !result.RainDetected &&
-                            !result.FogDetected;
-
-                var status = isSafe ? "Safe" : "Unsafe";
+                // The exported status is the same composite state NINA acts on - hysteresis,
+                // data freshness and the external monitor included. It used to be recomputed
+                // from the raw result here, which could disagree with IsSafe and hand third
+                // party software a different answer than the one driving the sequence.
+                var status = IsSafe ? "Safe" : "Unsafe";
 
                 // Write plain SAFE/UNSAFE — compatible with ASCOM Generic File SafetyMonitor
                 File.WriteAllText(filePath, status);
