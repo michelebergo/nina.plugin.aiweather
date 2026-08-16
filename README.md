@@ -102,12 +102,27 @@ consolidates the digests into observing-site pages (fog patterns, typical
 seeing, seasonal transparency). Purely append-only and local — no data leaves
 your machine.
 
-### 3. Set Monitoring Parameters
+### 3. Optional: Site notes
+
+Every site has visual quirks a general-purpose prompt cannot anticipate. The
+optional **Site notes** field lets you describe them in your own words, and the
+text is appended to the analysis prompt for every provider:
+
+> Clouds toward the south are lit orange by the city and can look like overcast.
+> In daylight the sun reflects off the dome and creates a hazy halo.
+
+The notes steer interpretation only — the classification thresholds, the safety
+rules and the response format stay with the built-in prompt, so a note can
+explain what a feature is without redefining what "safe" means. Keep it to a few
+sentences: the text is sent with every analysis, and long prompts degrade small
+local models. Leave it empty and nothing changes.
+
+### 4. Set Monitoring Parameters
 
 - **Check Interval** (minutes): How often the plugin captures and analyzes an image. 5-10 minutes is recommended for active monitoring.
 - **Cloud Coverage Threshold** (%): The maximum cloud coverage considered safe for imaging. Default is 70%. Lower values are more conservative.
 
-### 4. Optional: ASCOM and Status File
+### 5. Optional: ASCOM and Status File
 
 - Enable **ASCOM SafetyMonitor** integration to query an additional hardware safety monitor alongside AI analysis.
 - Enable **Write Safety Status File** to output the current status to a text file, useful for external scripts or the ASCOM Generic File SafetyMonitor driver.

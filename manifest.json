@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.14.4.0",
+  "Version": "1.14.5.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,14 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.14.5.0",
+      "Date": "2026-08-16",
+      "Changes": [
+        "New optional 'Site notes' field in the options: free text about your site or camera that is appended to the analysis prompt of every provider. Every location has visual quirks a general prompt cannot anticipate — clouds lit orange by a nearby city that read as overcast, a daylight sun reflection off the dome that reads as haze — and this is where that local knowledge enters the analysis",
+        "The notes steer interpretation only: the classification thresholds, the safety rules and the response format stay with the built-in prompt. Empty by default, so the prompt is unchanged for anyone who does not use the field"
+      ]
+    },
     {
       "Version": "1.14.4.0",
       "Date": "2026-08-15",

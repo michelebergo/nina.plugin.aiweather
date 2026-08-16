@@ -98,6 +98,55 @@ Respond in JSON format:
   ""confidence"": 0-100
 }";
         /// <summary>
+        /// Upper bound for the user's site notes, in characters. Every analysis cycle pays
+        /// for this text, and small local models (Gemma, Qwen) lose the output format when
+        /// the prompt grows: a few sentences of local knowledge help, an essay does not.
+        /// </summary>
+        public const int MaxSiteNotesLength = 1200;
+
+        /// <summary>
+        /// Build the site-specific notes block from what the observatory owner wrote in the
+        /// options. Every site has visual quirks no general prompt can anticipate — clouds
+        /// lit by a nearby city that read as overcast, a dome reflection that reads as haze —
+        /// and this is where that knowledge enters the analysis.
+        ///
+        /// The notes steer *interpretation* only: the classification thresholds, the safety
+        /// rules and the JSON contract stay with the system prompt, so a note can explain
+        /// what a feature is without being able to redefine what "safe" means.
+        /// Returns an empty string when nothing was written, so the prompt is unchanged for
+        /// everyone who does not use the field.
+        /// </summary>
+        public static string BuildSiteNotesBlock(string notes)
+        {
+            if (string.IsNullOrWhiteSpace(notes)) { return string.Empty; }
+
+            var trimmed = notes.Trim();
+            if (trimmed.Length > MaxSiteNotesLength)
+            {
+                trimmed = trimmed.Substring(0, MaxSiteNotesLength).TrimEnd() + "...";
+            }
+
+            return $@"SITE-SPECIFIC NOTES (written by the owner of this observatory, about this location and camera):
+{trimmed}
+
+Use these notes to interpret what you see — they describe known local artifacts of this site.
+They do not change the classification thresholds, the safety rules, or the JSON response format.
+";
+        }
+
+        /// <summary>
+        /// The full prefix prepended to the user message: the observation context (when
+        /// astronomical data is available) followed by the site notes (when the user wrote
+        /// any). Kept in one place so every provider sends the same thing, and so the notes
+        /// still reach the model when no astronomical context could be computed.
+        /// </summary>
+        public static string BuildPromptPrefix(AstroContext ctx)
+        {
+            var context = ctx != null ? BuildContextBlock(ctx) : string.Empty;
+            return context + BuildSiteNotesBlock(Properties.Settings.Default.SiteNotes);
+        }
+
+        /// <summary>
         /// Build a dynamic observation context block from astronomical data.
         /// This is prepended to the user message so the AI knows day/night state, moon, etc.
         /// </summary>

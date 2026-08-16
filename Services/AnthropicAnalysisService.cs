@@ -60,8 +60,9 @@ namespace AIWeather.Services
                 var base64Image = ConvertImageToBase64(image);
 
                 var userText = "Analyze this all-sky camera image and provide weather assessment (JSON only).";
-                if (astroContext != null)
-                    userText = WeatherAnalysisPrompts.BuildContextBlock(astroContext) + "\n" + userText;
+                var promptPrefix = WeatherAnalysisPrompts.BuildPromptPrefix(astroContext);
+                if (promptPrefix.Length > 0)
+                    userText = promptPrefix + "\n" + userText;
 
                 var payload = new
                 {

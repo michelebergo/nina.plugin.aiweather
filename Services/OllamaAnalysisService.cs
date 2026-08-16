@@ -62,8 +62,9 @@ namespace AIWeather.Services
                 var imageUrl = $"data:image/jpeg;base64,{base64Image}";
 
                 var userText = "Analyze this all-sky camera image and provide weather assessment:";
-                if (astroContext != null)
-                    userText = WeatherAnalysisPrompts.BuildContextBlock(astroContext) + "\n" + userText;
+                var promptPrefix = WeatherAnalysisPrompts.BuildPromptPrefix(astroContext);
+                if (promptPrefix.Length > 0)
+                    userText = promptPrefix + "\n" + userText;
 
                 var payload = new System.Collections.Generic.Dictionary<string, object>
                 {

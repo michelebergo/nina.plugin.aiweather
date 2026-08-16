@@ -231,7 +231,21 @@
                        FontSize="10"
                        Foreground="#AAAAAA"/>
                 </StackPanel>
-            
+
+            <!-- Site notes: local knowledge appended to the analysis prompt of every provider.
+                 Saved on focus loss rather than per keystroke, so typing does not rewrite the
+                 settings file on every character. -->
+            <TextBlock Text="Site notes (optional):" Margin="0,15,0,2" FontWeight="Bold"/>
+            <TextBox Text="{Binding SiteNotes, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                     Width="360"
+                     Height="80"
+                     HorizontalAlignment="Left"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"/>
+            <TextBlock Text="Anything about your site or camera the AI cannot guess, in your own words. Example: &quot;Clouds toward the south are lit orange by the city and can look like overcast&quot; or &quot;In daylight the sun reflects off the dome and creates a hazy halo&quot;. Sent with every analysis, for all providers. Keep it short — a few sentences."
+                       Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+
             <!-- Description Section -->
             <TextBlock Text="About AI Weather" FontWeight="Bold" Margin="0,20,0,10"/>
             <TextBlock Text="AI Weather analyzes all-sky camera images using artificial intelligence to determine real-time weather conditions and protect your equipment during unattended imaging sessions."

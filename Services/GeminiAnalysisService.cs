@@ -60,8 +60,9 @@ namespace AIWeather.Services
                 var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(_modelName)}:generateContent";
 
                 var promptText = PromptText.FullPrompt;
-                if (astroContext != null)
-                    promptText = WeatherAnalysisPrompts.BuildContextBlock(astroContext) + "\n" + promptText;
+                var promptPrefix = WeatherAnalysisPrompts.BuildPromptPrefix(astroContext);
+                if (promptPrefix.Length > 0)
+                    promptText = promptPrefix + "\n" + promptText;
 
                 var payload = new
                 {

@@ -1179,6 +1179,24 @@ namespace AIWeather
         }
 
         /// <summary>
+        /// Free-text notes about this observing site, appended to every analysis prompt.
+        /// Every site has visual quirks a general prompt cannot anticipate — clouds lit by
+        /// a nearby city that read as overcast, a dome reflection that reads as haze — and
+        /// only the owner knows them. Empty by default: the prompt is unchanged for anyone
+        /// who does not use the field.
+        /// </summary>
+        public string SiteNotes
+        {
+            get => Properties.Settings.Default.SiteNotes;
+            set
+            {
+                Properties.Settings.Default.SiteNotes = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>
         /// GitHub Models API token
         /// </summary>
         public string GitHubToken
