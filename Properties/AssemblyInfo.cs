@@ -30,8 +30,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.15.0.0")]
-[assembly: AssemblyFileVersion("1.15.0.0")]
+[assembly: AssemblyVersion("1.15.1.0")]
+[assembly: AssemblyFileVersion("1.15.1.0")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MIT")]
@@ -47,7 +47,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("ChangelogURL", "https://github.com/michelebergo/nina.plugin.aiweather/releases")]
 
 // Featured logo displayed next to the plugin in the plugin list
-[assembly: AssemblyMetadata("FeaturedImageURL", "https://raw.githubusercontent.com/michelebergo/nina.plugin.aiweather/main/ai_weather_logo.png")]
+[assembly: AssemblyMetadata("FeaturedImageURL", "https://raw.githubusercontent.com/michelebergo/nina.plugin.aiweather/main/icon.png")]
 
 // Optional screenshots (leave empty if not available)
 [assembly: AssemblyMetadata("ScreenshotURL", "")]
@@ -79,12 +79,20 @@ using System.Runtime.InteropServices;
 (GitHub Models was retired by GitHub on July 30, 2026 and no longer works.)
 
 🛡️ SAFETY FEATURES:
-• Configurable Cloud Threshold: Set the cloud coverage percentage that triggers an Unsafe status (e.g., 50%, 70%, 90%)
+• Two Cloud Thresholds: a high one that turns the state Unsafe and a low one that lets it return to Safe, so a sky hovering around a single number does not flip the sequence back and forth
 • Rain Detection: Rain (including lens droplets) immediately triggers Unsafe — regardless of cloud threshold
 • Fog Detection: Fog conditions immediately trigger Unsafe — protects optics and prevents wasted exposures
 • Automatic Fallback: If the cloud AI provider fails, times out, or loses connectivity, the plugin falls back to local offline analysis
 • 60-Second Timeout: All AI providers have a 60-second timeout to prevent indefinite hangs during analysis
 • ASCOM SafetyMonitor Integration: Outputs a status file compatible with the ASCOM Generic File SafetyMonitor for third-party software integration
+• Fail-Safe Data Expiry: the verdict expires. If no analysis succeeds within the Maximum data age (configurable; automatic means three check intervals and never below 10 minutes), the monitor reports Unsafe instead of holding the last known state - a camera that dies while the sky is clear no longer reports Safe indefinitely. Disconnecting clears the verdict too, so a reconnect starts Unsafe until the first successful analysis
+• External ASCOM Safety Monitor: pick a second safety device with the ASCOM chooser and its verdict is combined with AND - imaging is Safe only when both the sky analysis and that device say so. Pair all-sky cloud, rain and fog detection with a rain sensor or a humidity and dew-point monitor. Any failure to reach it reports Unsafe
+• It says WHY: the panel names the reason for the current state - a cloudy sky, data too old with the age and the limit, or an unreachable external device - instead of leaving it in the log
+
+🧠 IT LEARNS YOUR SITE:
+• Site notes: a free-text field for what the AI cannot guess about your location, in your own words - ""clouds to the south are lit orange by the city and can look like overcast"", ""in daylight the sun reflects off the dome and creates a hazy halo"". Sent with every analysis, for every provider. It steers interpretation only: the thresholds, the safety rules and the response format stay with the built-in prompt
+• Daily sky digest into the shared knowledge wiki: what the sky did is filed into the same local markdown wiki the AI Assistant plugin reads, so a question about last night can be answered from what was actually observed
+• Disable model thinking (Ollama, on by default): newer local models reason at length before answering, which took analyses from 14 to 78 seconds on the same image and past the timeout. Requests ask them not to
 
 ⚙️ EASY SETUP:
 1. Configure your all-sky camera source (RTSP URL, HTTP URL, or watched folder path)

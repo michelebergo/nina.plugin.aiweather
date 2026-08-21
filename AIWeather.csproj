@@ -55,7 +55,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="ai_weather_logo.png" />
+    <Resource Include="icon.png" />
   </ItemGroup>
 
 </Project>
