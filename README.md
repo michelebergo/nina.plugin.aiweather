@@ -137,7 +137,27 @@ local models. Leave it empty and nothing changes.
 ### 4. Set Monitoring Parameters
 
 - **Check Interval** (minutes): How often the plugin captures and analyzes an image. 5-10 minutes is recommended for active monitoring.
-- **Cloud Coverage Threshold** (%): The maximum cloud coverage considered safe for imaging. Default is 70%. Lower values are more conservative.
+- **Cloud Coverage High Threshold** (%): while the status is **Safe**, cloud coverage at or above this value turns it **Unsafe**. Default is 70%.
+- **Cloud Coverage Low Threshold** (%): while the status is **Unsafe**, cloud coverage must drop below this value before it returns to **Safe**. Default is 60%.
+
+The two values are not a single threshold with a safety margin: they are the two edges of a
+hysteresis band, and **between them nothing changes**. With the defaults (70 / 60), a sky at
+65% coverage leaves the status exactly where it already was. This is deliberate — a single
+threshold makes the monitor flip back and forth on a sky sitting right at the limit, and each
+flip can abort a sequence.
+
+Two consequences worth knowing:
+
+- The **Low** threshold is the one that decides when imaging may resume. If it is set far below
+  your typical sky (say 20% at a site whose clear nights read 30%), the status becomes Unsafe
+  once and never comes back, no matter what the analysis says. If a night stays stuck on Unsafe
+  while the log reports a clear sky, this setting is the first thing to check.
+- The **High** threshold only makes the monitor stricter than the AI's own judgement. The
+  analysis prompt carries its own built-in limits — it grants Safe only below about 50% coverage —
+  and the two verdicts are combined with AND. So raising High above that buys no extra tolerance:
+  the AI has already called that sky unsafe. Lowering it works as expected.
+
+Keep Low below High. Setting them equal removes the hysteresis and brings the flapping back.
 
 ### 5. Fail-safe
 

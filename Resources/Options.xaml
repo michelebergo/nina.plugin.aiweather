@@ -90,11 +90,14 @@
             <TextBlock Text="Cloud Coverage High Threshold (%):" Margin="0,10,0,2"/>
             <TextBox Text="{Binding CloudCoverageThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                      Width="100" HorizontalAlignment="Left"/>
+            <TextBlock Text="While Safe: coverage at or above this value turns the status Unsafe" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
 
             <!-- Cloud Coverage Safe Threshold -->
             <TextBlock Text="Cloud Coverage Low Threshold (%):" Margin="0,10,0,2"/>
             <TextBox Text="{Binding CloudCoverageSafeThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                      Width="100" HorizontalAlignment="Left"/>
+            <TextBlock Text="While Unsafe: coverage must drop below this value before Safe returns" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
+            <TextBlock Text="Between the two values the status stays as it is, so a sky at the limit cannot flap" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
 
                     <!-- Generic File SafetyMonitor output file -->
                     <TextBlock Text="Generic File SafetyMonitor" Margin="0,20,0,2" FontWeight="Bold"/>
