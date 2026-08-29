@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("AI Weather")]
-[assembly: AssemblyDescription("AI-powered all-sky camera weather monitoring with automatic safety protection")]
+[assembly: AssemblyDescription("AI-powered all-sky camera weather monitoring with automatic safety protection for unattended imaging sessions")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Michele Bergo")]
 [assembly: AssemblyProduct("NINA.Plugins")]
