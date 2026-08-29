@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.15.1.0",
+  "Version": "1.15.2.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,14 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.15.2.0",
+      "Date": "2026-08-30",
+      "Changes": [
+        "The two cloud coverage thresholds now explain themselves in the options panel. The High one turns the status Unsafe, the Low one is what lets it come back to Safe, and between the two the status does not change - which is the whole point of having two, so a sky sitting right at the limit cannot flip the sequence back and forth",
+        "The Low threshold had never been documented anywhere. A user spent a session stuck on Unsafe with a clear sky in the log because his was set far below what his sky normally reads; the README now also says how wide the band should be (5 to 15 points) and what happens at either extreme"
+      ]
+    },
     {
       "Version": "1.15.1.0",
       "Date": "2026-08-21",
