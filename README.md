@@ -157,7 +157,9 @@ Two consequences worth knowing:
   and the two verdicts are combined with AND. So raising High above that buys no extra tolerance:
   the AI has already called that sky unsafe. Lowering it works as expected.
 
-Keep Low below High. Setting them equal removes the hysteresis and brings the flapping back.
+Keep Low below High. Setting them equal removes the hysteresis and brings the flapping back;
+setting them far apart has the opposite failure — the status goes Unsafe once and stays there.
+A band of 5 to 15 points is the useful range: the feature was requested with 70 / 65.
 
 ### 5. Fail-safe
 
