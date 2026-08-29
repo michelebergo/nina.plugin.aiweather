@@ -97,7 +97,7 @@ using System.Runtime.InteropServices;
 ⚙️ EASY SETUP:
 1. Configure your all-sky camera source (RTSP URL, HTTP URL, or watched folder path)
 2. Choose an AI provider and enter your API key (or use Local for zero-config offline analysis)
-3. Set your cloud coverage safety threshold
+3. Set your two cloud coverage thresholds - the high one turns the state Unsafe, the low one lets it come back to Safe, and between them the state does not change
 4. Connect the safety monitor under Equipment → Safety Monitor → All Sky Camera Safety Monitor
 5. Start monitoring — the plugin automatically protects your sequences
 
