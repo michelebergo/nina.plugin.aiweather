@@ -30,8 +30,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.15.2.0")]
-[assembly: AssemblyFileVersion("1.15.2.0")]
+[assembly: AssemblyVersion("1.15.3.0")]
+[assembly: AssemblyFileVersion("1.15.3.0")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MIT")]
@@ -82,7 +82,7 @@ using System.Runtime.InteropServices;
 • Two Cloud Thresholds: a high one that turns the state Unsafe and a low one that lets it return to Safe, so a sky hovering around a single number does not flip the sequence back and forth
 • Rain Detection: Rain (including lens droplets) immediately triggers Unsafe — regardless of cloud threshold
 • Fog Detection: Fog conditions immediately trigger Unsafe — protects optics and prevents wasted exposures
-• Automatic Fallback: If the cloud AI provider fails, times out, or loses connectivity, the plugin falls back to local offline analysis
+• Automatic Fallback: If the cloud AI provider fails, times out, loses connectivity, or sends back an answer that cannot be read, the plugin falls back to local offline analysis. An unreadable answer is a failed reading, never a placeholder value: the verdict comes from measuring the image that was actually captured
 • 60-Second Timeout: All AI providers have a 60-second timeout to prevent indefinite hangs during analysis
 • ASCOM SafetyMonitor Integration: Outputs a status file compatible with the ASCOM Generic File SafetyMonitor for third-party software integration
 • Fail-Safe Data Expiry: the verdict expires. If no analysis succeeds within the Maximum data age (configurable; automatic means three check intervals and never below 10 minutes), the monitor reports Unsafe instead of holding the last known state - a camera that dies while the sky is clear no longer reports Safe indefinitely. Disconnecting clears the verdict too, so a reconnect starts Unsafe until the first successful analysis
