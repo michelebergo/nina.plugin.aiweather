@@ -21,6 +21,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The test project lives in a subfolder, so the default globs would compile it into
+         the plugin. Keep it out of the shipped assembly. -->
+    <Compile Remove="NINA.Plugin.AIWeather.Test\**" />
+    <Page Remove="NINA.Plugin.AIWeather.Test\**" />
+    <None Remove="NINA.Plugin.AIWeather.Test\**" />
+    <EmbeddedResource Remove="NINA.Plugin.AIWeather.Test\**" />
+    <ApplicationDefinition Remove="NINA.Plugin.AIWeather.Test\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- NINA SDK via NuGet – compile-time only; NINA itself provides these DLLs at runtime.
          ExcludeAssets="runtime" prevents them from being copied to the output (same as Private=False). -->
     <PackageReference Include="NINA.Plugin" Version="3.0.0.9001" ExcludeAssets="runtime" />

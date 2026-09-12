@@ -67,8 +67,9 @@ namespace AIWeather.Services
                 var payload = new
                 {
                     model = _modelName,
-                    max_tokens = 512,
-                    system = PromptText.SystemPrompt,
+                    // Room for a reasoning phase and the answer together (issue #16).
+                    max_tokens = 2048,
+                    system = WeatherAnalysisPrompts.DetailedSystemPrompt,
                     messages = new object[]
                     {
                         new
@@ -122,7 +123,7 @@ namespace AIWeather.Services
                 using var doc = JsonDocument.Parse(json);
                 var text = ExtractAnthropicText(doc.RootElement);
 
-                var result = PromptText.ParseAIResponse(text);
+                var result = WeatherResponseParser.Parse(text);
                 Logger.Info($"Anthropic analysis complete: {result.Condition}, Cloud Coverage: {result.CloudCoverage:F1}%");
                 return result;
             }
@@ -132,6 +133,18 @@ namespace AIWeather.Services
                 var fallback = new LocalWeatherAnalysisService();
                 var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
                 result.Description = $"[Fallback: Local] Anthropic timed out. {result.Description}";
+                return result;
+            }
+            catch (WeatherResponseParseException ex)
+            {
+                // The answer arrived but could not be read - most often cut short by the
+                // model. That is a failed reading, not a reading of 50%: fall back to the
+                // offline analyzer, which measures the image that was actually captured.
+                Logger.Warning($"Anthropic answer could not be parsed, falling back to local analysis: {ex.Message}");
+                Logger.Debug($"Unparsed response: {ex.RawResponse}");
+                var fallback = new LocalWeatherAnalysisService();
+                var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                result.Description = $"[Fallback: Local] Anthropic: {ex.Message} {result.Description}";
                 return result;
             }
             catch (Exception ex)
@@ -181,74 +194,5 @@ namespace AIWeather.Services
             return Convert.ToBase64String(memoryStream.ToArray());
         }
 
-        private static class PromptText
-        {
-                        public static string SystemPrompt => WeatherAnalysisPrompts.DetailedSystemPrompt;
-
-            public static WeatherAnalysisResult ParseAIResponse(string jsonResponse)
-            {
-                try
-                {
-                    jsonResponse = jsonResponse.Trim();
-                    if (jsonResponse.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-                    {
-                        jsonResponse = jsonResponse.Substring(7);
-                    }
-                    if (jsonResponse.StartsWith("```", StringComparison.OrdinalIgnoreCase))
-                    {
-                        jsonResponse = jsonResponse.Substring(3);
-                    }
-                    if (jsonResponse.EndsWith("```", StringComparison.OrdinalIgnoreCase))
-                    {
-                        jsonResponse = jsonResponse.Substring(0, jsonResponse.Length - 3);
-                    }
-                    jsonResponse = jsonResponse.Trim();
-
-                    using var json = JsonDocument.Parse(jsonResponse);
-                    var root = json.RootElement;
-
-                    var conditionStr = root.GetProperty("condition").GetString() ?? "Unknown";
-                    var condition = Enum.TryParse<WeatherCondition>(conditionStr, true, out var parsedCondition)
-                        ? parsedCondition
-                        : WeatherCondition.Unknown;
-
-                    var cloudCoverage = root.GetProperty("cloudCoverage").GetDouble();
-                    var rainDetected = root.GetProperty("rainDetected").GetBoolean();
-                    var fogDetected = root.GetProperty("fogDetected").GetBoolean();
-                    var isSafe = root.GetProperty("isSafe").GetBoolean();
-                    var description = root.GetProperty("description").GetString() ?? string.Empty;
-                    var confidence = root.TryGetProperty("confidence", out var confProp) ? confProp.GetDouble() : 85.0;
-
-                    return new WeatherAnalysisResult
-                    {
-                        Timestamp = DateTime.UtcNow,
-                        Condition = condition,
-                        CloudCoverage = cloudCoverage,
-                        Confidence = confidence,
-                        IsSafeForImaging = isSafe,
-                        Description = description,
-                        RainDetected = rainDetected,
-                        FogDetected = fogDetected,
-                        RawAnalysisData = jsonResponse
-                    };
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error($"Error parsing AI response: {ex.Message}", ex);
-                    Logger.Debug($"Raw response: {jsonResponse}");
-
-                    return new WeatherAnalysisResult
-                    {
-                        Timestamp = DateTime.UtcNow,
-                        Condition = WeatherCondition.Unknown,
-                        CloudCoverage = 50,
-                        Confidence = 0,
-                        IsSafeForImaging = false,
-                        Description = $"Failed to parse AI response: {ex.Message}",
-                        RawAnalysisData = jsonResponse
-                    };
-                }
-            }
-        }
     }
 }

@@ -40,7 +40,11 @@ Choose how the plugin acquires sky images based on your camera setup:
 | **Anthropic Claude** | Claude 3.5 Sonnet, Claude 3.5 Haiku, Claude 3 Opus | API key |
 | **Ollama / Custom** | Any vision model served by Ollama, LM Studio, llama.cpp or LocalAI (e.g. LLaVA, Qwen2.5-VL) | Local server URL (no API key) |
 
-If a cloud AI provider fails or times out (60-second limit), the plugin automatically falls back to local analysis so that safety monitoring is never interrupted.
+If a cloud AI provider fails, times out (60-second limit) **or returns an answer that cannot
+be read**, the plugin automatically falls back to local analysis so that safety monitoring is
+never interrupted. An unreadable answer counts as a failed reading, not as a reading: the
+verdict then comes from the offline analyzer measuring the image that was actually captured,
+never from a placeholder value.
 
 ### Safety Monitor Integration
 

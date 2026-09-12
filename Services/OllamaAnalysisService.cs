@@ -70,10 +70,12 @@ namespace AIWeather.Services
                 {
                     ["model"] = _modelName,
                     ["temperature"] = 0.1,
-                    ["max_tokens"] = 512,
+                    // Room for a reasoning phase and the answer together: a local model
+                    // that thinks before answering spends this budget twice (issue #16).
+                    ["max_tokens"] = 2048,
                     ["messages"] = new object[]
                     {
-                        new { role = "system", content = PromptText.SystemPrompt },
+                        new { role = "system", content = WeatherAnalysisPrompts.DetailedSystemPrompt },
                         new {
                             role = "user",
                             content = new object[]
@@ -124,7 +126,7 @@ namespace AIWeather.Services
                 var root = doc.RootElement;
                 var content = ExtractMessageContent(root);
 
-                var result = PromptText.ParseAIResponse(content);
+                var result = WeatherResponseParser.Parse(content);
                 Logger.Info($"Ollama analysis complete: {result.Condition}, Cloud Coverage: {result.CloudCoverage:F1}%");
                 return result;
             }
@@ -134,6 +136,18 @@ namespace AIWeather.Services
                 var fallback = new LocalWeatherAnalysisService();
                 var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
                 result.Description = $"[Fallback: Local] Ollama timed out. {result.Description}";
+                return result;
+            }
+            catch (WeatherResponseParseException ex)
+            {
+                // The answer arrived but could not be read - most often cut short by the
+                // model. That is a failed reading, not a reading of 50%: fall back to the
+                // offline analyzer, which measures the image that was actually captured.
+                Logger.Warning($"Ollama answer could not be parsed, falling back to local analysis: {ex.Message}");
+                Logger.Debug($"Unparsed response: {ex.RawResponse}");
+                var fallback = new LocalWeatherAnalysisService();
+                var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                result.Description = $"[Fallback: Local] Ollama: {ex.Message} {result.Description}";
                 return result;
             }
             catch (Exception ex)
@@ -230,86 +244,5 @@ namespace AIWeather.Services
             return Convert.ToBase64String(memoryStream.ToArray());
         }
 
-        private static class PromptText
-        {
-            public static string SystemPrompt => WeatherAnalysisPrompts.DetailedSystemPrompt;
-
-            public static WeatherAnalysisResult ParseAIResponse(string jsonResponse)
-            {
-                try
-                {
-                    jsonResponse = jsonResponse.Trim();
-                    if (jsonResponse.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-                    {
-                        jsonResponse = jsonResponse.Substring(7);
-                    }
-                    if (jsonResponse.StartsWith("```", StringComparison.OrdinalIgnoreCase))
-                    {
-                        jsonResponse = jsonResponse.Substring(3);
-                    }
-                    if (jsonResponse.EndsWith("```", StringComparison.OrdinalIgnoreCase))
-                    {
-                        jsonResponse = jsonResponse.Substring(0, jsonResponse.Length - 3);
-                    }
-                    jsonResponse = jsonResponse.Trim();
-
-                    // Tolerate prose around the JSON (e.g. an answer recovered from a
-                    // reasoning field): fall back to the outermost {...} block.
-                    if (!jsonResponse.StartsWith("{", StringComparison.Ordinal))
-                    {
-                        var start = jsonResponse.IndexOf('{');
-                        var end = jsonResponse.LastIndexOf('}');
-                        if (start >= 0 && end > start)
-                        {
-                            jsonResponse = jsonResponse.Substring(start, end - start + 1);
-                        }
-                    }
-
-                    using var json = JsonDocument.Parse(jsonResponse);
-                    var root = json.RootElement;
-
-                    var conditionStr = root.GetProperty("condition").GetString() ?? "Unknown";
-                    var condition = Enum.TryParse<WeatherCondition>(conditionStr, true, out var parsedCondition)
-                        ? parsedCondition
-                        : WeatherCondition.Unknown;
-
-                    var cloudCoverage = root.GetProperty("cloudCoverage").GetDouble();
-                    var rainDetected = root.GetProperty("rainDetected").GetBoolean();
-                    var fogDetected = root.GetProperty("fogDetected").GetBoolean();
-                    var isSafe = root.GetProperty("isSafe").GetBoolean();
-                    var description = root.GetProperty("description").GetString() ?? string.Empty;
-                    var confidence = root.TryGetProperty("confidence", out var confProp) ? confProp.GetDouble() : 85.0;
-
-                    return new WeatherAnalysisResult
-                    {
-                        Timestamp = DateTime.UtcNow,
-                        Condition = condition,
-                        CloudCoverage = cloudCoverage,
-                        Confidence = confidence,
-                        IsSafeForImaging = isSafe,
-                        Description = description,
-                        RainDetected = rainDetected,
-                        FogDetected = fogDetected,
-                        RawAnalysisData = jsonResponse
-                    };
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error($"Error parsing AI response: {ex.Message}", ex);
-                    Logger.Debug($"Raw response: {jsonResponse}");
-
-                    return new WeatherAnalysisResult
-                    {
-                        Timestamp = DateTime.UtcNow,
-                        Condition = WeatherCondition.Unknown,
-                        CloudCoverage = 50,
-                        Confidence = 0,
-                        IsSafeForImaging = false,
-                        Description = $"Failed to parse AI response: {ex.Message}",
-                        RawAnalysisData = jsonResponse
-                    };
-                }
-            }
-        }
     }
 }
