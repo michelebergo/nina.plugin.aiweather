@@ -52,6 +52,21 @@ namespace AIWeather.Equipment
         private DateTime _externalConnectAttemptUtc = DateTime.MinValue;
         private bool _externalFailureLogged;
 
+        // The last state the external monitor was logged in, so a clean SAFE/UNSAFE flip
+        // from the device leaves one line in the log. Without it an UNSAFE at dawn from a
+        // rain sensor is indistinguishable from anything else after the fact.
+        private bool? _externalStateLogged;
+
+        // How many checks in a row the chosen provider failed to answer. Shown in the
+        // panel from the first one: a fallback the owner cannot see is a bill for nothing.
+        private readonly ProviderHealthTracker _providerHealth = new ProviderHealthTracker();
+
+        // Identity of the last captured frame. A stream that keeps handing back the same
+        // frame is indistinguishable from a static sky by the numbers alone; the
+        // fingerprint makes it visible in the log without changing any verdict.
+        private ulong? _lastFrameFingerprint;
+        private int _identicalFrameRun;
+
         /// <summary>IsSafe is polled often; a COM read per poll would hammer the driver.</summary>
         private static readonly TimeSpan ExternalReadCacheDuration = TimeSpan.FromSeconds(5);
 
@@ -107,57 +122,7 @@ namespace AIWeather.Equipment
 
         private void UpdateAnalysisService()
         {
-            var provider = Properties.Settings.Default.AnalysisProvider;
-            if (string.IsNullOrWhiteSpace(provider))
-            {
-                provider = Properties.Settings.Default.UseGitHubModels ? "GitHubModels" : "Local";
-            }
-
-            provider = provider.Trim();
-            var model = Properties.Settings.Default.SelectedModel;
-
-            if (string.Equals(provider, "GitHubModels", StringComparison.OrdinalIgnoreCase))
-            {
-                _analysisService = new GitHubModelsAnalysisService(
-                    Properties.Settings.Default.GitHubToken,
-                    model);
-                return;
-            }
-
-            if (string.Equals(provider, "OpenAI", StringComparison.OrdinalIgnoreCase))
-            {
-                _analysisService = new OpenAIAnalysisService(
-                    Properties.Settings.Default.OpenAIKey,
-                    model);
-                return;
-            }
-
-            if (string.Equals(provider, "Gemini", StringComparison.OrdinalIgnoreCase))
-            {
-                _analysisService = new GeminiAnalysisService(
-                    Properties.Settings.Default.GeminiKey,
-                    model);
-                return;
-            }
-
-            if (string.Equals(provider, "Anthropic", StringComparison.OrdinalIgnoreCase))
-            {
-                _analysisService = new AnthropicAnalysisService(
-                    Properties.Settings.Default.AnthropicKey,
-                    model);
-                return;
-            }
-
-            if (string.Equals(provider, "Ollama", StringComparison.OrdinalIgnoreCase))
-            {
-                _analysisService = new OllamaAnalysisService(
-                    Properties.Settings.Default.OllamaBaseUrl,
-                    model,
-                    Properties.Settings.Default.OllamaDisableThinking);
-                return;
-            }
-
-            _analysisService = new LocalWeatherAnalysisService();
+            _analysisService = AnalysisServiceFactory.CreateFromSettings();
         }
 
         #region ISafetyMonitor Implementation
@@ -244,6 +209,10 @@ namespace AIWeather.Equipment
                 // A fresh connection starts with no verdict at all: unsafe until the first
                 // analysis succeeds, never inheriting the state of a previous session.
                 _lastAnalysisUtc = DateTime.MinValue;
+                _providerHealth.Reset();
+                _lastFrameFingerprint = null;
+                _identicalFrameRun = 0;
+                _externalStateLogged = null;
                 _isCurrentlySafe = false;
                 _staleLogged = false;
 
@@ -326,6 +295,43 @@ namespace AIWeather.Equipment
 
         /// <summary>The sky verdict alone, without freshness or the external monitor.</summary>
         public bool IsSkyConditionSafe => _isCurrentlySafe;
+
+        /// <summary>
+        /// One line for the panel when the chosen provider is not the one answering; empty
+        /// while it is. The offline fallback keeps the night safe, this keeps it honest.
+        /// </summary>
+        public string ProviderHealth => _providerHealth.Describe();
+
+        /// <summary>
+        /// Compare the captured frame with the previous one. Identical pixels twice in a row
+        /// on a live camera is not a sky, it is a decoder that stalled; say so in the log,
+        /// with the run length, and leave the verdict alone - first the fact, then the cure.
+        /// </summary>
+        private void NoteFrameIdentity(Bitmap frame)
+        {
+            try
+            {
+                var fingerprint = FrameFingerprint.Compute(frame);
+                if (_lastFrameFingerprint == fingerprint)
+                {
+                    _identicalFrameRun++;
+                    Logger.Warning($"Captured frame is identical to the previous one ({_identicalFrameRun} in a row) - the camera source may be frozen and the analysis is repeating an old image");
+                }
+                else
+                {
+                    if (_identicalFrameRun > 0)
+                    {
+                        Logger.Info($"Captured frame changed again after {_identicalFrameRun} identical frame(s)");
+                    }
+                    _identicalFrameRun = 0;
+                }
+                _lastFrameFingerprint = fingerprint;
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Frame fingerprint skipped: {ex.Message}");
+            }
+        }
 
         /// <summary>
         /// Why the monitor is reporting what it reports, in one line for the panel. Until
@@ -489,6 +495,12 @@ namespace AIWeather.Equipment
                 {
                     _externalFailureLogged = false;
                     Logger.Info($"External ASCOM safety monitor '{progId}' is readable again");
+                }
+
+                if (_externalStateLogged != externalSafe)
+                {
+                    Logger.Info($"External ASCOM safety monitor '{progId}' reports {(externalSafe ? "SAFE" : "UNSAFE")}");
+                    _externalStateLogged = externalSafe;
                 }
 
                 _externalSafeCached = externalSafe;
@@ -669,6 +681,7 @@ namespace AIWeather.Equipment
                 }
 
                 Logger.Debug($"Image captured from {captureMode}, size: {frame.Width}x{frame.Height}");
+                NoteFrameIdentity(frame);
 
                 // Analyze the frame
                 Logger.Debug($"Starting AI analysis using {_analysisService.GetType().Name}");
@@ -694,6 +707,19 @@ namespace AIWeather.Equipment
                 var result = await _analysisService.AnalyzeImageAsync(frame, astroContext, cancellationToken);
                 Logger.Debug("AI analysis completed");
                 _lastResult = result;
+
+                if (_providerHealth.Record(result))
+                {
+                    if (_providerHealth.IsFailing)
+                    {
+                        Logger.Warning($"{result.Provider} stopped answering; the offline analyzer is being used instead. Reason: {result.ProviderError}");
+                    }
+                    else
+                    {
+                        Logger.Info($"{result.Provider} is answering again");
+                    }
+                }
+                RaisePropertyChanged(nameof(ProviderHealth));
 
                 // The clock the freshness check runs against. Set only on a real result:
                 // every provider falls back to the offline local analyzer internally, so

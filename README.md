@@ -72,6 +72,18 @@ A cloud AI provider failing or timing out does **not** make the state unsafe on 
 every provider falls back internally to the offline local analyzer, so the same image still
 produces a verdict. Only the absence of a *new analysis* ages the state out.
 
+That fallback is right for safety and would be wrong for you if it stayed silent — one user
+ran a whole night on the offline heuristic, paying for a provider that rejected every
+request, and learned it from the log the next day. So the panel shows an **amber line from
+the first failed check**: which provider is not answering, why, and that the offline
+analyzer is standing in. It disappears as soon as the provider answers again.
+
+Two more things go to the log for the morning after: every **state change of the external
+ASCOM safety monitor** (an Unsafe at dawn from a rain sensor used to leave no trace), and a
+warning when a **captured frame is identical to the previous one** — a live sky never
+repeats to the byte, a stalled decoder does. The warning changes no verdict; it exists so a
+frozen stream can be seen before anything acts on it.
+
 ### Live Preview Panel
 
 The preview panel in NINA shows:
@@ -111,6 +123,20 @@ In the plugin options, choose the capture mode that matches your camera:
 - **OpenAI** and **Anthropic** require their respective API keys from each provider's developer portal.
 - **GitHub Models** was retired by GitHub on July 30, 2026 and no longer works for anyone; if selected, analyses fall back to the Local heuristic.
 - **Ollama / Custom** runs fully local: point it to your server URL (default `http://localhost:11434/v1`) and pick a vision model (e.g. `llava`, `qwen2.5vl`). Works with Ollama, LM Studio, llama.cpp, and LocalAI — no API key needed. Thinking-capable models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering by default, which can multiply analysis times past the timeout: the "Disable model thinking" option (on by default) turns that off. Uncheck it only on fast hardware.
+
+**Check the model before the night.** The **Test analysis with this provider** button in
+the options runs one real analysis with the selected provider and model, through the same
+request the safety monitor sends at night, on a small synthetic sky, and shows what comes
+back. A key that lists models proves the key; this proves the model answers.
+
+**Gemini and model updates.** Google changes what a model accepts without changing its
+name: the 3.x generation retired the sampling temperature and the thinking budget that
+2.5 took, and answers either with a bare `400 INVALID_ARGUMENT`. The plugin therefore does
+not assume the request shape: it starts from the one the model's generation is documented
+to accept, steps down to a simpler request on any 400, and remembers what worked, so a
+model update costs one extra call instead of a night. The output budget is read from the
+model's own metadata and capped at 8192 tokens — on 3.x the reasoning phase cannot be
+switched off and has to fit in the budget together with the answer.
 
 ### Shared knowledge wiki
 
@@ -249,6 +275,21 @@ cd nina.plugin.aiweather
 dotnet restore
 dotnet build
 ```
+
+**Tests.** `NINA.Plugin.AIWeather.Test` (NUnit) covers the response parser, the Gemini
+request negotiation, the provider health notice and the frame fingerprint:
+
+```
+cd NINA.Plugin.AIWeather.Test
+dotnet test
+```
+
+**Weekly live check.** `.github/workflows/provider-smoke.yaml` calls each cloud provider
+with the plugin's real request on a tiny synthetic sky every Monday, and fails when a
+provider stops answering — so a model update is found by the workflow, not by a user. It
+needs the repository secrets `AIWEATHER_GEMINI_KEY`, `AIWEATHER_OPENAI_KEY` and
+`AIWEATHER_ANTHROPIC_KEY`; a provider without a secret is skipped. The same tests run
+locally with those variables in the environment.
 
 ## Support the project
 

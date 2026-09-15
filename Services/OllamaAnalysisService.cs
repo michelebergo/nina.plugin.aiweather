@@ -127,6 +127,7 @@ namespace AIWeather.Services
                 var content = ExtractMessageContent(root);
 
                 var result = WeatherResponseParser.Parse(content);
+                result.Provider = "Ollama";
                 Logger.Info($"Ollama analysis complete: {result.Condition}, Cloud Coverage: {result.CloudCoverage:F1}%");
                 return result;
             }
@@ -135,6 +136,9 @@ namespace AIWeather.Services
                 Logger.Warning($"Ollama API call timed out or was cancelled, falling back to local analysis: {ex.Message}");
                 var fallback = new LocalWeatherAnalysisService();
                 var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                result.Provider = "Ollama";
+                result.FellBackToLocal = true;
+                result.ProviderError = "Ollama timed out";
                 result.Description = $"[Fallback: Local] Ollama timed out. {result.Description}";
                 return result;
             }
@@ -147,6 +151,9 @@ namespace AIWeather.Services
                 Logger.Debug($"Unparsed response: {ex.RawResponse}");
                 var fallback = new LocalWeatherAnalysisService();
                 var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                result.Provider = "Ollama";
+                result.FellBackToLocal = true;
+                result.ProviderError = $"Ollama: {ex.Message}";
                 result.Description = $"[Fallback: Local] Ollama: {ex.Message} {result.Description}";
                 return result;
             }
@@ -155,6 +162,9 @@ namespace AIWeather.Services
                 Logger.Error($"Error in Ollama analysis, falling back to local analysis: {ex.Message}", ex);
                 var fallback = new LocalWeatherAnalysisService();
                 var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                result.Provider = "Ollama";
+                result.FellBackToLocal = true;
+                result.ProviderError = $"Ollama error: {ex.Message}";
                 result.Description = $"[Fallback: Local] Ollama error. {result.Description}";
                 return result;
             }

@@ -243,6 +243,21 @@ namespace AIWeather
             }
         }
 
+        private async void TestAnalysis_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is FrameworkElement fe && fe.DataContext is AIWeather plugin)
+                {
+                    await plugin.TestAnalysisAsync();
+                }
+            }
+            catch
+            {
+                // best-effort; status is updated by the plugin
+            }
+        }
+
         private async void TryGeminiKey_Click(object sender, RoutedEventArgs e)
         {
             try

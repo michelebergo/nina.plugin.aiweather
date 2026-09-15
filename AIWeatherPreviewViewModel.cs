@@ -586,6 +586,9 @@ namespace AIWeather
         /// UNSAFE on a visibly clear night is indistinguishable from a broken pipeline.
         /// </summary>
         public string SafetyReason => _safetyMonitor?.SafetyStateReason ?? string.Empty;
+
+        /// <summary>Empty while the chosen provider answers; the offline-fallback notice otherwise.</summary>
+        public string ProviderHealth => _safetyMonitor?.ProviderHealth ?? string.Empty;
         public string WeatherCondition => _currentAnalysis?.Condition.ToString() ?? "Unknown";
         public double CloudCoverage => _currentAnalysis?.CloudCoverage ?? 0;
         public double Confidence => _currentAnalysis?.Confidence ?? 0;
@@ -1051,6 +1054,7 @@ namespace AIWeather
             RaisePropertyChanged(nameof(IsSafe));
             RaisePropertyChanged(nameof(SafetyStatus));
             RaisePropertyChanged(nameof(SafetyReason));
+            RaisePropertyChanged(nameof(ProviderHealth));
             RaisePropertyChanged(nameof(WeatherCondition));
             RaisePropertyChanged(nameof(CloudCoverage));
             RaisePropertyChanged(nameof(HighThreshold));

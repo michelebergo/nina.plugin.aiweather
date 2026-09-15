@@ -114,6 +114,7 @@ namespace AIWeather.Services
                 var content = ExtractOpenAIMessageContent(root);
 
                 var result = WeatherResponseParser.Parse(content);
+                result.Provider = "OpenAI";
                 Logger.Info($"OpenAI analysis complete: {result.Condition}, Cloud Coverage: {result.CloudCoverage:F1}%");
                 return result;
             }
@@ -122,6 +123,9 @@ namespace AIWeather.Services
                 Logger.Warning($"OpenAI API call timed out or was cancelled, falling back to local analysis: {ex.Message}");
                 var fallback = new LocalWeatherAnalysisService();
                 var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                result.Provider = "OpenAI";
+                result.FellBackToLocal = true;
+                result.ProviderError = "OpenAI timed out";
                 result.Description = $"[Fallback: Local] OpenAI timed out. {result.Description}";
                 return result;
             }
@@ -134,6 +138,9 @@ namespace AIWeather.Services
                 Logger.Debug($"Unparsed response: {ex.RawResponse}");
                 var fallback = new LocalWeatherAnalysisService();
                 var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                result.Provider = "OpenAI";
+                result.FellBackToLocal = true;
+                result.ProviderError = $"OpenAI: {ex.Message}";
                 result.Description = $"[Fallback: Local] OpenAI: {ex.Message} {result.Description}";
                 return result;
             }
@@ -142,6 +149,9 @@ namespace AIWeather.Services
                 Logger.Error($"Error in OpenAI analysis, falling back to local analysis: {ex.Message}", ex);
                 var fallback = new LocalWeatherAnalysisService();
                 var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
+                result.Provider = "OpenAI";
+                result.FellBackToLocal = true;
+                result.ProviderError = $"OpenAI error: {ex.Message}";
                 result.Description = $"[Fallback: Local] OpenAI error. {result.Description}";
                 return result;
             }

@@ -3,6 +3,7 @@ using NINA.Plugin;
 using NINA.Plugin.Interfaces;
 using NINA.Profile;
 using NINA.Profile.Interfaces;
+using AIWeather.Services;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -212,6 +213,17 @@ namespace AIWeather
             private set
             {
                 _geminiKeyStatus = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private string _providerTestStatus = string.Empty;
+        public string ProviderTestStatus
+        {
+            get => _providerTestStatus;
+            set
+            {
+                _providerTestStatus = value;
                 RaisePropertyChanged();
             }
         }
@@ -814,6 +826,66 @@ namespace AIWeather
             {
                 OpenAIKeyStatus = $"Key test failed: {ex.Message}";
             }
+        }
+
+        /// <summary>
+        /// Run one real analysis with the provider and model the options currently select,
+        /// through the same factory and the same request the safety monitor uses at night,
+        /// on a small synthetic sky. A key that lists models proves the key; this proves
+        /// the model answers the plugin's actual request - which is what a bare HTTP 400
+        /// on every check of a whole night (issue #16) would have shown at 20:02.
+        /// </summary>
+        public async Task TestAnalysisAsync()
+        {
+            try
+            {
+                var providerName = AnalysisServiceFactory.SelectedProvider();
+                ProviderTestStatus = $"Testing {providerName} with {Properties.Settings.Default.SelectedModel}...";
+
+                var service = AnalysisServiceFactory.CreateFromSettings();
+                if (!await service.InitializeAsync())
+                {
+                    ProviderTestStatus = $"{providerName} could not be initialised - check the key or server URL";
+                    return;
+                }
+
+                using var sky = SyntheticTestSky();
+                var result = await service.AnalyzeImageAsync(sky);
+
+                if (result.FellBackToLocal)
+                {
+                    ProviderTestStatus = $"{providerName} did not answer: {result.ProviderError}. At night the offline analyzer would be used instead.";
+                    return;
+                }
+
+                var profile = service is GeminiAnalysisService gemini ? $", request profile {gemini.CurrentProfile}" : string.Empty;
+                ProviderTestStatus = $"{result.Provider} answered: {result.Condition}, cloud {result.CloudCoverage:F0}%, confidence {result.Confidence:F0}%{profile}";
+            }
+            catch (Exception ex)
+            {
+                ProviderTestStatus = $"Test failed: {ex.Message}";
+            }
+        }
+
+        /// <summary>A dark gradient with a few bright points: enough for a vision model to answer.</summary>
+        private static System.Drawing.Bitmap SyntheticTestSky()
+        {
+            const int size = 256;
+            var bitmap = new System.Drawing.Bitmap(size, size);
+            using (var g = System.Drawing.Graphics.FromImage(bitmap))
+            {
+                g.Clear(System.Drawing.Color.FromArgb(6, 8, 18));
+                using var glow = new System.Drawing.Drawing2D.LinearGradientBrush(
+                    new System.Drawing.Rectangle(0, 0, size, size),
+                    System.Drawing.Color.FromArgb(6, 8, 18), System.Drawing.Color.FromArgb(18, 22, 40), 90f);
+                g.FillRectangle(glow, 0, size / 2, size, size / 2);
+                using var star = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(230, 230, 240));
+                foreach (var (x, y) in new[] { (40, 30), (120, 70), (200, 45), (80, 150), (170, 190), (220, 130), (30, 210) })
+                {
+                    g.FillEllipse(star, x, y, 3, 3);
+                }
+            }
+            return bitmap;
         }
 
         public async Task TryGeminiKeyAsync()

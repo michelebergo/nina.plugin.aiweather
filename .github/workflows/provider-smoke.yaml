@@ -1,0 +1,38 @@
+# Weekly live check of the AI providers with the plugin's real request.
+#
+# A model update on the provider's side - a retired parameter, a new reasoning phase
+# eating the output budget - reaches users before it reaches us, unless something asks
+# the question every week. This does: it calls each provider with the exact request the
+# safety monitor sends at night, on a tiny synthetic sky, and fails when a provider
+# stops answering.
+#
+# Providers without a secret are skipped, not failed. Secrets to add in the repository
+# settings: AIWEATHER_GEMINI_KEY, AIWEATHER_OPENAI_KEY, AIWEATHER_ANTHROPIC_KEY.
+# Optional: AIWEATHER_GEMINI_MODEL etc. as repository variables to pin a model.
+
+name: Provider smoke test
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-providers:
+    runs-on: windows-latest
+    env:
+      AIWEATHER_GEMINI_KEY: ${{ secrets.AIWEATHER_GEMINI_KEY }}
+      AIWEATHER_OPENAI_KEY: ${{ secrets.AIWEATHER_OPENAI_KEY }}
+      AIWEATHER_ANTHROPIC_KEY: ${{ secrets.AIWEATHER_ANTHROPIC_KEY }}
+      AIWEATHER_GEMINI_MODEL: ${{ vars.AIWEATHER_GEMINI_MODEL }}
+      AIWEATHER_OPENAI_MODEL: ${{ vars.AIWEATHER_OPENAI_MODEL }}
+      AIWEATHER_ANTHROPIC_MODEL: ${{ vars.AIWEATHER_ANTHROPIC_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the live provider tests
+        working-directory: NINA.Plugin.AIWeather.Test
+        run: dotnet test --filter "Category=Live" --logger "console;verbosity=normal"

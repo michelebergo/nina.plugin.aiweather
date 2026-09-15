@@ -152,6 +152,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Text="{Binding SafetyStatus, Mode=OneWay}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,5"/>
@@ -177,6 +178,22 @@
                             </TextBlock>
 
                             <TextBlock Grid.Row="5" Text="{Binding AiSettingsSummary, Mode=OneWay}" FontSize="9" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+
+                            <!-- The provider is not the one answering. The offline fallback keeps
+                                 the night safe; this line keeps the owner from paying a whole
+                                 night for a provider that rejects every request. Collapsed while
+                                 the provider answers. -->
+                            <TextBlock Grid.Row="6" Text="{Binding ProviderHealth, Mode=OneWay}" FontSize="10" FontWeight="Bold" Foreground="#E0A020" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,6,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ProviderHealth}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </Grid>
                     </Border>
                     

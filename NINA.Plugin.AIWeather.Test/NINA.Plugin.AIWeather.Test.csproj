@@ -23,6 +23,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AIWeather.csproj" />
+    <!-- The plugin references NINA.Plugin compile-time only (NINA provides the DLLs at
+         runtime). The tests have no NINA around them, so they need the runtime assets
+         too - the services log through NINA.Core's Logger. -->
+    <PackageReference Include="NINA.Plugin" Version="3.0.0.9001" />
   </ItemGroup>
 
 </Project>
