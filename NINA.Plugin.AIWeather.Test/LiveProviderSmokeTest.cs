@@ -1,4 +1,5 @@
 using System.Drawing;
+using AIWeather.Models;
 using AIWeather.Services;
 using FluentAssertions;
 using NUnit.Framework;
@@ -56,11 +57,36 @@ namespace NINA.Plugin.AIWeather.Test
             return string.IsNullOrWhiteSpace(value) ? fallback : value;
         }
 
+        /// <summary>
+        /// A provider that is merely busy is not a provider that changed. Google answers a
+        /// demand spike with 503 UNAVAILABLE ("please try again later"), and a canary that
+        /// fails on that cries wolf. So a transient status - 429 or any 5xx - is retried a
+        /// few times with a pause; a 400 (the request shape), a 401/403 (the key) or an
+        /// unreadable answer fails on the first attempt, because waiting will not fix them.
+        /// </summary>
+        private const int TransientAttempts = 3;
+        private static readonly TimeSpan TransientPause = TimeSpan.FromSeconds(30);
+
+        private static bool IsTransient(string? providerError) {
+            return !string.IsNullOrEmpty(providerError)
+                && System.Text.RegularExpressions.Regex.IsMatch(providerError, @"HTTP (429|5\d\d)|timed out");
+        }
+
         private static async Task AssertProviderAnswers(IWeatherAnalysisService service, string providerName) {
             (await service.InitializeAsync()).Should().BeTrue();
 
             using var sky = SyntheticSky();
-            var result = await service.AnalyzeImageAsync(sky);
+            WeatherAnalysisResult result = null!;
+            for (var attempt = 1; attempt <= TransientAttempts; attempt++)
+            {
+                result = await service.AnalyzeImageAsync(sky);
+                if (!result.FellBackToLocal || !IsTransient(result.ProviderError) || attempt == TransientAttempts)
+                {
+                    break;
+                }
+                TestContext.Progress.WriteLine($"{providerName} answered a transient error ({result.ProviderError}); attempt {attempt}/{TransientAttempts}, retrying in {TransientPause.TotalSeconds:F0}s");
+                await Task.Delay(TransientPause);
+            }
 
             result.FellBackToLocal.Should().BeFalse(because: $"{providerName} should have answered; it did not: {result.ProviderError}");
             result.Provider.Should().Be(providerName);
