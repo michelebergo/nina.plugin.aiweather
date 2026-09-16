@@ -118,6 +118,16 @@ jobs:
           cd nina.plugin.manifests
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Base the branch on upstream's current main, not on the fork's stale copy. A
+          # pull request opened from a branch that is behind upstream has no merge ref
+          # yet, and its first pipeline run on isbeorn's side fails before scheduling a
+          # single job - it did on every release so far, until a manual update-branch
+          # triggered a second run. Keeping the fork's main in step also stops the PR
+          # from showing upstream's own deletions as if they were ours.
+          git remote add upstream https://github.com/isbeorn/nina.plugin.manifests.git
+          git fetch upstream main
+          git checkout -B main upstream/main
+          git push origin main --force-with-lease
           git checkout -b "${{ env.PLUGIN_NAME_SANITIZED }}/${{ github.ref_name }}"
 
       - name: Copy manifest file
