@@ -28,6 +28,30 @@ namespace AIWeather
         private CancellationTokenSource? _startCts;
         private Media? _currentMedia;
 
+        // A start asked for while the view is not on screen. A native child window cannot be
+        // created inside an invisible visual tree, so instead of polling for a handle that
+        // cannot come, the request is parked here and honoured when the view becomes visible.
+        private (string url, string? user, string? password)? _pendingStart;
+
+        // What was last asked to play, so a lost stream can be brought back without the
+        // caller's help.
+        private (string url, string? user, string? password)? _lastStart;
+
+        // True while a stop was asked for by the plugin itself; a Stopped/EndReached event
+        // arriving then is our own doing and must not trigger a reconnect.
+        private bool _stopRequested;
+
+        // Reconnection with growing pauses: 5, 10, 20, 40, then 60 seconds, reset by a
+        // successful playback. A camera that drops the session every few minutes (the Tapo
+        // does) would otherwise leave the preview dark until the next tab switch.
+        private int _reconnectAttempt;
+        private CancellationTokenSource? _reconnectCts;
+        private static readonly TimeSpan[] ReconnectPauses =
+        {
+            TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20),
+            TimeSpan.FromSeconds(40), TimeSpan.FromSeconds(60),
+        };
+
         public AIWeatherPreviewView()
         {
             InitializeComponent();
@@ -70,6 +94,16 @@ namespace AIWeather
                             var runningSource = viewModel.Sources?.FirstOrDefault(src => src.IsRunning);
                             if (runningSource != null && viewModel.CurrentCaptureMode == CaptureMode.RTSPStream)
                             {
+                                // SetView, called from this same Loaded event, has usually started the
+                                // stream already. Starting again here created a second player one
+                                // second after the first on every tab switch - two RTSP sessions on a
+                                // camera that grants few, and the first torn down for nothing.
+                                if (IsStreamAlive())
+                                {
+                                    Logger.Debug("View reloaded with the RTSP stream already playing - no restart needed");
+                                    return;
+                                }
+
                                 Logger.Info($"🔄 View reloaded with running RTSP stream - restarting playback for {runningSource.FullUrl}");
                                 // Restart the stream only if we're still on the UI thread and view is loaded
                                 if (this.IsLoaded)
@@ -118,6 +152,13 @@ namespace AIWeather
             {
                 if (this.IsVisible)
                 {
+                    if (_pendingStart is { } pending)
+                    {
+                        _pendingStart = null;
+                        Logger.Info("AI Weather view is visible again - starting the deferred RTSP playback");
+                        _ = StartStreamAsync(pending.url, pending.user, pending.password);
+                    }
+
                     Dispatcher.BeginInvoke(new Action(() =>
                     {
                         try
@@ -239,12 +280,30 @@ namespace AIWeather
 
                 Logger.Info($"VideoPanel found. Size: {VideoPanel.ActualWidth}x{VideoPanel.ActualHeight}");
 
+                _lastStart = (rtspUrl, username, password);
+                CancelReconnect();
+
+                // NINA raises Loaded for views it is rebuilding off-screen (every equipment
+                // refresh on 3.3 does). Off-screen there is no window to render into, and
+                // waiting for one only produced "handle never became available" four times a
+                // night. Park the request; IsVisibleChanged picks it up.
+                if (!IsOnScreen())
+                {
+                    _pendingStart = (rtspUrl, username, password);
+                    Logger.Info("AI Weather view is not on screen - RTSP playback deferred until it is");
+                    return;
+                }
+
                 // Cancel any previous start loop before tearing down the current player/host.
                 _startCts?.Cancel();
                 _startCts?.Dispose();
                 _startCts = null;
 
                 await StopStreamCoreAsync();
+
+                // Only now: StopStreamCoreAsync marks the stop as ours, and from here on a
+                // Stopped/EndReached event is the stream being lost, which must reconnect.
+                _stopRequested = false;
 
                 // Create a fresh CTS for this start attempt. StopStreamCoreAsync clears _startCts.
                 _startCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -293,10 +352,17 @@ namespace AIWeather
                 Logger.Info($"VideoHost handle resolved: {hwnd}");
                 if (hwnd == IntPtr.Zero)
                 {
-                    Logger.Error("VideoHost handle never became available; aborting playback setup");
+                    // The view left the screen while the host was being built. Not an error:
+                    // the start is parked and resumes when the view is visible again.
+                    Logger.Warning("VideoHost handle not available (view left the screen); RTSP playback deferred");
                     await StopStreamCoreAsync();
+                    _pendingStart = (rtspUrl, username, password);
                     return;
                 }
+
+                player.EncounteredError += OnPlayerEncounteredError;
+                player.EndReached += OnPlayerEndReached;
+                player.Stopped += OnPlayerStopped;
 
                 player.Hwnd = hwnd;
                 Logger.Info($"Player Hwnd set to: {player.Hwnd}, Volume: {player.Volume}, HW decode: {player.EnableHardwareDecoding}");
@@ -310,7 +376,7 @@ namespace AIWeather
                     Logger.Debug($"VideoHost initial resize failed: {ex.Message}");
                 }
 
-                var playbackUrl = BuildAuthenticatedUrl(rtspUrl, username, password);
+                var playbackUrl = StripCredentials(rtspUrl);
                 Logger.Info($"Creating media for URL: {RedactRtspCredentials(playbackUrl)}");
 
                 _currentMedia?.Dispose();
@@ -318,7 +384,15 @@ namespace AIWeather
                 _currentMedia.AddOption(":network-caching=1000");
                 _currentMedia.AddOption(":rtsp-tcp");
                 _currentMedia.AddOption(":no-audio");
-                Logger.Info("Media created with options: network-caching=1000, rtsp-tcp, no-audio");
+                // Credentials go in as VLC options rather than in the URI: VLC deprecates the
+                // latter (it logged so on every start), and an option never needs
+                // percent-encoding of the '@' and ':' that camera passwords are full of.
+                if (!string.IsNullOrWhiteSpace(username))
+                {
+                    _currentMedia.AddOption($":rtsp-user={username}");
+                    _currentMedia.AddOption($":rtsp-pwd={password ?? string.Empty}");
+                }
+                Logger.Info($"Media created with options: network-caching=1000, rtsp-tcp, no-audio{(string.IsNullOrWhiteSpace(username) ? string.Empty : ", rtsp-user/rtsp-pwd")}");
 
                 Logger.Info("Starting playback...");
                 var playResult = player.Play(_currentMedia);
@@ -346,6 +420,7 @@ namespace AIWeather
                     if (player.IsPlaying)
                     {
                         Logger.Info("RTSP stream playing successfully!");
+                        _reconnectAttempt = 0;
                         try
                         {
                             UpdateVideoHostLayoutToFill();
@@ -446,6 +521,10 @@ namespace AIWeather
         {
             try
             {
+                _stopRequested = true;
+                _pendingStart = null;
+                CancelReconnect();
+
                 _startCts?.Cancel();
                 _startCts?.Dispose();
                 _startCts = null;
@@ -454,6 +533,20 @@ namespace AIWeather
                 {
                     var host = _videoHost;
                     var player = host.Player;
+
+                    try
+                    {
+                        if (player != null)
+                        {
+                            player.EncounteredError -= OnPlayerEncounteredError;
+                            player.EndReached -= OnPlayerEndReached;
+                            player.Stopped -= OnPlayerStopped;
+                        }
+                    }
+                    catch
+                    {
+                        // best-effort
+                    }
 
                     try
                     {
@@ -513,6 +606,109 @@ namespace AIWeather
             }
         }
 
+        /// <summary>A player exists and is starting or playing: nothing to restart.</summary>
+        private bool IsStreamAlive()
+        {
+            if (_isStartingStream) { return true; }
+            var player = _videoHost?.Player;
+            if (player == null) { return false; }
+            try
+            {
+                var state = player.State;
+                return state == VLCState.Opening || state == VLCState.Buffering || state == VLCState.Playing;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Whether this view is part of a window that is actually shown. IsVisible alone is
+        /// not enough: a view NINA is rebuilding off-screen reports IsVisible while it has no
+        /// presentation source, and an HwndHost cannot be built without one.
+        /// </summary>
+        private bool IsOnScreen()
+        {
+            return IsVisible && PresentationSource.FromVisual(this) != null;
+        }
+
+        private void OnPlayerEncounteredError(object? sender, EventArgs e) => OnPlaybackLost("the player reported an error");
+        private void OnPlayerEndReached(object? sender, EventArgs e) => OnPlaybackLost("the stream ended");
+        private void OnPlayerStopped(object? sender, EventArgs e) => OnPlaybackLost("the player stopped");
+
+        /// <summary>
+        /// Called on VLC's thread when playback ends for a reason that is not ours. The
+        /// Tapo drops its RTSP session every few minutes; without this the preview stayed
+        /// dark until the next tab switch while the safety monitor kept working underneath.
+        /// </summary>
+        private void OnPlaybackLost(string reason)
+        {
+            if (_stopRequested) { return; }
+            Dispatcher.BeginInvoke(new Action(() => ScheduleReconnect(reason)), DispatcherPriority.Background);
+        }
+
+        private void ScheduleReconnect(string reason)
+        {
+            if (_stopRequested || _lastStart is not { } last || _reconnectCts != null) { return; }
+
+            var pause = ReconnectPauses[Math.Min(_reconnectAttempt, ReconnectPauses.Length - 1)];
+            _reconnectAttempt++;
+            var attempt = _reconnectAttempt;
+            Logger.Info($"RTSP preview lost ({reason}); reconnecting in {pause.TotalSeconds:F0}s (attempt {attempt})");
+
+            var cts = new CancellationTokenSource();
+            _reconnectCts = cts;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(pause, cts.Token);
+                    await Dispatcher.InvokeAsync(async () =>
+                    {
+                        if (ReferenceEquals(_reconnectCts, cts)) { _reconnectCts = null; }
+                        if (cts.IsCancellationRequested || _stopRequested) { return; }
+                        Logger.Info($"RTSP preview reconnect attempt {attempt}");
+                        await StartStreamAsync(last.url, last.user, last.password);
+                    }).Task.Unwrap();
+                }
+                catch (OperationCanceledException)
+                {
+                    // a stop or a fresh start superseded this reconnect
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"RTSP preview reconnect failed: {ex.Message}");
+                }
+                finally
+                {
+                    cts.Dispose();
+                }
+            });
+        }
+
+        private void CancelReconnect()
+        {
+            var cts = _reconnectCts;
+            _reconnectCts = null;
+            try { cts?.Cancel(); } catch { /* best-effort */ }
+        }
+
+        /// <summary>The URL without user:password@, which now travel as VLC options.</summary>
+        private static string StripCredentials(string rtspUrl)
+        {
+            try
+            {
+                var uri = new Uri(rtspUrl);
+                if (string.IsNullOrEmpty(uri.UserInfo)) { return rtspUrl; }
+                return new UriBuilder(uri) { UserName = string.Empty, Password = string.Empty }.Uri.ToString();
+            }
+            catch
+            {
+                return rtspUrl;
+            }
+        }
+
         private static async Task StopAndDisposePlayerBestEffortAsync(MediaPlayer? player, TimeSpan timeout)
         {
             if (player == null)
@@ -552,34 +748,6 @@ namespace AIWeather
             catch (Exception ex)
             {
                 Logger.Error($"Unexpected error stopping/disposing MediaPlayer: {ex.Message}");
-            }
-        }
-
-        private static string BuildAuthenticatedUrl(string rtspUrl, string? username, string? password)
-        {
-            try
-            {
-                var uri = new Uri(rtspUrl);
-                if (!string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
-                {
-                    var builder = new UriBuilder(uri)
-                    {
-                        UserName = username,
-                        Password = password
-                    };
-                    return builder.Uri.ToString();
-                }
-
-                if (string.IsNullOrEmpty(uri.AbsolutePath) || uri.AbsolutePath == "/")
-                {
-                    Logger.Warning($"RTSP URL has no path component. Most cameras need a path like /stream or /live. Current URL: {RedactRtspCredentials(rtspUrl)}");
-                }
-
-                return rtspUrl;
-            }
-            catch
-            {
-                return rtspUrl;
             }
         }
 

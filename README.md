@@ -96,6 +96,20 @@ The preview panel in NINA shows:
 - Real-time activity log of captures, analyses, and events
 - Controls to force an immediate refresh or save the current image
 
+
+The preview is a convenience and is kept **separate from the safety path**: the safety
+monitor captures its own frames through FFmpeg, so a preview that stops changes nothing
+about the verdict. What the preview does on its own:
+
+- It starts **once** per opening of the panel, and only when the panel is actually on
+  screen. N.I.N.A. 3.3 rebuilds views off-screen on every equipment refresh; a start
+  asked for then is parked and happens when the panel becomes visible.
+- If the camera drops the session — some cameras do every few minutes — the preview
+  **reconnects by itself**, waiting 5, 10, 20, 40 and then 60 seconds between attempts,
+  and starts counting again from 5 after a successful playback. Each attempt is one line
+  in the log.
+- RTSP credentials are handed to VLC as options, not embedded in the URL, so a password
+  with `@`, `:` or `/` needs no encoding and VLC no longer warns about it.
 ## Installation
 
 1. Download the latest release from the [Releases](https://github.com/michelebergo/nina.plugin.aiweather/releases) page.
