@@ -30,8 +30,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.15.4.0")]
-[assembly: AssemblyFileVersion("1.15.4.0")]
+[assembly: AssemblyVersion("1.15.5.0")]
+[assembly: AssemblyFileVersion("1.15.5.0")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MIT")]
@@ -63,7 +63,7 @@ using System.Runtime.InteropServices;
 • Automatic Sky Analysis: AI vision models analyze your all-sky camera images to determine cloud coverage, detect rain and fog
 • Continuous Protection: Periodic image capture and analysis runs in the background during your entire imaging session
 • Instant Alerts: Weather status updates in real-time with detailed condition reports and cloud coverage percentages
-• Live Preview: See exactly what the AI sees with the built-in camera preview panel
+• Live Preview: See exactly what the AI sees with the built-in camera preview panel - it starts only when the panel is on screen and reconnects on its own if the camera drops the session, with growing pauses between attempts. The preview is separate from the safety path: a preview that stops changes nothing about the verdict
 
 📷 3 FLEXIBLE CAPTURE MODES:
 • RTSP Stream: Live video from network IP cameras (Dahua, Hikvision, etc.) with real-time preview and snapshot extraction
