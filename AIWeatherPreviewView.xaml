@@ -15,24 +15,70 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
 
         <!-- Compact DataGrid/editor styling (RTSP Client-like) -->
+        <!-- Cells in edit mode take every colour from N.I.N.A.'s theme (the way the RTSP
+             Client plugin does it): without an explicit foreground, caret and background,
+             WPF falls back to its system colours and the cell goes black on a dark theme. -->
+        <SolidColorBrush x:Key="EditingCellBackgroundBrush" Opacity="0.08" Color="{Binding Color, Source={StaticResource PrimaryBrush}}"/>
+
         <Style x:Key="CompactCellTextBoxStyle" TargetType="TextBox">
             <Setter Property="Padding" Value="4,0"/>
             <Setter Property="MinHeight" Value="22"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource PrimaryBrush}"/>
+            <Setter Property="Background" Value="{StaticResource EditingCellBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
         </Style>
 
         <Style x:Key="CompactCellPasswordBoxStyle" TargetType="PasswordBox">
             <Setter Property="Padding" Value="4,0"/>
             <Setter Property="MinHeight" Value="22"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource PrimaryBrush}"/>
+            <Setter Property="Background" Value="{StaticResource EditingCellBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
         </Style>
 
-        <Style x:Key="CompactCellComboBoxStyle" TargetType="ComboBox">
+        <!-- Selected and hovered cells and rows: theme brushes, never the system highlight. -->
+        <Style x:Key="ThemedDataGridCell" TargetType="DataGridCell">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource SecondaryBackgroundBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ThemedDataGridRow" TargetType="DataGridRow" BasedOn="{StaticResource StandardDataGridRow}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource BackgroundBrush}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Based on N.I.N.A.'s own ComboBox style: a style that does not chain to it gets
+             WPF's default template, which is white whatever the theme. -->
+        <Style x:Key="CompactCellComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
             <Setter Property="Padding" Value="2,0"/>
             <Setter Property="MinHeight" Value="22"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
         </Style>
 
         <Style x:Key="CompactDataGridStyle" TargetType="DataGrid">
@@ -160,30 +206,30 @@
                             <!-- Why the monitor says what it says: a cloudy sky, a camera that
                                  stopped delivering, or an unreachable external device look
                                  identical without this line. -->
-                            <TextBlock Grid.Row="1" Text="{Binding SafetyReason, Mode=OneWay}" FontSize="10" FontStyle="Italic" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,0,0,5"/>
+                            <TextBlock Grid.Row="1" Text="{Binding SafetyReason, Mode=OneWay}" FontStyle="Italic" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,0,0,5"/>
 
-                            <TextBlock Grid.Row="2" Text="{Binding WeatherCondition, Mode=OneWay}" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,5"/>
-                            <TextBlock Grid.Row="3" FontSize="10" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center">
+                            <TextBlock Grid.Row="2" Text="{Binding WeatherCondition, Mode=OneWay}" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                            <TextBlock Grid.Row="3" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center">
                                 <Run Text="Cloud: "/>
                                 <Run Text="{Binding CloudCoverage, Mode=OneWay, StringFormat={}{0:F0}%}"/>
                                 <Run Text=" | Confidence: "/>
                                 <Run Text="{Binding Confidence, Mode=OneWay, StringFormat={}{0:F0}%}"/>
                             </TextBlock>
 
-                            <TextBlock Grid.Row="4" FontSize="9" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,2,0,0">
+                            <TextBlock Grid.Row="4" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,2,0,0">
                                 <Run Text="Limits (High/Low): "/>
                                 <Run Text="{Binding HighThreshold, Mode=OneWay, StringFormat={}{0:F0}%}"/>
                                 <Run Text=" / "/>
                                 <Run Text="{Binding LowThreshold, Mode=OneWay, StringFormat={}{0:F0}%}"/>
                             </TextBlock>
 
-                            <TextBlock Grid.Row="5" Text="{Binding AiSettingsSummary, Mode=OneWay}" FontSize="9" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                            <TextBlock Grid.Row="5" Text="{Binding AiSettingsSummary, Mode=OneWay}" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,6,0,0"/>
 
                             <!-- The provider is not the one answering. The offline fallback keeps
                                  the night safe; this line keeps the owner from paying a whole
                                  night for a provider that rejects every request. Collapsed while
                                  the provider answers. -->
-                            <TextBlock Grid.Row="6" Text="{Binding ProviderHealth, Mode=OneWay}" FontSize="10" FontWeight="Bold" Foreground="#E0A020" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,6,0,0">
+                            <TextBlock Grid.Row="6" Text="{Binding ProviderHealth, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource NotificationWarningBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,6,0,0">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Style.Triggers>
@@ -205,7 +251,7 @@
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             
-                            <TextBlock Grid.Row="0" Text="Activity Log" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,5"/>
+                            <TextBlock Grid.Row="0" Text="Activity Log" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,5"/>
                             
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                 <TextBox Text="{Binding ActivityLog, Mode=OneWay}" 
@@ -223,8 +269,8 @@
                     <!-- Analysis Info -->
                     <Border Grid.Row="2" Background="{x:Null}" BorderThickness="0,1,0,0" Padding="10">
                         <StackPanel>
-                            <TextBlock Text="{Binding Description, Mode=OneWay}" FontSize="10" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,5"/>
-                            <TextBlock FontSize="9" Foreground="{DynamicResource PrimaryBrush}">
+                            <TextBlock Text="{Binding Description, Mode=OneWay}" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" Margin="0,0,0,5"/>
+                            <TextBlock Foreground="{DynamicResource PrimaryBrush}">
                                 <Run Text="Last update: "/>
                                 <Run Text="{Binding LastUpdate, Mode=OneWay, StringFormat={}{0:HH:mm:ss}}"/>
                             </TextBlock>
@@ -243,7 +289,7 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 
-                <TextBlock Grid.Row="0" Text="Camera sources" FontWeight="Bold" FontSize="13" Margin="10,8,10,5" Foreground="{DynamicResource PrimaryBrush}"/>
+                <TextBlock Grid.Row="0" Text="Camera sources" FontWeight="Bold" Margin="10,8,10,5" Foreground="{DynamicResource PrimaryBrush}"/>
                 
                 <!-- DataGrid for URL modes (RTSP and HTTP) -->
                 <DataGrid Grid.Row="1" 
@@ -266,7 +312,9 @@
                           Margin="10,0,10,5"
                           MinHeight="80"
                           MaxHeight="150"
-                          Style="{StaticResource CompactDataGridStyle}">
+                          Style="{StaticResource CompactDataGridStyle}"
+                          CellStyle="{StaticResource ThemedDataGridCell}"
+                          RowStyle="{StaticResource ThemedDataGridRow}">
                     
                     <DataGrid.Columns>
                         <!-- Username - hidden in FolderWatch mode -->
@@ -274,13 +322,7 @@
                             <DataGridTextColumn.Header>
                                 <TextBlock Text="Username" Visibility="{Binding DataContext.IsUrlMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"/>
                             </DataGridTextColumn.Header>
-                            <DataGridTextColumn.Width>
-                                <Binding Path="DataContext.IsUrlMode" RelativeSource="{RelativeSource AncestorType=UserControl}">
-                                    <Binding.Converter>
-                                        <local:BoolToGridLengthConverter TrueValue="120" FalseValue="0"/>
-                                    </Binding.Converter>
-                                </Binding>
-                            </DataGridTextColumn.Width>
+                            <DataGridTextColumn.Width>120</DataGridTextColumn.Width>
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="VerticalAlignment" Value="Center"/>
@@ -297,13 +339,7 @@
                             <DataGridTemplateColumn.Header>
                                 <TextBlock Text="Password" Visibility="{Binding DataContext.IsUrlMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"/>
                             </DataGridTemplateColumn.Header>
-                            <DataGridTemplateColumn.Width>
-                                <Binding Path="DataContext.IsUrlMode" RelativeSource="{RelativeSource AncestorType=UserControl}">
-                                    <Binding.Converter>
-                                        <local:BoolToGridLengthConverter TrueValue="120" FalseValue="0"/>
-                                    </Binding.Converter>
-                                </Binding>
-                            </DataGridTemplateColumn.Width>
+                            <DataGridTemplateColumn.Width>120</DataGridTemplateColumn.Width>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="••••••" VerticalAlignment="Center" Padding="4,0"/>
@@ -324,13 +360,7 @@
                             <DataGridComboBoxColumn.Header>
                                 <TextBlock Text="Protocol" Visibility="{Binding DataContext.IsUrlMode, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"/>
                             </DataGridComboBoxColumn.Header>
-                            <DataGridComboBoxColumn.Width>
-                                <Binding Path="DataContext.IsUrlMode" RelativeSource="{RelativeSource AncestorType=UserControl}">
-                                    <Binding.Converter>
-                                        <local:BoolToGridLengthConverter TrueValue="100" FalseValue="0"/>
-                                    </Binding.Converter>
-                                </Binding>
-                            </DataGridComboBoxColumn.Width>
+                            <DataGridComboBoxColumn.Width>100</DataGridComboBoxColumn.Width>
                             <DataGridComboBoxColumn.ElementStyle>
                                 <Style TargetType="ComboBox" BasedOn="{StaticResource CompactCellComboBoxStyle}">
                                     <Setter Property="ItemsSource" Value="{Binding DataContext.Protocols, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
@@ -477,7 +507,9 @@
                           Margin="10,0,10,5"
                           MinHeight="80"
                           MaxHeight="150"
-                          Style="{StaticResource CompactDataGridStyle}">
+                          Style="{StaticResource CompactDataGridStyle}"
+                          CellStyle="{StaticResource ThemedDataGridCell}"
+                          RowStyle="{StaticResource ThemedDataGridRow}">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Folder Path" Binding="{Binding MediaUrl}" Width="*" IsReadOnly="False">
                             <DataGridTextColumn.ElementStyle>

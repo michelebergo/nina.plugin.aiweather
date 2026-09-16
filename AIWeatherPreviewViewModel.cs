@@ -1088,12 +1088,15 @@ namespace AIWeather
         // Camera Source Management Commands
         private void AddSource()
         {
+            // A new row starts with the credentials already saved: the camera account does
+            // not change because the address did, and a row born empty used to be saved
+            // over the good credentials the moment it was started.
             var newSource = new CameraSource
             {
                 Protocol = "rtsp://",
                 MediaUrl = "",
-                Username = "",
-                Password = ""
+                Username = Properties.Settings.Default.RtspUsername ?? "",
+                Password = Properties.Settings.Default.RtspPassword ?? ""
             };
             Sources.Add(newSource);
             AddLog("➕ New camera source added");
@@ -1162,8 +1165,16 @@ namespace AIWeather
 
                     // Update settings with this source's details
                     Properties.Settings.Default.RtspUrl = source.FullUrl;
-                    Properties.Settings.Default.RtspUsername = source.Username;
-                    Properties.Settings.Default.RtspPassword = source.Password;
+                    // Only real credentials are saved; an empty field must not erase the
+                    // ones that work (clear them from the options page if that is meant).
+                    if (!string.IsNullOrEmpty(source.Username))
+                    {
+                        Properties.Settings.Default.RtspUsername = source.Username;
+                    }
+                    if (!string.IsNullOrEmpty(source.Password))
+                    {
+                        Properties.Settings.Default.RtspPassword = source.Password;
+                    }
                     CoreUtil.SaveSettings(Properties.Settings.Default);
 
                     try

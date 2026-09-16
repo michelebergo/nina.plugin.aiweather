@@ -30,7 +30,7 @@
                 <TextBox Text="{Binding Options.RtspUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                          Width="300" HorizontalAlignment="Left"/>
                 <TextBlock Text="Configure username/password in the AI Weather Monitor imaging tab" 
-                           FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
+                           Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
             </StackPanel>
 
             <!-- HTTP Image Download (visible when mode = 1) -->
@@ -41,7 +41,7 @@
                 <TextBlock Text="Image URL:" Margin="0,0,0,2"/>
                 <TextBox Text="{Binding Options.INDIDeviceName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                          Width="300" HorizontalAlignment="Left"/>
-                <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0" Width="300" HorizontalAlignment="Left">
+                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0" Width="300" HorizontalAlignment="Left">
                     <Run Text="Enter full URL to latest image"/>
                     <LineBreak/>
                     <Run Text="Example: http://192.168.1.100/image.jpg"/>
@@ -70,7 +70,7 @@
                     <Button Content="Browse..." Margin="8,0,0,0" Padding="10,2"
                             Click="BrowseFolder_Click"/>
                 </StackPanel>
-                <TextBlock Text="Folder containing latest all-sky images" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
+                <TextBlock Text="Folder containing latest all-sky images" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
             </StackPanel>
 
             <!-- Analysis Provider -->
@@ -87,8 +87,8 @@
                 <Button Content="Test analysis with this provider" Padding="10,2" HorizontalAlignment="Left"
                         Click="TestAnalysis_Click"/>
             </StackPanel>
-            <TextBlock Text="{Binding ProviderTestStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left"/>
-            <TextBlock Text="Sends a small synthetic sky image to the selected model and shows what comes back" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
+            <TextBlock Text="{Binding ProviderTestStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left"/>
+            <TextBlock Text="Sends a small synthetic sky image to the selected model and shows what comes back" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
             
             <!-- Check Interval -->
             <TextBlock Text="Check Interval (minutes):" Margin="0,0,0,2"/>
@@ -99,14 +99,14 @@
             <TextBlock Text="Cloud Coverage High Threshold (%):" Margin="0,10,0,2"/>
             <TextBox Text="{Binding CloudCoverageThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                      Width="100" HorizontalAlignment="Left"/>
-            <TextBlock Text="While Safe: coverage at or above this value turns the status Unsafe" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
+            <TextBlock Text="While Safe: coverage at or above this value turns the status Unsafe" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
 
             <!-- Cloud Coverage Safe Threshold -->
             <TextBlock Text="Cloud Coverage Low Threshold (%):" Margin="0,10,0,2"/>
             <TextBox Text="{Binding CloudCoverageSafeThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                      Width="100" HorizontalAlignment="Left"/>
-            <TextBlock Text="While Unsafe: coverage must drop below this value before Safe returns" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
-            <TextBlock Text="Between the two values the status stays as it is, so a sky at the limit cannot flap" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
+            <TextBlock Text="While Unsafe: coverage must drop below this value before Safe returns" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
+            <TextBlock Text="Between the two values the status stays as it is, so a sky at the limit cannot flap" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
 
                     <!-- Generic File SafetyMonitor output file -->
                     <TextBlock Text="Generic File SafetyMonitor" Margin="0,20,0,2" FontWeight="Bold"/>
@@ -126,8 +126,8 @@
                         IsEnabled="{Binding Options.WriteSafetyStatusFile}"
                         Click="BrowseSafetyStatusFile_Click"/>
                     </StackPanel>
-                    <TextBlock Text="Writes a single line: Safe or Unsafe" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,4"/>
-                    <TextBlock Text="Point your ASCOM Generic File SafetyMonitor to this file" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,8"/>
+                    <TextBlock Text="Writes a single line: Safe or Unsafe" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,4"/>
+                    <TextBlock Text="Point your ASCOM Generic File SafetyMonitor to this file" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,8"/>
 
             <!-- Maximum data age: the sky verdict expires instead of being trusted forever -->
             <TextBlock Text="Fail-safe" Margin="0,20,0,2" FontWeight="Bold"/>
@@ -135,7 +135,7 @@
             <TextBox Text="{Binding Options.MaxDataAgeMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      Width="100" HorizontalAlignment="Left"/>
             <TextBlock Text="If no sky analysis succeeds within this time — a dead camera, an unreachable stream — the monitor reports Unsafe instead of holding the last known state. Automatic means three check intervals, never less than 10 minutes."
-                       Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
             <!-- External ASCOM safety monitor, ANDed with the sky verdict -->
             <TextBlock Text="External ASCOM Safety Monitor" Margin="0,20,0,2" FontWeight="Bold"/>
@@ -156,16 +156,16 @@
                         Click="ChooseAscomSafetyMonitor_Click"/>
             </StackPanel>
             <TextBlock Text="The result is combined with AND: imaging is Safe only when both the sky analysis and the external device report Safe. Use it to pair all-sky cloud/rain/fog detection with an environmental monitor (humidity, dew point, rain sensor)."
-                       Margin="0,0,0,4" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                       Margin="0,0,0,4" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
             <TextBlock Text="If the external device cannot be connected or read, the monitor reports Unsafe."
-                       Margin="0,0,0,8" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                       Margin="0,0,0,8" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
 
             <!-- GitHub Models Token -->
             <StackPanel Margin="0,10,0,0"
                         Visibility="{Binding IsGitHubModelsProvider, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="GitHub retired this service on July 30, 2026 — it no longer works for anyone. Analyses fall back to the Local heuristic; switch to Ollama/Custom (local, free), Google Gemini or OpenAI."
-                           FontSize="10" Foreground="Salmon" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                           Foreground="Salmon" TextWrapping="Wrap" Margin="0,0,0,6"/>
                 <TextBlock Text="GitHub Personal Access Token:" Margin="0,0,0,2"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                     <PasswordBox Width="360"
@@ -177,7 +177,7 @@
                             Padding="10,2"
                             Click="TryToken_Click"/>
                 </StackPanel>
-                <TextBlock Text="{Binding GitHubTokenStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="{Binding GitHubTokenStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
             </StackPanel>
 
             <!-- OpenAI Key -->
@@ -194,8 +194,8 @@
                             Padding="10,2"
                             Click="TryOpenAIKey_Click"/>
                 </StackPanel>
-                <TextBlock Text="{Binding OpenAIKeyStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
-                <TextBlock Text="Used with https://api.openai.com" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="{Binding OpenAIKeyStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="Used with https://api.openai.com" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
             </StackPanel>
 
             <!-- Gemini Key -->
@@ -212,8 +212,8 @@
                             Padding="10,2"
                             Click="TryGeminiKey_Click"/>
                 </StackPanel>
-                <TextBlock Text="{Binding GeminiKeyStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
-                <TextBlock Text="Used with Generative Language API" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="{Binding GeminiKeyStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="Used with Generative Language API" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
             </StackPanel>
 
             <!-- Anthropic Key -->
@@ -230,8 +230,8 @@
                             Padding="10,2"
                             Click="TryAnthropicKey_Click"/>
                 </StackPanel>
-                <TextBlock Text="{Binding AnthropicKeyStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
-                <TextBlock Text="Used with https://api.anthropic.com" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="{Binding AnthropicKeyStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="Used with https://api.anthropic.com" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
             </StackPanel>
 
             <!-- Ollama Base URL -->
@@ -241,15 +241,15 @@
                 <TextBox Text="{Binding OllamaBaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          Width="360"
                          HorizontalAlignment="Left"/>
-                <TextBlock Text="Default: http://localhost:11434/v1" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
-                <TextBlock Text="Also works with LM Studio, llama.cpp, and LocalAI endpoints" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
-                <TextBlock Text="No API key required. Use a vision-capable model (e.g. llava, qwen2.5vl)" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="Default: http://localhost:11434/v1" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="Also works with LM Studio, llama.cpp, and LocalAI endpoints" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="No API key required. Use a vision-capable model (e.g. llava, qwen2.5vl)" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
                 <TextBlock Text="Disable model thinking (recommended):" Margin="0,10,0,2"/>
                 <CheckBox IsChecked="{Binding OllamaDisableThinking, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                           Width="64"
                           HorizontalAlignment="Left"
                           VerticalAlignment="Center"/>
-                <TextBlock Text="Thinking-capable models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering, which can multiply response times. Turn off only on fast hardware." Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+                <TextBlock Text="Thinking-capable models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering, which can multiply response times. Turn off only on fast hardware." Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
             </StackPanel>
             
                 <!-- Model Selection (non-local providers) -->
@@ -272,8 +272,8 @@
 
                 <TextBlock Text="{Binding ModelsStatus}"
                        Margin="0,4,0,0"
-                       FontSize="10"
-                       Foreground="#AAAAAA"/>
+                      
+                       Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
                 </StackPanel>
 
             <!-- Site notes: local knowledge appended to the analysis prompt of every provider.
@@ -288,7 +288,7 @@
                      TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto"/>
             <TextBlock Text="Anything about your site or camera the AI cannot guess, in your own words. Example: &quot;Clouds toward the south are lit orange by the city and can look like overcast&quot; or &quot;In daylight the sun reflects off the dome and creates a hazy halo&quot;. Sent with every analysis, for all providers. Keep it short — a few sentences."
-                       Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
 
             <!-- Description Section -->
             <TextBlock Text="About AI Weather" FontWeight="Bold" Margin="0,20,0,10"/>
@@ -326,7 +326,7 @@
             </StackPanel>
 
             <TextBlock Text="Connect the safety monitor under Equipment > Safety Monitor > All Sky Camera Safety Monitor to start protecting your imaging sessions."
-                       Margin="0,0,0,0" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left" FontSize="11" Foreground="#AAAAAA"/>
+                       Margin="0,0,0,0" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
         </StackPanel>
     </DataTemplate>
     

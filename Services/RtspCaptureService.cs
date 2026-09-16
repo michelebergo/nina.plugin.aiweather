@@ -570,6 +570,11 @@ namespace AIWeather.Services
                 Logger.Info($"Frame saved to: {filePath}");
                 return true;
             }
+            catch (OperationCanceledException)
+            {
+                Logger.Debug("Frame save cancelled (monitoring stopped)");
+                return false;
+            }
             catch (Exception ex)
             {
                 Logger.Error($"Error saving frame: {ex.Message}", ex);

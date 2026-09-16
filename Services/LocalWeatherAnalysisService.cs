@@ -76,18 +76,18 @@ namespace AIWeather.Services
                 Logger.Info($"Weather analysis complete: {result.Condition}, Cloud Coverage: {result.CloudCoverage:F1}%, Safe: {result.IsSafeForImaging}");
                 return result;
             }
+            catch (OperationCanceledException)
+            {
+                // Monitoring was stopped mid-analysis. Nothing to report.
+                throw;
+            }
             catch (Exception ex)
             {
+                // The offline analyzer is the last resort, so there is nothing further to fall
+                // back to - but a failure is still an absence, not a reading of "unknown, 0%,
+                // unsafe" handed to the safety state as if the sky had been measured.
                 Logger.Error($"Error analyzing image: {ex.Message}", ex);
-                return new WeatherAnalysisResult
-                {
-                    Timestamp = DateTime.UtcNow,
-                    Condition = WeatherCondition.Unknown,
-                    CloudCoverage = 0,
-                    Confidence = 0,
-                    IsSafeForImaging = false,
-                    Description = $"Analysis failed: {ex.Message}"
-                };
+                throw new WeatherResponseParseException($"Offline analysis failed: {ex.Message}", string.Empty, ex);
             }
         }
 

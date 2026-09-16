@@ -629,6 +629,11 @@ namespace AIWeather.Equipment
                             await PerformWeatherCheckAsync(_cts.Token);
                             Logger.Debug($"Weather check complete - next check in {intervalMinutes} min");
                         }
+                        catch (OperationCanceledException)
+                        {
+                            // Our own stop, not a failure: monitoring was switched off mid-check.
+                            Logger.Info("Weather check cancelled because monitoring stopped");
+                        }
                         catch (Exception ex)
                         {
                             Logger.Error($"Error in periodic weather check: {ex.Message}", ex);
@@ -775,6 +780,11 @@ namespace AIWeather.Equipment
 
                 frame.Dispose();
             }
+            catch (OperationCanceledException)
+            {
+                // Monitoring stopped mid-check: our own doing, nothing to report.
+                Logger.Info("Weather check cancelled because monitoring stopped");
+            }
             catch (Exception ex)
             {
                 // Same contract as a failed capture: no new verdict, so the existing one
@@ -858,6 +868,14 @@ namespace AIWeather.Equipment
         /// </summary>
         public async Task<WeatherAnalysisResult?> ForceCheckAsync(CancellationToken cancellationToken = default)
         {
+            // A start right after a start (a user pressing play and stop to test a camera)
+            // does not need a fresh provider call: the sky of thirty seconds ago is the sky.
+            if (AnalysisThrottle.ShouldReuse(_lastAnalysisUtc, DateTime.UtcNow) && _lastResult != null)
+            {
+                Logger.Info($"Immediate check skipped: the last analysis is {(DateTime.UtcNow - _lastAnalysisUtc).TotalSeconds:F0}s old and is reused");
+                return _lastResult;
+            }
+
             await PerformWeatherCheckAsync(cancellationToken);
             return _lastResult;
         }

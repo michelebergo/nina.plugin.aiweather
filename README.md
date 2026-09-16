@@ -110,6 +110,15 @@ about the verdict. What the preview does on its own:
   in the log.
 - RTSP credentials are handed to VLC as options, not embedded in the URL, so a password
   with `@`, `:` or `/` needs no encoding and VLC no longer warns about it.
+- A new camera row inherits the saved username and password, and starting a row whose
+  credentials are empty never erases the saved ones. Clear them from the options page if
+  that is what you mean.
+- Pressing start right after a stop does not pay for a fresh analysis: if the last one is
+  less than 30 seconds old it is reused. Stopping in the middle of a check is logged as
+  what it is, not as an error.
+
+The panel and the options page use N.I.N.A.'s own theme resources for every colour and
+text size, so they follow the light and dark themes like the rest of the application.
 ## Installation
 
 1. Download the latest release from the [Releases](https://github.com/michelebergo/nina.plugin.aiweather/releases) page.

@@ -131,9 +131,14 @@ namespace AIWeather.Services
                 Logger.Info($"Ollama analysis complete: {result.Condition}, Cloud Coverage: {result.CloudCoverage:F1}%");
                 return result;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // The caller stopped monitoring: not a failure, not a reading. Propagate.
+                throw;
+            }
             catch (OperationCanceledException ex)
             {
-                Logger.Warning($"Ollama API call timed out or was cancelled, falling back to local analysis: {ex.Message}");
+                Logger.Warning($"Ollama API call timed out, falling back to local analysis: {ex.Message}");
                 var fallback = new LocalWeatherAnalysisService();
                 var result = await fallback.AnalyzeImageAsync(image, astroContext, cancellationToken);
                 result.Provider = "Ollama";

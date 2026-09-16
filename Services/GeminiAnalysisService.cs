@@ -139,9 +139,15 @@ namespace AIWeather.Services
                 Logger.Info($"Gemini analysis complete: {result.Condition}, Cloud Coverage: {result.CloudCoverage:F1}%");
                 return result;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // The caller stopped monitoring. Not a provider failure and not a reading:
+                // let it propagate, nothing gets recorded.
+                throw;
+            }
             catch (OperationCanceledException ex)
             {
-                Logger.Warning($"Gemini API call timed out or was cancelled, falling back to local analysis: {ex.Message}");
+                Logger.Warning($"Gemini API call timed out, falling back to local analysis: {ex.Message}");
                 return await FallBackAsync(image, astroContext, "Gemini timed out", cancellationToken);
             }
             catch (WeatherResponseParseException ex)
