@@ -30,8 +30,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.15.6.0")]
-[assembly: AssemblyFileVersion("1.15.6.0")]
+[assembly: AssemblyVersion("1.15.7.0")]
+[assembly: AssemblyFileVersion("1.15.7.0")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MIT")]
@@ -115,6 +115,7 @@ using System.Runtime.InteropServices;
 • Request negotiation: the plugin does not assume which parameters a model accepts. When a model rejects the request it retries with a simpler one and remembers what worked, so a model update on the provider side costs one extra call, not a night
 • Test analysis button: one real analysis with the selected provider and model, through the same request the safety monitor sends at night, so a model that does not answer is found at setup rather than from the log
 • Looks like N.I.N.A.: the panel and the options page use the application's own theme colours and text sizes, light or dark
+• One RTSP session per check: the safety monitor opens the stream, grabs a fresh frame and closes it, so a camera that drops idle sessions cannot starve the analysis and no RTSP slot is held between checks
 • Seamless NINA Integration: Works directly with NINA's safety monitor system to pause or abort sequences when conditions deteriorate
 
 Transform your all-sky camera into an intelligent weather guardian. Focus on imaging while AI Weather keeps watch over your equipment and data.")]
