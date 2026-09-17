@@ -25,6 +25,10 @@ namespace AIWeather.Services
 
         private string _lastInitializedRtspUrl = string.Empty;
 
+        // The URL the sanity warnings were last written for. Sessions are opened once
+        // per check now, so anything logged on open would otherwise repeat every cycle.
+        private string _warnedUrl = string.Empty;
+
         public bool IsInitialized
         {
             get
@@ -61,14 +65,16 @@ namespace AIWeather.Services
         {
             try
             {
-                Logger.Info($"RtspCaptureService - Initializing RTSP connection to: {RedactRtspUrl(rtspUrl)}");
+                Logger.Debug($"RtspCaptureService - Opening RTSP session: {RedactRtspUrl(rtspUrl)}");
 
                 _lastInitializedRtspUrl = rtspUrl;
 
                 try
                 {
-                    if (Uri.TryCreate(rtspUrl, UriKind.Absolute, out var uri))
+                    if (!string.Equals(_warnedUrl, rtspUrl, StringComparison.Ordinal)
+                        && Uri.TryCreate(rtspUrl, UriKind.Absolute, out var uri))
                     {
+                        _warnedUrl = rtspUrl;
                         if (string.IsNullOrWhiteSpace(uri.AbsolutePath) || uri.AbsolutePath == "/")
                         {
                             Logger.Warning($"RtspCaptureService - RTSP URL has no path component. Many cameras require a path like /stream or /live. URL: {RedactRtspUrl(rtspUrl)}");
@@ -115,7 +121,7 @@ namespace AIWeather.Services
                     return false;
                 }
 
-                Logger.Info($"RtspCaptureService - RTSP connection established successfully to {RedactRtspUrl(rtspUrl)}");
+                Logger.Debug($"RtspCaptureService - RTSP session open: {RedactRtspUrl(rtspUrl)}");
                 return true;
             }
             catch (Exception ex)
@@ -206,9 +212,20 @@ namespace AIWeather.Services
                                 Logger.Error($"Error converting RTSP frame to bitmap: {ex.Message}");
                                 return null;
                             }
+                            finally
+                            {
+                                // One session per check. A session kept open between checks
+                                // minutes apart went stale on the camera (every read came back
+                                // empty on a Tapo) and, when it did not, handed back the oldest
+                                // frame in FFmpeg's buffer rather than the sky of now. Opening,
+                                // grabbing and closing gives a fresh frame every time and holds
+                                // no RTSP slot on the camera in between.
+                                CloseSession("frame captured");
+                            }
                         }
 
                         Logger.Warning("RTSP capture returned empty frames after retries");
+                        CloseSession("no frame from this session");
 
                         // Fallback: if OpenCV/FFmpeg can't decode frames but VLC can play the stream,
                         // take a LibVLC snapshot (headless) and use that for analysis.
@@ -235,6 +252,21 @@ namespace AIWeather.Services
                 ErrorOccurred?.Invoke(this, ex.Message);
                 return null;
             }
+        }
+
+        /// <summary>Release the FFmpeg session; the next check opens a fresh one. Caller holds the lock.</summary>
+        private void CloseSession(string why)
+        {
+            try
+            {
+                _capture?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"RtspCaptureService - session dispose failed: {ex.Message}");
+            }
+            _capture = null;
+            Logger.Debug($"RtspCaptureService - RTSP session closed ({why})");
         }
 
         private static Bitmap? CaptureFrameViaVlcSnapshot(string rtspUrl, CancellationToken cancellationToken)

@@ -29,6 +29,18 @@ Choose how the plugin acquires sky images based on your camera setup:
 | **HTTP Image** | Remote cameras, INDI devices | Periodically downloads a single image from an HTTP/HTTPS URL. Supports Basic authentication. Lower resource usage than continuous streaming. |
 | **Folder Watch** | Any camera software | Monitors a local folder for the latest image file (.jpg, .png, .bmp, .tif). Compatible with AllSky, SharpCap, UFOCapture, ASI Studio, and any software that saves images to disk. |
 
+
+In RTSP mode the safety monitor opens its own session for every check, grabs one frame and
+closes it again. A session kept open between checks minutes apart goes stale on many
+cameras (a Tapo answered every read with an empty frame after a while) and, when it does
+not, hands back the oldest frame in the decoder's buffer rather than the sky of now.
+Opening, grabbing and closing costs a second or two per check, gives a fresh frame every
+time, and holds no RTSP slot on the camera in between — the preview is the only session
+left open. If the grab still fails, a VLC snapshot is taken as a fallback.
+
+The preview's decoder is chatty about timing ("picture is too late", late frames, clock
+complaints); those lines go to the debug log. What stays visible in the normal log are
+network events: a session drop, no data from the camera, a stream that cannot be opened.
 ### Multiple AI Providers
 
 | Provider | Models | Requirements |

@@ -106,7 +106,7 @@ namespace AIWeather.Services
                         Logger.Warning("RTSP capture requested but RTSP URL is empty");
                         return null;
                     }
-                    Logger.Info($"UnifiedCaptureService - Initializing RTSP capture for analysis: {RedactRtspUrl(authenticatedUrl)}");
+                    Logger.Debug($"UnifiedCaptureService - Opening RTSP capture for this check: {RedactRtspUrl(authenticatedUrl)}");
 
                     var ok = await _rtspService.InitializeAsync(authenticatedUrl, ct);
                     if (!ok)

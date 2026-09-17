@@ -206,9 +206,23 @@ namespace AIWeather
                     var message = RedactRtspCredentials(e.Message);
 
                     // LibVLC can be noisy with benign messages; don't surface these as warnings/errors.
+                    // The decoder's timing chatter goes with them: "picture is too late", late
+                    // frames dropped, PCR/clock complaints, buffer deadlocks. One night of a
+                    // Tapo stream produced 1,700 of those lines and nothing anyone could act on,
+                    // burying the eight session drops that mattered. Network events stay visible.
                     if (message.Contains("unsupported control query", StringComparison.OrdinalIgnoreCase)
                         || message.Contains("surface dimensions", StringComparison.OrdinalIgnoreCase)
-                        || message.Contains("SetThumbNailClip failed", StringComparison.OrdinalIgnoreCase))
+                        || message.Contains("SetThumbNailClip failed", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("too late", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("late frames", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("late video", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("PCR", StringComparison.Ordinal)
+                        || message.Contains("pts_delay", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("reference clock", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("convert timestamp", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("buffer deadlock", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("MatchingDeviceId", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("Password in a URI", StringComparison.OrdinalIgnoreCase))
                     {
                         Logger.Debug($"VLC: {message}");
                         return;
