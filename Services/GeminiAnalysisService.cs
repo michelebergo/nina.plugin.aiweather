@@ -432,13 +432,14 @@ namespace AIWeather.Services
                     throw new GeminiApiException(null, ex.Message, attempt, true, ex);
                 }
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // The caller stopped monitoring. Not a provider failure and not a reading:
+                // let it propagate, nothing gets recorded.
+                throw;
+            }
             catch (OperationCanceledException ex)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-
                 Logger.Warning($"Gemini API call timed out: {ex.Message}");
                 if (diagnostics.Count == 0)
                 {

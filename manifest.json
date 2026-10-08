@@ -1,7 +1,7 @@
 {
   "Identifier": "AI Weather",
   "Name": "AI Weather - All Sky Camera Monitor",
-  "Version": "1.34.0.0",
+  "Version": "1.35.0.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo / sedirk",
   "Homepage": "https://github.com/sedirk/nina.plugin.aiweather-advanced",
@@ -24,6 +24,18 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.35.0.0",
+      "Date": "2026-10-09",
+      "Changes": [
+        "Merged all five upstream commits through 1.15.7.0, retaining ADVANCED's shared RTSP preview, continuous latest-frame capture, ONNX model and LAN failover",
+        "Adopted NINA theme resources, readable camera grid widths and themed cell editors without losing localized or replica controls",
+        "Added configuration-aware 30-second deduplication of immediate checks within a connection; reconnects still require a fresh verdict and cached results never renew the safety timestamp",
+        "Propagated caller cancellation through RTSP and ONNX analysis; invalid local failure envelopes no longer become fresh sky measurements or training samples",
+        "Protected saved camera credentials from empty start rows and reduced VLC decoder chatter while retaining the late-frame recovery watchdog",
+        "Based optional manifest PR branches on upstream main without force-pushing the fork; retained Windows x64-only package size and privacy guards"
+      ]
+    },
     {
       "Version": "1.34.0.0",
       "Date": "2026-09-16",

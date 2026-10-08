@@ -74,6 +74,25 @@ public class GeminiFreePoolIntegrationTest
     }
 
     [Test]
+    public void CallerCancellationStopsThePoolWithoutTryingTheNextModel()
+    {
+        using var cancellation = new CancellationTokenSource();
+        using var f = new Fixture((_, _) =>
+        {
+            cancellation.Cancel();
+            throw new OperationCanceledException(cancellation.Token);
+        });
+        using var image = new Bitmap(16, 16);
+        Assert.CatchAsync<OperationCanceledException>(async () =>
+        {
+            await f.Pool.InitializeAsync();
+            await f.Pool.TryAnalyzeOnlineOnlyAsync(image, cancellationToken: cancellation.Token);
+        });
+        f.Handler.Models.Should().Equal(First);
+        f.Circuit(First).TryGetActive(Now, out _).Should().BeFalse();
+    }
+
+    [Test]
     public async Task MixedQuotaAndBadRequestNeverAdvertisesAPoolWideDailyPause()
     {
         using var f = new Fixture((model, _) => model == First ? (429, DailyQuota) : (400, "{}"));

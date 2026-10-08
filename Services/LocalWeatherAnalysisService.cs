@@ -89,6 +89,7 @@ namespace AIWeather.Services
                     () => AnalyzeCore(image, cancellationToken),
                     cancellationToken).ConfigureAwait(false);
 
+                cancellationToken.ThrowIfCancellationRequested();
                 result.Provenance = AnalysisMetadata.LocalOnnx(stopwatch.ElapsedMilliseconds);
                 Logger.Debug(
                     $"Local ONNX analysis complete: {result.Condition}, " +
@@ -99,10 +100,8 @@ namespace AIWeather.Services
             }
             catch (OperationCanceledException)
             {
-                return CreateFailureResult(
-                    "Local ONNX analysis was cancelled; analysis failed closed",
-                    AnalysisFailureCategory.Cancelled,
-                    stopwatch.ElapsedMilliseconds);
+                // A stop is not a cloud measurement or a provider failure.
+                throw;
             }
             catch (Exception ex)
             {

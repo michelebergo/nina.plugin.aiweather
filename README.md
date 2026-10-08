@@ -12,7 +12,7 @@ Unattended imaging sessions are at risk from sudden weather changes. Traditional
 
 ### One-package LAN primary/replica mode
 
-The same plugin package now supports three explicit roles. **Standalone** keeps the original behavior. **Primary** is the only node that opens the all-sky camera, runs local or online analysis and writes the teacher-student dataset; it publishes the final safety verdict over an authenticated LAN endpoint. **Replica** only consumes that verdict and never opens the camera, calls an AI provider or writes the dataset.
+The same plugin package supports three explicit roles. **Standalone** analyzes locally. **Primary** runs the configured analysis, writes the teacher-student dataset and publishes its final safety verdict over an authenticated LAN endpoint. **Replica** normally follows that verdict while displaying its own synchronized camera preview; preview and analysis share the terminal's video session. It only runs its own analysis during an explicitly enabled local failover, and does not write the dataset during takeover.
 
 This is deliberately not automatic leader election. A role is frozen when the NINA Safety Monitor connects, so changing it requires disconnecting and reconnecting the device. Replica startup, authentication/protocol errors, stale transport, stale primary analysis and an unsafe primary verdict all report **Unsafe**. Configure a unique shared token of at least 16 characters and restrict the primary TCP port (default `18910`) to trusted observatory hosts with Windows Firewall. See the [frozen cluster design](docs/LAN_PRIMARY_REPLICA_CLUSTER_DESIGN.zh-CN.md) for the protocol and safety model.
 
@@ -39,6 +39,15 @@ Choose how the plugin acquires sky images based on your camera setup:
 | **HTTP Image** | Remote cameras, INDI devices | Periodically downloads a single image from an HTTP/HTTPS URL. Supports Basic authentication. Lower resource usage than continuous streaming. |
 | **Folder Watch** | Any camera software | Monitors a local folder for the latest image file (.jpg, .png, .bmp, .tif). Compatible with AllSky, SharpCap, UFOCapture, ASI Studio, and any software that saves images to disk. |
 
+
+ADVANCED first captures analysis frames from the terminal's existing LibVLC preview.
+When an independent decoder is needed, it continuously drains the stream into a bounded
+latest-frame slot and requires a newer, recent frame for each check. It is not an idle
+FFmpeg session read only once every few minutes. The upstream open/grab/close-per-check
+implementation is therefore not substituted for this shared-session design.
+
+Benign decoder chatter goes to Debug, while network failures remain visible. Sustained
+late frames still feed ADVANCED's aggregated warning and preview-recovery watchdog.
 ### Multiple AI Providers
 
 | Provider | Models | Requirements |
@@ -282,6 +291,15 @@ Contributions are welcome. Please fork the repository, create a feature branch, 
 
 - **Issues**: [GitHub Issues](https://github.com/michelebergo/nina.plugin.aiweather/issues)
 - **NINA Community**: [NINA Discord](https://discord.gg/nighttime-imaging)
+
+### ADVANCED 1.35.0.0: upstream 1.15.7 integration (2026-10-09)
+
+Merged all five upstream commits with ADVANCED-specific adaptations: NINA-themed editors,
+camera credential preservation, cancellation handling, invalid-result rejection and
+configuration-aware 30-second deduplication of immediate checks within a connection.
+Reconnect still starts Unsafe and requires a fresh result; deduplication never renews the
+analysis timestamp. The existing shared RTSP/latest-frame pipeline and late-frame recovery
+watchdog are retained. See the [merge decisions and release notes](docs/RELEASE_1.35.0.0.zh-CN.md).
 
 ### ADVANCED 1.34.0.0: upstream 1.15.5 integration (2026-09-16)
 

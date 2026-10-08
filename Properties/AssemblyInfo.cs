@@ -34,9 +34,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/sedirk/nina.plugin.aiweather-advanced")]
 
 // Version information
-[assembly: AssemblyVersion("1.34.0.0")]
-[assembly: AssemblyFileVersion("1.34.0.0")]
-[assembly: AssemblyInformationalVersion("1.34.0.0")]
+[assembly: AssemblyVersion("1.35.0.0")]
+[assembly: AssemblyFileVersion("1.35.0.0")]
+[assembly: AssemblyInformationalVersion("1.35.0.0")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MIT")]

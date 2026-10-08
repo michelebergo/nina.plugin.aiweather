@@ -1251,8 +1251,7 @@ namespace AIWeather
                     Properties.Settings.Default.FolderPath = source.MediaUrl;
                 }
                 
-                Properties.Settings.Default.RtspUsername = source.Username;
-                Properties.Settings.Default.RtspPassword = source.Password;
+                SaveNonEmptySourceCredentials(source);
                 CoreUtil.SaveSettings(Properties.Settings.Default);
                 
                 // Start monitoring
@@ -1489,12 +1488,15 @@ namespace AIWeather
         // Camera Source Management Commands
         private void AddSource()
         {
+            // A new row starts with the credentials already saved: the camera account does
+            // not change because the address did, and a row born empty used to be saved
+            // over the good credentials the moment it was started.
             var newSource = new CameraSource
             {
                 Protocol = "rtsp://",
                 MediaUrl = "",
-                Username = "",
-                Password = ""
+                Username = Properties.Settings.Default.RtspUsername ?? "",
+                Password = Properties.Settings.Default.RtspPassword ?? ""
             };
             Sources.Add(newSource);
             AddLog(UiLocalization.Text("Log.NewSource"));
@@ -1513,6 +1515,16 @@ namespace AIWeather
                 Sources.Remove(source);
                 AddLog(UiLocalization.Text("Log.SourceRemoved", LogRedactor.RedactRtspUrl(source.FullUrl)));
             }
+        }
+
+        private static void SaveNonEmptySourceCredentials(CameraSource source)
+        {
+            // Starting an empty/new row is not a request to erase a working account.
+            // Explicit primary-row edits still use PersistCredentialToSettings to clear it.
+            Properties.Settings.Default.RtspUsername = CameraCredentialPolicy.ForStart(
+                source.Username, Properties.Settings.Default.RtspUsername);
+            Properties.Settings.Default.RtspPassword = CameraCredentialPolicy.ForStart(
+                source.Password, Properties.Settings.Default.RtspPassword);
         }
 
         private async Task<bool> ToggleStreamAsync(CameraSource source)
@@ -1563,8 +1575,7 @@ namespace AIWeather
 
                     // Update settings with this source's details
                     Properties.Settings.Default.RtspUrl = source.FullUrl;
-                    Properties.Settings.Default.RtspUsername = source.Username;
-                    Properties.Settings.Default.RtspPassword = source.Password;
+                    SaveNonEmptySourceCredentials(source);
                     CoreUtil.SaveSettings(Properties.Settings.Default);
 
                     try

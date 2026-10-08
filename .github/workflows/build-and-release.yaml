@@ -164,7 +164,10 @@ jobs:
           cd nina.plugin.manifests
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "${{ env.PLUGIN_NAME_SANITIZED }}/${{ github.ref_name }}"
+          # Base only the new PR branch on upstream, without rewriting the fork's main.
+          git remote add upstream https://github.com/isbeorn/nina.plugin.manifests.git
+          git fetch upstream main
+          git checkout -b "${{ env.PLUGIN_NAME_SANITIZED }}/${{ github.ref_name }}" upstream/main
 
       - name: Copy manifest file
         run: |

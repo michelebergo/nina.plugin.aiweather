@@ -35,6 +35,9 @@ namespace AIWeather.Services
         private static readonly TimeSpan MaximumFrameAge = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan PublishInterval = TimeSpan.FromMilliseconds(500);
 
+        // Only warn once per address, including automatic decoder reconnects.
+        private string _warnedUrl = string.Empty;
+
         public bool IsInitialized
         {
             get
@@ -74,7 +77,7 @@ namespace AIWeather.Services
         {
             try
             {
-                Logger.Info($"RtspCaptureService - Initializing RTSP connection to: {RedactRtspUrl(rtspUrl)}");
+                Logger.Debug($"RtspCaptureService - Opening RTSP session: {RedactRtspUrl(rtspUrl)}");
 
                 Reset();
 
@@ -88,8 +91,10 @@ namespace AIWeather.Services
 
                 try
                 {
-                    if (Uri.TryCreate(rtspUrl, UriKind.Absolute, out var uri))
+                    if (!string.Equals(_warnedUrl, rtspUrl, StringComparison.Ordinal)
+                        && Uri.TryCreate(rtspUrl, UriKind.Absolute, out var uri))
                     {
+                        _warnedUrl = rtspUrl;
                         if (string.IsNullOrWhiteSpace(uri.AbsolutePath) || uri.AbsolutePath == "/")
                         {
                             Logger.Warning($"RtspCaptureService - RTSP URL has no path component. Many cameras require a path like /stream or /live. URL: {RedactRtspUrl(rtspUrl)}");
@@ -183,7 +188,7 @@ namespace AIWeather.Services
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 Reset();
-                return false;
+                throw;
             }
             catch (Exception ex)
             {
@@ -388,13 +393,14 @@ namespace AIWeather.Services
                     }
                     catch (Exception ex)
                     {
+                        if (ex is OperationCanceledException && cancellationToken.IsCancellationRequested) throw;
                         Logger.Warning($"RtspCaptureService - LibVLC snapshot fallback failed: {ex.Message}");
                     }
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                return null;
+                throw;
             }
             catch (Exception ex)
             {
@@ -737,6 +743,11 @@ namespace AIWeather.Services
 
                 Logger.Info($"Frame saved to: {filePath}");
                 return true;
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Debug("Frame save cancelled (monitoring stopped)");
+                return false;
             }
             catch (Exception ex)
             {

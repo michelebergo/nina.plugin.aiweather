@@ -66,6 +66,8 @@ namespace AIWeather.Equipment
         // night on data from before the failure, which is the one thing a safety monitor
         // must never do.
         private DateTime _lastAnalysisUtc = DateTime.MinValue;
+        private long _analysisConfigurationRevision;
+        private long _lastSuccessfulAnalysisRevision = -1;
         private bool _staleLogged;
 
         // Optional external ASCOM safety monitor, ANDed with the sky verdict so the two
@@ -113,6 +115,9 @@ namespace AIWeather.Equipment
             // Subscribe to settings changes
             Properties.Settings.Default.PropertyChanged += (s, e) =>
             {
+                // Conservative invalidation: never reuse a result from before a settings
+                // change (including credentials, source, prompt, thresholds and sync cache).
+                Interlocked.Increment(ref _analysisConfigurationRevision);
                 if (e.PropertyName == nameof(Properties.Settings.Default.UseGitHubModels)
                     || e.PropertyName == nameof(Properties.Settings.Default.AnalysisProvider)
                     || e.PropertyName == nameof(Properties.Settings.Default.SelectedModel)
@@ -164,6 +169,7 @@ namespace AIWeather.Equipment
         public void SetProfileService(IProfileService profileService)
         {
             _profileService = profileService;
+            Interlocked.Increment(ref _analysisConfigurationRevision);
         }
 
         private void UpdateAnalysisService()
@@ -672,7 +678,7 @@ namespace AIWeather.Equipment
                 return;
             }
 
-            await PerformWeatherCheckAsync(cancellationToken).ConfigureAwait(false);
+            await PerformWeatherCheckAsync(cancellationToken, reuseRecent: forceLocalCheck).ConfigureAwait(false);
             _replicaNextLocalCheckUtc = DateTime.UtcNow.AddMinutes(EffectiveCheckIntervalMinutes());
         }
 
@@ -1493,6 +1499,7 @@ namespace AIWeather.Equipment
             if (_isMonitoring) return;
 
             _cts = new CancellationTokenSource();
+            var monitoringToken = _cts.Token;
             _isMonitoring = true;
 
             var replicaMode = _connectedNodeMode == ClusterNodeMode.Replica;
@@ -1514,7 +1521,7 @@ namespace AIWeather.Equipment
                 var currentMode = EffectiveCaptureMode();
                 Logger.Debug($"Timer fired - Interval: {intervalDescription}, node: {_connectedNodeMode}, capture: {currentMode}");
                 
-                if (_cts?.Token.IsCancellationRequested ?? true)
+                if (monitoringToken.IsCancellationRequested)
                 {
                     Logger.Warning("Timer fired but cancellation was requested - skipping");
                     return;
@@ -1530,13 +1537,18 @@ namespace AIWeather.Equipment
                             Logger.Debug($"Executing periodic weather check (Mode: {currentMode})");
                             if (_connectedNodeMode == ClusterNodeMode.Replica)
                             {
-                                await RunReplicaCycleAsync(_cts.Token, forceLocalCheck: false);
+                                await RunReplicaCycleAsync(monitoringToken, forceLocalCheck: false);
                             }
                             else
                             {
-                                await PerformWeatherCheckAsync(_cts.Token);
+                                await PerformWeatherCheckAsync(monitoringToken);
                             }
                             Logger.Debug($"Monitoring cycle complete - next check in {intervalDescription}");
+                        }
+                        catch (OperationCanceledException) when (monitoringToken.IsCancellationRequested)
+                        {
+                            // Our own stop, not a failure: monitoring was switched off mid-check.
+                            Logger.Info("Weather check cancelled because monitoring stopped");
                         }
                         catch (Exception ex)
                         {
@@ -1698,12 +1710,14 @@ namespace AIWeather.Equipment
             }
         }
 
-        private async Task PerformWeatherCheckAsync(CancellationToken cancellationToken)
+        private async Task PerformWeatherCheckAsync(CancellationToken cancellationToken, bool reuseRecent = false)
         {
             await _checkGate.WaitAsync(cancellationToken);
             Bitmap? frame = null;
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                var configurationRevision = Interlocked.Read(ref _analysisConfigurationRevision);
                 var captureMode = EffectiveCaptureMode();
                 Logger.Debug($"PerformWeatherCheckAsync - Mode: {captureMode}");
 
@@ -1722,6 +1736,17 @@ namespace AIWeather.Equipment
                 }
 
                 LeaveSolarAltitudeSuspension(solarDecision, astroContext);
+
+                // Check inside the gate, after the Sun guard, so concurrent immediate
+                // checks cannot both spend quota. Never skip replica polling or renew age.
+                // Connect/disconnect still clears _lastAnalysisUtc: a new connection must
+                // obtain a new verdict rather than inherit a cached SAFE state.
+                if (reuseRecent && AnalysisThrottle.ShouldReuseResult(_lastResult, _lastAnalysisUtc,
+                    DateTime.UtcNow, _lastSuccessfulAnalysisRevision, configurationRevision))
+                {
+                    Logger.Info("Immediate weather check reused a valid result less than 30 seconds old; timestamp unchanged");
+                    return;
+                }
 
                 // Capture image from all modes
                 Logger.Debug($"Capturing image from {captureMode} source");
@@ -1754,6 +1779,14 @@ namespace AIWeather.Equipment
                     astroContext,
                     cancellationToken);
                 var result = analysis.EffectiveResult;
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!AnalysisThrottle.HasUsableMeasurement(result))
+                {
+                    Logger.Warning("Weather analysis produced no valid measurement; previous verdict continues ageing toward the fail-safe limit");
+                    RaisePropertyChanged(nameof(IsSafe));
+                    RaisePropertyChanged(nameof(SafetyStateReason));
+                    return;
+                }
                 Logger.Debug(
                     $"AI analysis completed: effective={result.Provenance.Origin}, " +
                     $"fallback={analysis.UsedFallback}, " +
@@ -1771,6 +1804,7 @@ namespace AIWeather.Equipment
                 if (result.Condition != WeatherCondition.Unknown && result.Confidence > 0)
                 {
                     _lastAnalysisUtc = DateTime.UtcNow;
+                    _lastSuccessfulAnalysisRevision = configurationRevision;
                     _staleLogged = false;
                 }
 
@@ -1851,6 +1885,11 @@ namespace AIWeather.Equipment
 
                 PruneCaptureFolder(captureFolder);
 
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Monitoring stopped mid-check: our own doing, nothing to report.
+                Logger.Info("Weather check cancelled because monitoring stopped");
             }
             catch (Exception ex)
             {
@@ -1994,7 +2033,7 @@ namespace AIWeather.Equipment
             }
             else
             {
-                await PerformWeatherCheckAsync(cancellationToken);
+                await PerformWeatherCheckAsync(cancellationToken, reuseRecent: true);
             }
             return _lastResult;
         }

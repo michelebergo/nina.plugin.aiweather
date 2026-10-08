@@ -23,7 +23,7 @@
                 <ComboBoxItem Content="{i18n:Loc Options.ClusterReplica}"/>
             </ComboBox>
             <TextBlock Text="{i18n:Loc Options.ClusterModeHelp}" TextWrapping="Wrap"
-                       FontSize="10" Foreground="#AAAAAA" MaxWidth="440" HorizontalAlignment="Left"/>
+                       Foreground="{DynamicResource ButtonForegroundDisabledBrush}" MaxWidth="440" HorizontalAlignment="Left"/>
 
             <StackPanel Margin="0,8,0,0"
                         Visibility="{Binding Options.IsClusterPrimary, Converter={StaticResource BoolToVisibility}}">
@@ -44,7 +44,7 @@
                 <TextBox Text="{Binding Options.ClusterStaleSeconds, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                          Width="100" HorizontalAlignment="Left"/>
                 <TextBlock Text="{i18n:Loc Options.ClusterReplicaHelp}" TextWrapping="Wrap"
-                           FontSize="10" Foreground="#AAAAAA" MaxWidth="440" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                           Foreground="{DynamicResource ButtonForegroundDisabledBrush}" MaxWidth="440" HorizontalAlignment="Left" Margin="0,4,0,0"/>
                 <Grid Width="440" HorizontalAlignment="Left" Margin="0,10,0,4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -65,7 +65,7 @@
                          IsEnabled="{Binding Options.ClusterAutomaticFailoverEnabled}"
                          Width="100" HorizontalAlignment="Left"/>
                 <TextBlock Text="{i18n:Loc Options.ClusterAutomaticFailoverHelp}" TextWrapping="Wrap"
-                           FontSize="10" Foreground="#AAAAAA" MaxWidth="440" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                           Foreground="{DynamicResource ButtonForegroundDisabledBrush}" MaxWidth="440" HorizontalAlignment="Left" Margin="0,4,0,0"/>
             </StackPanel>
 
             <StackPanel Margin="0,8,0,12"
@@ -85,7 +85,7 @@
                             Click="CopyClusterToken_Click"/>
                 </StackPanel>
                 <TextBlock Text="{i18n:Loc Options.ClusterSecurityHelp}" TextWrapping="Wrap"
-                           FontSize="10" Foreground="#AAAAAA" MaxWidth="440" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                           Foreground="{DynamicResource ButtonForegroundDisabledBrush}" MaxWidth="440" HorizontalAlignment="Left" Margin="0,4,0,0"/>
                 <Grid Width="420" HorizontalAlignment="Left" Margin="0,10,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -98,7 +98,7 @@
                               Width="64" HorizontalAlignment="Right"/>
                 </Grid>
                 <TextBlock Text="{i18n:Loc Options.ClusterFailoverConfigSyncHelp}" TextWrapping="Wrap"
-                           FontSize="10" Foreground="Salmon" MaxWidth="440" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                           Foreground="{DynamicResource NotificationWarningBrush}" MaxWidth="440" HorizontalAlignment="Left" Margin="0,4,0,0"/>
             </StackPanel>
 
             <!-- A replica consuming encrypted primary configuration must show the values it
@@ -110,7 +110,7 @@
                 <StackPanel>
                     <TextBlock Text="{i18n:Loc Options.ReplicaSyncedTitle}" FontWeight="Bold"/>
                     <TextBlock Text="{i18n:Loc Options.ReplicaSyncedHelp}"
-                               Margin="0,4,0,8" TextWrapping="Wrap" FontSize="10" Foreground="#AAAAAA"/>
+                               Margin="0,4,0,8" TextWrapping="Wrap" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
                     <TextBlock Text="{Binding Options.ReplicaConfigurationStatus}"
                                Margin="0,0,0,8" TextWrapping="Wrap" FontWeight="SemiBold"
                                Foreground="{DynamicResource PrimaryBrush}"/>
@@ -136,33 +136,33 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{i18n:Loc Options.ReplicaRevision}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{i18n:Loc Options.ReplicaRevision}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationRevision}" Margin="0,2"/>
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{i18n:Loc Options.ReplicaUpdated}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{i18n:Loc Options.ReplicaUpdated}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationUpdated}" Margin="0,2"/>
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{i18n:Loc Options.ReplicaCaptureMode}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{i18n:Loc Options.ReplicaCaptureMode}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationCaptureMode}" Margin="0,2" TextWrapping="Wrap"/>
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{i18n:Loc Options.ReplicaCaptureSource}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{i18n:Loc Options.ReplicaCaptureSource}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationCaptureSource}" Margin="0,2" TextWrapping="Wrap"/>
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="{i18n:Loc Options.ReplicaCaptureCredentials}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="{i18n:Loc Options.ReplicaCaptureCredentials}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationCaptureCredentials}" Margin="0,2" TextWrapping="Wrap"/>
-                        <TextBlock Grid.Row="5" Grid.Column="0" Text="{i18n:Loc Options.ReplicaCheckInterval}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="{i18n:Loc Options.ReplicaCheckInterval}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationCheckInterval}" Margin="0,2"/>
-                        <TextBlock Grid.Row="6" Grid.Column="0" Text="{i18n:Loc Options.ReplicaSolarGuard}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="{i18n:Loc Options.ReplicaSolarGuard}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationSolarGuard}" Margin="0,2"/>
-                        <TextBlock Grid.Row="7" Grid.Column="0" Text="{i18n:Loc Options.ReplicaSunAltitude}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="{i18n:Loc Options.ReplicaSunAltitude}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationSunAltitude}" Margin="0,2"/>
-                        <TextBlock Grid.Row="8" Grid.Column="0" Text="{i18n:Loc Options.ReplicaCloudThresholds}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="8" Grid.Column="0" Text="{i18n:Loc Options.ReplicaCloudThresholds}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationCloudThresholds}" Margin="0,2" TextWrapping="Wrap"/>
-                        <TextBlock Grid.Row="9" Grid.Column="0" Text="{i18n:Loc Options.ReplicaMaxDataAge}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="9" Grid.Column="0" Text="{i18n:Loc Options.ReplicaMaxDataAge}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationMaxDataAge}" Margin="0,2"/>
-                        <TextBlock Grid.Row="10" Grid.Column="0" Text="{i18n:Loc Options.ReplicaProvider}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="10" Grid.Column="0" Text="{i18n:Loc Options.ReplicaProvider}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationProvider}" Margin="0,2"/>
-                        <TextBlock Grid.Row="11" Grid.Column="0" Text="{i18n:Loc Options.ReplicaModel}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="11" Grid.Column="0" Text="{i18n:Loc Options.ReplicaModel}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="11" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationModel}" Margin="0,2" TextWrapping="Wrap"/>
-                        <TextBlock Grid.Row="12" Grid.Column="0" Text="{i18n:Loc Options.ReplicaApiCredential}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="12" Grid.Column="0" Text="{i18n:Loc Options.ReplicaApiCredential}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="12" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationApiCredential}" Margin="0,2" TextWrapping="Wrap"/>
-                        <TextBlock Grid.Row="13" Grid.Column="0" Text="{i18n:Loc Options.ReplicaProviderDetails}" Foreground="#AAAAAA" Margin="0,2,8,2"/>
+                        <TextBlock Grid.Row="13" Grid.Column="0" Text="{i18n:Loc Options.ReplicaProviderDetails}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="13" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationProviderDetails}" Margin="0,2" TextWrapping="Wrap"/>
                     </Grid>
                 </StackPanel>
@@ -172,7 +172,7 @@
                     BorderThickness="1" BorderBrush="#777777"
                     Visibility="{Binding Options.ShowManualReplicaConfigurationNotice, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="{i18n:Loc Options.ReplicaManualConfigurationHelp}"
-                           TextWrapping="Wrap" FontSize="10" Foreground="#AAAAAA"/>
+                           TextWrapping="Wrap" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
             </Border>
 
             <StackPanel Visibility="{Binding Options.AreLocalOperationalSettingsVisible, Converter={StaticResource BoolToVisibility}}">
@@ -196,7 +196,7 @@
                 <TextBox Text="{Binding Options.RtspUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                          Width="300" HorizontalAlignment="Left"/>
                 <TextBlock Text="{i18n:Loc Options.ConfigureCredentials}"
-                           FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
+                           Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
             </StackPanel>
 
             <!-- HTTP Image Download (visible when mode = 1) -->
@@ -207,7 +207,7 @@
                 <TextBlock Text="{i18n:Loc Options.ImageUrl}" Margin="0,0,0,2"/>
                 <TextBox Text="{Binding Options.INDIDeviceName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                          Width="300" HorizontalAlignment="Left"/>
-                <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0" Width="300" HorizontalAlignment="Left">
+                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0" Width="300" HorizontalAlignment="Left">
                     <Run Text="{i18n:Loc Options.ImageUrlHint}"/>
                     <LineBreak/>
                     <Run Text="{i18n:Loc Options.ImageUrlExample}"/>
@@ -236,7 +236,7 @@
                     <Button Content="{i18n:Loc Common.Browse}" Margin="8,0,0,0" Padding="10,2"
                             Click="BrowseFolder_Click"/>
                 </StackPanel>
-                <TextBlock Text="{i18n:Loc Options.FolderHint}" FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"/>
+                <TextBlock Text="{i18n:Loc Options.FolderHint}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
             </StackPanel>
 
             <!-- Analysis Provider -->
@@ -251,7 +251,7 @@
                     Margin="0,6,0,0" Padding="10,2" HorizontalAlignment="Left"/>
             <TextBlock Text="{Binding ProviderTestStatus}" TextWrapping="Wrap" MaxWidth="520"
                        HorizontalAlignment="Left" Foreground="{DynamicResource PrimaryBrush}" Margin="0,4,0,6"/>
-            <TextBlock Text="{i18n:Loc Options.TestAnalysisHelp}" TextWrapping="Wrap" FontSize="10" Margin="0,0,0,8"/>
+            <TextBlock Text="{i18n:Loc Options.TestAnalysisHelp}" TextWrapping="Wrap" Margin="0,0,0,8"/>
 
             <!-- Check Interval -->
             <TextBlock Text="{i18n:Loc Options.Interval}" Margin="0,0,0,2"/>
@@ -276,7 +276,7 @@
                      IsEnabled="{Binding Options.UseSunAltitudeLimit}"
                      Width="100" HorizontalAlignment="Left"/>
             <TextBlock Text="{i18n:Loc Options.SunAltitudeHelp}"
-                       Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"
+                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"
                        TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
             
             <!-- Cloud Coverage Threshold -->
@@ -284,7 +284,7 @@
             <TextBox Text="{Binding CloudCoverageThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                      Width="100" HorizontalAlignment="Left"/>
             <TextBlock Text="{i18n:Loc Options.HighThresholdHelp}"
-                       FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"
+                       Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"
                        TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
             <!-- Cloud Coverage Safe Threshold -->
@@ -292,10 +292,10 @@
             <TextBox Text="{Binding CloudCoverageSafeThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
                      Width="100" HorizontalAlignment="Left"/>
             <TextBlock Text="{i18n:Loc Options.LowThresholdHelp}"
-                       FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"
+                       Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"
                        TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
             <TextBlock Text="{i18n:Loc Options.ThresholdBandHelp}"
-                       FontSize="10" Foreground="#AAAAAA" Margin="0,2,0,0"
+                       Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"
                        TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
             </StackPanel>
 
@@ -317,8 +317,8 @@
                         IsEnabled="{Binding Options.WriteSafetyStatusFile}"
                         Click="BrowseSafetyStatusFile_Click"/>
                     </StackPanel>
-                    <TextBlock Text="{i18n:Loc Options.StatusOneLine}" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,4"/>
-                    <TextBlock Text="{i18n:Loc Options.StatusPointDriver}" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,8"/>
+                    <TextBlock Text="{i18n:Loc Options.StatusOneLine}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,4"/>
+                    <TextBlock Text="{i18n:Loc Options.StatusPointDriver}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,8"/>
 
             <!-- Maximum data age is part of the encrypted failover configuration. -->
             <StackPanel Visibility="{Binding Options.AreLocalOperationalSettingsVisible, Converter={StaticResource BoolToVisibility}}">
@@ -327,7 +327,7 @@
                 <TextBox Text="{Binding Options.MaxDataAgeMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          Width="100" HorizontalAlignment="Left"/>
                 <TextBlock Text="{i18n:Loc Options.MaxDataAgeHelp}"
-                           Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                           Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
             </StackPanel>
 
             <!-- External ASCOM safety monitor, ANDed with the sky verdict -->
@@ -349,9 +349,9 @@
                         Click="ChooseAscomSafetyMonitor_Click"/>
             </StackPanel>
             <TextBlock Text="{i18n:Loc Options.ExternalHelp}"
-                       Margin="0,0,0,4" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                       Margin="0,0,0,4" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
             <TextBlock Text="{i18n:Loc Options.ExternalFail}"
-                       Margin="0,0,0,8" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                       Margin="0,0,0,8" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
             <StackPanel Visibility="{Binding Options.AreLocalOperationalSettingsVisible, Converter={StaticResource BoolToVisibility}}">
 
@@ -359,7 +359,7 @@
             <StackPanel Margin="0,10,0,0"
                         Visibility="{Binding IsGitHubModelsProvider, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="{i18n:Loc Options.GitHubRetired}"
-                           FontSize="10" Foreground="Salmon" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                           Foreground="{DynamicResource NotificationWarningBrush}" TextWrapping="Wrap" Margin="0,0,0,6"/>
                 <TextBlock Text="{i18n:Loc Options.GitHubToken}" Margin="0,0,0,2"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                     <PasswordBox Width="360"
@@ -371,7 +371,7 @@
                             Padding="10,2"
                             Click="TryToken_Click"/>
                 </StackPanel>
-                <TextBlock Text="{Binding GitHubTokenStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="{Binding GitHubTokenStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
             </StackPanel>
 
             <!-- OpenAI Key -->
@@ -388,8 +388,8 @@
                             Padding="10,2"
                             Click="TryOpenAIKey_Click"/>
                 </StackPanel>
-                <TextBlock Text="{Binding OpenAIKeyStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
-                <TextBlock Text="{i18n:Loc Options.UsedOpenAi}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="{Binding OpenAIKeyStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="{i18n:Loc Options.UsedOpenAi}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
             </StackPanel>
 
             <!-- Billed Gemini project: one explicitly selected model, no model failover. -->
@@ -406,13 +406,13 @@
                             Padding="10,2"
                             Click="TryGeminiKey_Click"/>
                 </StackPanel>
-                <TextBlock Text="{Binding GeminiPaidKeyStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
-                <TextBlock Text="{i18n:Loc Options.UsedGeminiPaid}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                <TextBlock Text="{Binding GeminiPaidKeyStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="{i18n:Loc Options.UsedGeminiPaid}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
                 <TextBlock Text="{i18n:Loc Options.GeminiRequestEveryChecks}" Margin="0,10,0,2"/>
                 <TextBox Text="{Binding GeminiPaidRequestEveryChecks, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                          Width="100" HorizontalAlignment="Left"/>
                 <TextBlock Text="{i18n:Loc Options.GeminiRequestEveryChecksHelp}"
-                           Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"
+                           Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"
                            TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
             </StackPanel>
 
@@ -430,13 +430,13 @@
                             Padding="10,2"
                             Click="TryGeminiKey_Click"/>
                 </StackPanel>
-                <TextBlock Text="{Binding GeminiKeyStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
-                <TextBlock Text="{i18n:Loc Options.UsedGemini}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                <TextBlock Text="{Binding GeminiKeyStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="{i18n:Loc Options.UsedGemini}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
                 <TextBlock Text="{i18n:Loc Options.GeminiRequestEveryChecks}" Margin="0,10,0,2"/>
                 <TextBox Text="{Binding GeminiRequestEveryChecks, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                          Width="100" HorizontalAlignment="Left"/>
                 <TextBlock Text="{i18n:Loc Options.GeminiRequestEveryChecksHelp}"
-                           Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"
+                           Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"
                            TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
                 <TextBlock Text="{i18n:Loc Options.GeminiFreeModelOrder}" Margin="0,10,0,2"/>
@@ -458,13 +458,13 @@
                     </StackPanel>
                 </Grid>
                 <TextBlock Text="{i18n:Loc Options.GeminiFreeModelOrderHelp}"
-                           Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"
+                           Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"
                            TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
                 <TextBlock Text="{i18n:Loc Options.GeminiFreeCycles}" Margin="0,10,0,2"/>
                 <TextBox Text="{Binding GeminiFreeCycleCount, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                          Width="100" HorizontalAlignment="Left"/>
                 <TextBlock Text="{i18n:Loc Options.GeminiFreeCyclesHelp}"
-                           Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"
+                           Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"
                            TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
             </StackPanel>
 
@@ -482,8 +482,8 @@
                             Padding="10,2"
                             Click="TryAnthropicKey_Click"/>
                 </StackPanel>
-                <TextBlock Text="{Binding AnthropicKeyStatus}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
-                <TextBlock Text="{i18n:Loc Options.UsedAnthropic}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="{Binding AnthropicKeyStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="{i18n:Loc Options.UsedAnthropic}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
             </StackPanel>
 
             <!-- Ollama Base URL -->
@@ -493,15 +493,15 @@
                 <TextBox Text="{Binding OllamaBaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          Width="360"
                          HorizontalAlignment="Left"/>
-                <TextBlock Text="{i18n:Loc Options.OllamaDefault}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
-                <TextBlock Text="{i18n:Loc Options.OllamaCompatible}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
-                <TextBlock Text="{i18n:Loc Options.OllamaNoKey}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA"/>
+                <TextBlock Text="{i18n:Loc Options.OllamaDefault}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="{i18n:Loc Options.OllamaCompatible}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="{i18n:Loc Options.OllamaNoKey}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
                 <TextBlock Text="{i18n:Loc Options.DisableThinking}" Margin="0,10,0,2"/>
                 <CheckBox IsChecked="{Binding OllamaDisableThinking, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                           Width="64"
                           HorizontalAlignment="Left"
                           VerticalAlignment="Center"/>
-                <TextBlock Text="{i18n:Loc Options.ThinkingHelp}" Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+                <TextBlock Text="{i18n:Loc Options.ThinkingHelp}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
             </StackPanel>
             
                 <!-- Model Selection (non-local providers) -->
@@ -524,8 +524,8 @@
 
                 <TextBlock Text="{Binding ModelsStatus}"
                        Margin="0,4,0,0"
-                       FontSize="10"
-                       Foreground="#AAAAAA"/>
+
+                       Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
                 </StackPanel>
             </StackPanel>
 
@@ -541,7 +541,7 @@
                      TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto"/>
             <TextBlock Text="{i18n:Loc Options.SiteNotesHelp}"
-                       Margin="0,4,0,0" FontSize="10" Foreground="#AAAAAA" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
 
             <!-- Teacher/student dataset: off by default and completely independent from
                  the safety path. All heavy work runs on the bounded background writer. -->
@@ -570,7 +570,7 @@
                           Width="64" HorizontalAlignment="Right"/>
             </Grid>
             <TextBlock Text="{i18n:Loc Options.DatasetHelp}"
-                       Margin="0,0,0,8" FontSize="10" Foreground="#AAAAAA"
+                       Margin="0,0,0,8" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"
                        TextWrapping="Wrap" MaxWidth="500" HorizontalAlignment="Left"/>
 
             <TextBlock Text="{i18n:Loc Options.DatasetDirectory}" Margin="0,2,0,2"/>
@@ -614,13 +614,13 @@
              </Grid>
 
              <TextBlock Text="{i18n:Loc Options.DatasetSampleEveryChecksHelp}"
-                        Margin="0,5,0,0" FontSize="10" Foreground="#AAAAAA"
+                        Margin="0,5,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"
                         TextWrapping="Wrap" MaxWidth="500" HorizontalAlignment="Left"/>
              <TextBlock Text="{i18n:Loc Options.DatasetScaleHelp}"
-                        Margin="0,2,0,0" FontSize="10" Foreground="#AAAAAA"
+                        Margin="0,2,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"
                         TextWrapping="Wrap" MaxWidth="500" HorizontalAlignment="Left"/>
              <TextBlock Text="{i18n:Loc Options.DatasetHammingHelp}"
-                        Margin="0,2,0,0" FontSize="10" Foreground="#AAAAAA"
+                        Margin="0,2,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"
                         TextWrapping="Wrap" MaxWidth="500" HorizontalAlignment="Left"/>
 
              <Grid Width="500" HorizontalAlignment="Left" Margin="0,8,0,0">
@@ -635,7 +635,7 @@
                            Width="64" HorizontalAlignment="Right"/>
              </Grid>
              <TextBlock Text="{i18n:Loc Options.DatasetRawHelp}"
-                        Margin="0,2,0,0" FontSize="10" Foreground="#AAAAAA"
+                        Margin="0,2,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"
                         TextWrapping="Wrap" MaxWidth="500" HorizontalAlignment="Left"/>
              <Grid Width="500" HorizontalAlignment="Left" Margin="0,6,0,0">
                  <Grid.ColumnDefinitions>
@@ -649,10 +649,10 @@
                            Width="64" HorizontalAlignment="Right"/>
              </Grid>
              <TextBlock Text="{i18n:Loc Options.DatasetQuarantineHelp}"
-                        Margin="0,2,0,0" FontSize="10" Foreground="#AAAAAA"
+                        Margin="0,2,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"
                         TextWrapping="Wrap" MaxWidth="500" HorizontalAlignment="Left"/>
              <TextBlock Text="{i18n:Loc Options.DatasetPrivacy}"
-                       Margin="0,5,0,0" FontSize="10" Foreground="#AAAAAA"
+                       Margin="0,5,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"
                        TextWrapping="Wrap" MaxWidth="500" HorizontalAlignment="Left"/>
 
             <!-- Description Section -->
@@ -691,7 +691,7 @@
             </StackPanel>
 
             <TextBlock Text="{i18n:Loc Options.ConnectHelp}"
-                       Margin="0,0,0,0" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left" FontSize="11" Foreground="#AAAAAA"/>
+                       Margin="0,0,0,0" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
         </StackPanel>
     </DataTemplate>
     
