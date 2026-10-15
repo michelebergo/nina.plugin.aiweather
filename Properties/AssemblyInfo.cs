@@ -1,5 +1,9 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+
+// The tests set the plugin settings (camera view, site darkness) the prompt is composed from.
+[assembly: InternalsVisibleTo("NINA.Plugin.AIWeather.Test")]
 
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information

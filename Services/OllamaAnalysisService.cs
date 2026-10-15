@@ -75,7 +75,7 @@ namespace AIWeather.Services
                     ["max_tokens"] = 2048,
                     ["messages"] = new object[]
                     {
-                        new { role = "system", content = WeatherAnalysisPrompts.DetailedSystemPrompt },
+                        new { role = "system", content = WeatherAnalysisPrompts.BuildSystemPrompt() },
                         new {
                             role = "user",
                             content = new object[]

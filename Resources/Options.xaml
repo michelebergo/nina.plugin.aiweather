@@ -276,6 +276,26 @@
                        Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
                 </StackPanel>
 
+            <!-- Camera view and site darkness: the two facts the prompt cannot guess and used to
+                 assume. A fixed security camera has no fisheye circle to look for, and at a dark
+                 site clouds are black holes in the star field rather than bright milky patches.
+                 Defaults are the previous behaviour. -->
+            <TextBlock Text="Camera view:" Margin="0,15,0,2" FontWeight="Bold"/>
+            <ComboBox SelectedIndex="{Binding CameraView, Mode=TwoWay}" Width="360" HorizontalAlignment="Left">
+                <ComboBoxItem Content="All-sky fisheye (the whole sky as a circle)"/>
+                <ComboBoxItem Content="Fixed camera (part of the sky above a horizon, trees or buildings)"/>
+            </ComboBox>
+            <TextBlock Text="Tells the AI which part of the image is sky. Pick the second one for a security camera or any camera that is not a fisheye pointing straight up."
+                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+
+            <TextBlock Text="Site darkness:" Margin="0,10,0,2" FontWeight="Bold"/>
+            <ComboBox SelectedIndex="{Binding SiteDarkness, Mode=TwoWay}" Width="360" HorizontalAlignment="Left">
+                <ComboBoxItem Content="Light-polluted (clouds are lit from below and look bright)"/>
+                <ComboBoxItem Content="Dark site (clouds are darker than the sky; only the stars tell)"/>
+            </ComboBox>
+            <TextBlock Text="At a Bortle 1-4 site with no moon, a cloudy sky is simply black. The dark-site setting makes the AI judge by where the stars are missing instead of by brightness, and treats a frame with no readable sky as unsafe rather than clear."
+                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+
             <!-- Site notes: local knowledge appended to the analysis prompt of every provider.
                  Saved on focus loss rather than per keystroke, so typing does not rewrite the
                  settings file on every character. -->

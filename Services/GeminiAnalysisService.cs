@@ -105,7 +105,7 @@ namespace AIWeather.Services
                 var base64Image = ConvertImageToBase64(image);
                 var url = $"{BaseUrl}/models/{Uri.EscapeDataString(_modelName)}:generateContent";
 
-                var promptText = WeatherAnalysisPrompts.DetailedSystemPrompt;
+                var promptText = WeatherAnalysisPrompts.BuildSystemPrompt();
                 var promptPrefix = WeatherAnalysisPrompts.BuildPromptPrefix(astroContext);
                 if (promptPrefix.Length > 0)
                     promptText = promptPrefix + "\n" + promptText;

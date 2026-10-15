@@ -1269,6 +1269,36 @@ namespace AIWeather
         }
 
         /// <summary>
+        /// 0 = all-sky fisheye, 1 = fixed camera looking at part of the sky. Decides which
+        /// part of the image the prompt calls sky (see WeatherAnalysisPrompts).
+        /// </summary>
+        public int CameraView
+        {
+            get => Properties.Settings.Default.CameraView;
+            set
+            {
+                Properties.Settings.Default.CameraView = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// 0 = light-polluted site (clouds lit from below look bright), 1 = dark site
+        /// (clouds are darker than the sky; stars are the only evidence).
+        /// </summary>
+        public int SiteDarkness
+        {
+            get => Properties.Settings.Default.SiteDarkness;
+            set
+            {
+                Properties.Settings.Default.SiteDarkness = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>
         /// GitHub Models API token
         /// </summary>
         public string GitHubToken

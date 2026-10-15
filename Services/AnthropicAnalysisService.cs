@@ -69,7 +69,7 @@ namespace AIWeather.Services
                     model = _modelName,
                     // Room for a reasoning phase and the answer together (issue #16).
                     max_tokens = 2048,
-                    system = WeatherAnalysisPrompts.DetailedSystemPrompt,
+                    system = WeatherAnalysisPrompts.BuildSystemPrompt(),
                     messages = new object[]
                     {
                         new
