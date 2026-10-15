@@ -157,15 +157,7 @@ namespace AIWeather
                     "gemini-2.5-flash",
                     "gemini-2.5-pro",
                 },
-                ["Anthropic"] = new[]
-                {
-                    "claude-sonnet-4-5-20250929",
-                    "claude-sonnet-4-20250514",
-                    "claude-haiku-4-5-20251001",
-                    "claude-3-5-sonnet-20241022",
-                    "claude-3-5-haiku-20241022",
-                    "claude-3-opus-20240229",
-                },
+                ["Anthropic"] = Services.AnthropicAnalysisService.FallbackModels,
                 // Local servers don't advertise vision capability; these are common
                 // vision-capable Ollama models used only when /v1/models is unreachable.
                 ["Ollama"] = new[]
@@ -699,13 +691,7 @@ namespace AIWeather
                     {
                         var id = m.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
                         if (string.IsNullOrEmpty(id)) continue;
-                        // Only include Claude 3+ models that support vision.
-                        // Claude 2.x, claude-instant, etc. are text-only.
-                        if (!id.StartsWith("claude-3", StringComparison.OrdinalIgnoreCase)
-                            && !id.StartsWith("claude-sonnet-4", StringComparison.OrdinalIgnoreCase)
-                            && !id.StartsWith("claude-haiku-4", StringComparison.OrdinalIgnoreCase)
-                            && !id.StartsWith("claude-opus-4", StringComparison.OrdinalIgnoreCase))
-                            continue;
+                        if (!Services.AnthropicAnalysisService.IsVisionModel(id)) continue;
 
                         result.Add(id);
                     }
@@ -976,7 +962,7 @@ namespace AIWeather
                 if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     var model = string.IsNullOrWhiteSpace(Properties.Settings.Default.SelectedModel)
-                        ? "claude-sonnet-4-5-20250929"
+                        ? Services.AnthropicAnalysisService.DefaultModel
                         : Properties.Settings.Default.SelectedModel.Trim();
 
                     var payload = new

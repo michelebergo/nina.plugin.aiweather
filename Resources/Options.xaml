@@ -257,9 +257,13 @@
                     Visibility="{Binding IsNonLocalProvider, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="AI Model:" Margin="0,0,0,2"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <!-- Text, not SelectedItem: the box is editable so a model missing from the
+                         list (the list is a day old, or the provider shipped a new one) can be
+                         typed in; a SelectedItem binding dropped anything typed (#18). Saved when
+                         focus leaves, so a check starting mid-typing does not see half a name. -->
                     <ComboBox x:Name="ModelComboBox"
                           ItemsSource="{Binding AvailableModels}"
-                          SelectedItem="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          Text="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                           IsEditable="True"
                           Width="300"
                           HorizontalAlignment="Left"

@@ -24,10 +24,46 @@ namespace AIWeather.Services
         private const string Endpoint = "https://api.anthropic.com/v1/messages";
         private const string AnthropicVersion = "2023-06-01";
 
+        /// <summary>
+        /// Used when no model is chosen. The cheapest current vision model: one analysis
+        /// every few minutes is a yes/no about clouds, not a job for Sonnet. Dateless IDs
+        /// are pinned snapshots with a retirement date at least a year out; the dated
+        /// Sonnet 4.5 that sat here before was deprecated on 2026-09-30 (#18).
+        /// </summary>
+        public const string DefaultModel = "claude-haiku-5-5";
+
+        /// <summary>
+        /// Offered when /v1/models cannot be read. Only models Anthropic lists as active;
+        /// the retired 3.x entries used to be here and were offered to anyone whose list
+        /// call failed (#18).
+        /// </summary>
+        public static readonly string[] FallbackModels =
+        {
+            "claude-haiku-5-5",
+            "claude-sonnet-5-5",
+            "claude-opus-5-5",
+            "claude-haiku-4-5-20251001",
+        };
+
+        /// <summary>
+        /// Whether an ID from /v1/models can take an image. Every model Anthropic serves
+        /// today can; the text-only Claude 2 and Instant were retired in 2024-2025 and no
+        /// longer appear in the list. A hand-kept prefix list (claude-3, claude-sonnet-4,
+        /// ...) dropped every Claude 5.x model at its release (#18).
+        /// </summary>
+        public static bool IsVisionModel(string? id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return false;
+            if (!id.StartsWith("claude-", StringComparison.OrdinalIgnoreCase)) return false;
+            return !id.StartsWith("claude-2", StringComparison.OrdinalIgnoreCase)
+                && !id.StartsWith("claude-instant", StringComparison.OrdinalIgnoreCase)
+                && !id.StartsWith("claude-1", StringComparison.OrdinalIgnoreCase);
+        }
+
         public AnthropicAnalysisService(string apiKey, string modelName)
         {
             _apiKey = apiKey;
-            _modelName = string.IsNullOrWhiteSpace(modelName) ? "claude-sonnet-4-5-20250929" : modelName.Trim();
+            _modelName = string.IsNullOrWhiteSpace(modelName) ? DefaultModel : modelName.Trim();
         }
 
         public Task<bool> InitializeAsync(CancellationToken cancellationToken = default)
