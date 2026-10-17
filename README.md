@@ -67,14 +67,18 @@ The plugin registers as a NINA Safety Monitor device. When connected:
 - NINA's sequencer can automatically pause or abort imaging when the status changes to Unsafe.
 - An optional status file can be written for integration with ASCOM Generic File SafetyMonitor or external automation tools.
 
-The reported state is the AND of three independent conditions — **anything unknown counts
-as unsafe**, because a missing answer is not permission to keep imaging:
+The reported state combines three independent conditions — **anything unknown counts
+as unsafe** on its own side, because a missing answer is not permission to keep imaging:
 
 | Condition | Unsafe when |
 |---|---|
 | Sky verdict | cloud coverage above the threshold, rain, or fog (with hysteresis between the high and low thresholds) |
 | Data freshness | no successful analysis within the maximum data age — a dead camera or unreachable stream can never leave a stale **Safe** standing |
 | External monitor | the optional ASCOM safety monitor reports unsafe, or cannot be connected or read |
+
+Sky verdict and freshness are always ANDed. The external monitor is combined with **AND**
+(the default: either side stops imaging) or **OR** (imaging stops only when both sides say
+unsafe; see section 7).
 
 The preview panel shows the **reason** under the Safe/Unsafe line, so a cloudy sky, a
 camera that stopped delivering and an unreachable external device are never confused for
@@ -262,14 +266,23 @@ A band of 5 to 15 points is the useful range: the feature was requested with 70 
 ### 7. Optional: External ASCOM Safety Monitor
 
 - Enable **Combine with an external safety monitor** and pick a device with **Choose...**
-  (or type its ProgID). The verdicts are combined with AND: imaging is **Safe** only when
-  the sky analysis *and* the external device both say so.
-- The intended pairing for unattended operation: this plugin watches the sky
-  (cloud/rain/fog) while the external device watches the environment (humidity, dew point,
-  a rain sensor). NINA keeps a single Safety Monitor selected — this one — and gets both
-  protections through it.
-- If the external device cannot be connected or read, the state is **Unsafe**. A driver
-  that stops answering is exactly the situation its owner installed it for.
+  (or type its ProgID), then choose how the two verdicts combine:
+  - **AND** (the default): imaging is **Safe** only when the sky analysis *and* the
+    external device both say so. The pairing for unattended operation: this plugin watches
+    the sky (cloud/rain/fog) while the device watches the environment (humidity, dew point,
+    a rain sensor). NINA keeps a single Safety Monitor selected — this one — and gets both
+    protections through it.
+  - **OR**: imaging stops only when *both* say **Unsafe**. For a second cloud sensor that
+    cries cloudy too often — a narrow-field IR sensor reacting to clouds far from the
+    target while AI Weather judges a crop of the sky around the pointing (Folder Watch):
+    the device confirms the sky verdict instead of adding to it.
+- A device that cannot be connected or read counts as **Unsafe**, and sky data older than
+  the maximum data age counts as **Unsafe**. With AND that stops imaging — a driver that
+  stops answering is exactly the situation its owner installed it for. With OR the other
+  side decides alone, and the panel's reason line says which one carried the verdict
+  ("Safe on the sky analysis alone — external monitor unsafe or unreadable").
+- Rain or fog seen by the sky analysis is **Unsafe** in both modes. Water on the lens is
+  not a cloud far from the target, and a cloud sensor that says clear does not dry it.
 
 ### 8. Optional: Status File
 
