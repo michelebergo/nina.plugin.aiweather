@@ -45,7 +45,10 @@ namespace AIWeather.Equipment
         // Optional external ASCOM safety monitor, ANDed with the sky verdict so the two
         // protections are independent: this plugin watches the sky, the external device
         // watches whatever it was built to watch (humidity, dew point, rain sensor).
-        private readonly AscomSafetyMonitorClient _externalMonitor = new AscomSafetyMonitorClient();
+        private readonly IExternalSafetyMonitor _externalMonitor;
+
+        /// <summary>The clock every age check runs against; the tests move it by hand.</summary>
+        internal Func<DateTime> UtcNow = () => DateTime.UtcNow;
         private readonly object _externalGate = new object();
         private bool _externalSafeCached;
         private DateTime _externalReadUtc = DateTime.MinValue;
@@ -81,8 +84,13 @@ namespace AIWeather.Equipment
         /// </summary>
         public event EventHandler? MonitoringStarted;
 
-        public AIWeatherSafetyMonitor()
+        public AIWeatherSafetyMonitor() : this(new AscomSafetyMonitorClient())
         {
+        }
+
+        internal AIWeatherSafetyMonitor(IExternalSafetyMonitor externalMonitor)
+        {
+            _externalMonitor = externalMonitor;
             _captureService = new UnifiedCaptureService(cameraMediator: null);
             _analysisService = new LocalWeatherAnalysisService();
             
@@ -139,7 +147,7 @@ namespace AIWeather.Equipment
         public bool Connected
         {
             get => _connected;
-            private set
+            internal set
             {
                 _connected = value;
                 RaisePropertyChanged();
@@ -223,10 +231,10 @@ namespace AIWeather.Equipment
                     var progId = Properties.Settings.Default.AscomSafetyMonitorProgId;
                     lock (_externalGate)
                     {
-                        _externalConnectAttemptUtc = DateTime.UtcNow;
+                        _externalConnectAttemptUtc = UtcNow();
                         _externalSafeCached = _externalMonitor.TryConnect(progId ?? string.Empty)
                                               && _externalMonitor.TryGetIsSafe(out var s) && s;
-                        _externalReadUtc = DateTime.UtcNow;
+                        _externalReadUtc = UtcNow();
                     }
                     Logger.Info($"External ASCOM safety monitor enabled ('{progId}'): " +
                                 $"{(_externalMonitor.Connected ? "connected" : "NOT connected - the monitor will report UNSAFE until it is")}");
@@ -285,13 +293,21 @@ namespace AIWeather.Equipment
         }
 
         /// <summary>
-        /// The state NINA acts on. Three independent conditions, all of which must hold:
-        /// the sky verdict from the latest analysis, that verdict still being recent enough
-        /// to describe the current sky, and the external ASCOM safety monitor (when one is
-        /// configured). Anything unknown counts as unsafe — a missing answer is not a
-        /// permission to keep imaging.
+        /// The state NINA acts on: the sky verdict from the latest analysis, that verdict
+        /// still being recent enough to describe the current sky, and the external ASCOM
+        /// safety monitor (when one is configured) combined with AND or OR as the owner
+        /// chose. Anything unknown counts as unsafe on its own side — a missing answer is
+        /// not a permission to keep imaging. The truth table lives in SafetyVerdict.
         /// </summary>
-        public bool IsSafe => _isCurrentlySafe && IsAnalysisFresh() && IsExternalMonitorSafe();
+        public bool IsSafe => SafetyVerdict.Combine(
+            ExternalMode,
+            _isCurrentlySafe,
+            IsAnalysisFresh(),
+            _lastResult is { } r && (r.RainDetected || r.FogDetected),
+            Properties.Settings.Default.UseAscomSafetyMonitor,
+            IsExternalMonitorSafe());
+
+        private static ExternalMonitorMode ExternalMode => (ExternalMonitorMode)Properties.Settings.Default.ExternalMonitorMode;
 
         /// <summary>The sky verdict alone, without freshness or the external monitor.</summary>
         public bool IsSkyConditionSafe => _isCurrentlySafe;
@@ -354,39 +370,68 @@ namespace AIWeather.Equipment
                     return "Waiting for the first sky analysis";
                 }
 
-                if (!IsAnalysisFresh())
+                var externalEnabled = Properties.Settings.Default.UseAscomSafetyMonitor;
+                var orMode = externalEnabled && ExternalMode == ExternalMonitorMode.Or;
+
+                if (orMode && IsSafe)
                 {
-                    var age = (DateTime.UtcNow - _lastAnalysisUtc).TotalMinutes;
+                    // One side carried the verdict: say which, so a sensor that is quietly
+                    // unreadable or a camera that stopped is not hidden behind a green state.
+                    if (!IsAnalysisFresh()) return "Safe on the external monitor alone — sky data is stale";
+                    if (!IsExternalMonitorSafe()) return "Safe on the sky analysis alone — external monitor unsafe or unreadable";
+                }
+
+                if (!IsAnalysisFresh() && !orMode)
+                {
+                    var age = (UtcNow() - _lastAnalysisUtc).TotalMinutes;
                     return $"Stale data: last analysis {age:F0} min ago, limit {MaxDataAge().TotalMinutes:F0} min — check the camera source";
                 }
 
-                if (Properties.Settings.Default.UseAscomSafetyMonitor && !IsExternalMonitorSafe())
+                if (externalEnabled && !IsExternalMonitorSafe() && !orMode)
                 {
                     return _externalMonitor.Connected
                         ? "External safety monitor reports unsafe"
                         : "External safety monitor cannot be connected or read";
                 }
 
+                if (orMode && !IsSafe)
+                {
+                    if (IsExternalMonitorSafe())
+                    {
+                        // Only rain or fog get here: the one sky verdict a clear-reading sensor cannot override.
+                        return "Sky " + SkyUnsafeReason() + " — rain and fog stop imaging whatever the external monitor says";
+                    }
+                    var external = _externalMonitor.Connected ? "reports unsafe" : "cannot be connected or read";
+                    var sky = IsAnalysisFresh() ? SkyUnsafeReason() : "data is stale";
+                    return $"Sky {sky}; external safety monitor {external}";
+                }
+
                 if (!_isCurrentlySafe)
                 {
-                    var r = _lastResult;
-                    if (r == null)
-                    {
-                        return "No usable analysis";
-                    }
-                    if (r.RainDetected)
-                    {
-                        return "Rain detected";
-                    }
-                    if (r.FogDetected)
-                    {
-                        return "Fog detected";
-                    }
-                    return $"Cloud coverage {r.CloudCoverage:F0}% (safe below {Properties.Settings.Default.CloudCoverageSafeThreshold}%)";
+                    return "Sky " + SkyUnsafeReason();
                 }
 
                 return "Sky clear and data current";
             }
+        }
+
+        /// <summary>Why the sky alone is unsafe, from the latest analysis; lower case, to be quoted.</summary>
+        private string SkyUnsafeReason()
+        {
+            var r = _lastResult;
+            if (r == null)
+            {
+                return "has no usable analysis";
+            }
+            if (r.RainDetected)
+            {
+                return "shows rain";
+            }
+            if (r.FogDetected)
+            {
+                return "shows fog";
+            }
+            return $"cloud coverage {r.CloudCoverage:F0}% (safe below {Properties.Settings.Default.CloudCoverageSafeThreshold}%)";
         }
 
         /// <summary>
@@ -418,7 +463,7 @@ namespace AIWeather.Equipment
                 return false; // nothing analysed yet since connecting
             }
 
-            var age = DateTime.UtcNow - _lastAnalysisUtc;
+            var age = UtcNow() - _lastAnalysisUtc;
             if (age <= MaxDataAge())
             {
                 return true;
@@ -449,7 +494,7 @@ namespace AIWeather.Equipment
 
             lock (_externalGate)
             {
-                var now = DateTime.UtcNow;
+                var now = UtcNow();
                 if (now - _externalReadUtc < ExternalReadCacheDuration)
                 {
                     return _externalSafeCached;
@@ -516,6 +561,66 @@ namespace AIWeather.Equipment
             }
             _externalFailureLogged = true;
             Logger.Warning($"Safety monitor reporting UNSAFE: {message}");
+        }
+
+        /// <summary>
+        /// One analysis has arrived: the verdict, the freshness clock, the sequencer symbols,
+        /// the log, the wiki digest and the status file all follow from it here. Internal so
+        /// a night can be replayed in the tests result by result, external device included.
+        /// </summary>
+        internal void ApplyAnalysisResult(WeatherAnalysisResult result)
+        {
+            _lastResult = result;
+
+            if (_providerHealth.Record(result))
+            {
+                if (_providerHealth.IsFailing)
+                {
+                    Logger.Warning($"{result.Provider} stopped answering; the offline analyzer is being used instead. Reason: {result.ProviderError}");
+                }
+                else
+                {
+                    Logger.Info($"{result.Provider} is answering again");
+                }
+            }
+            RaisePropertyChanged(nameof(ProviderHealth));
+
+            // The clock the freshness check runs against. Set only on a real result:
+            // every provider falls back to the offline local analyzer internally, so
+            // reaching this line means the sky was actually assessed.
+            _lastAnalysisUtc = UtcNow();
+            _staleLogged = false;
+
+            // Update Safety State (Hysteresis)
+            UpdateSafetyState(result);
+
+            // Expose the reading to the Advanced Sequencer's Symbols sidebar (N.I.N.A. 3.3+).
+            // The published Safe symbol is the composite state, so an expression in the
+            // sequencer sees the same verdict NINA's safety monitor sees.
+            SequencerSymbolPublisher.Publish(result, IsSafe);
+
+            // Log the results
+            Logger.Info($"Weather Analysis - Condition: {result.Condition}, " +
+                      $"Cloud Coverage: {result.CloudCoverage:F1}%, " +
+                      $"Safe: {result.IsSafeForImaging}, " +
+                      $"Confidence: {result.Confidence:F1}%");
+
+            if (Properties.Settings.Default.UseAscomSafetyMonitor)
+            {
+                Logger.Info($"Safety state - sky: {(_isCurrentlySafe ? "SAFE" : "UNSAFE")}, " +
+                            $"external ASCOM monitor: {(IsExternalMonitorSafe() ? "SAFE" : "UNSAFE")}, " +
+                            $"combined: {(IsSafe ? "SAFE" : "UNSAFE")}");
+            }
+
+            // Append state changes to the shared LLM wiki daily digest (raw/)
+            LlmWikiRawWriter.RecordAnalysis(result);
+
+            // Raise property changed to notify NINA of safety status change
+            RaisePropertyChanged(nameof(IsSafe));
+            RaisePropertyChanged(nameof(SafetyStateReason));
+
+            // Write safety status to file if enabled
+            WriteSafetyStatusFile();
         }
 
         private void UpdateSafetyState(WeatherAnalysisResult result)
@@ -699,7 +804,7 @@ namespace AIWeather.Equipment
                     {
                         var astro = _profileService.ActiveProfile.AstrometrySettings;
                         astroContext = AstroContext.Compute(
-                            astro.Latitude, astro.Longitude, astro.Elevation, DateTime.UtcNow);
+                            astro.Latitude, astro.Longitude, astro.Elevation, UtcNow());
                         Logger.Info($"Astro context: Sun {astroContext.SunAltitude:F1}° ({astroContext.SunState}), " +
                                    $"Moon {astroContext.MoonIllumination:F0}% {astroContext.MoonPhase} at {astroContext.MoonAltitude:F1}°");
                     }
@@ -711,61 +816,12 @@ namespace AIWeather.Equipment
 
                 var result = await _analysisService.AnalyzeImageAsync(frame, astroContext, cancellationToken);
                 Logger.Debug("AI analysis completed");
-                _lastResult = result;
-
-                if (_providerHealth.Record(result))
-                {
-                    if (_providerHealth.IsFailing)
-                    {
-                        Logger.Warning($"{result.Provider} stopped answering; the offline analyzer is being used instead. Reason: {result.ProviderError}");
-                    }
-                    else
-                    {
-                        Logger.Info($"{result.Provider} is answering again");
-                    }
-                }
-                RaisePropertyChanged(nameof(ProviderHealth));
-
-                // The clock the freshness check runs against. Set only on a real result:
-                // every provider falls back to the offline local analyzer internally, so
-                // reaching this line means the sky was actually assessed.
-                _lastAnalysisUtc = DateTime.UtcNow;
-                _staleLogged = false;
 
                 // Store a copy of the image for UI restoration
                 _lastImage?.Dispose();
                 _lastImage = new Bitmap(frame);
 
-                // Update Safety State (Hysteresis)
-                UpdateSafetyState(result);
-
-                // Expose the reading to the Advanced Sequencer's Symbols sidebar (N.I.N.A. 3.3+).
-                // The published Safe symbol is the composite state, so an expression in the
-                // sequencer sees the same verdict NINA's safety monitor sees.
-                SequencerSymbolPublisher.Publish(result, IsSafe);
-
-                // Log the results
-                Logger.Info($"Weather Analysis - Condition: {result.Condition}, " +
-                          $"Cloud Coverage: {result.CloudCoverage:F1}%, " +
-                          $"Safe: {result.IsSafeForImaging}, " +
-                          $"Confidence: {result.Confidence:F1}%");
-
-                if (Properties.Settings.Default.UseAscomSafetyMonitor)
-                {
-                    Logger.Info($"Safety state - sky: {(_isCurrentlySafe ? "SAFE" : "UNSAFE")}, " +
-                                $"external ASCOM monitor: {(IsExternalMonitorSafe() ? "SAFE" : "UNSAFE")}, " +
-                                $"combined: {(IsSafe ? "SAFE" : "UNSAFE")}");
-                }
-
-                // Append state changes to the shared LLM wiki daily digest (raw/)
-                LlmWikiRawWriter.RecordAnalysis(result);
-
-                // Raise property changed to notify NINA of safety status change
-                RaisePropertyChanged(nameof(IsSafe));
-                RaisePropertyChanged(nameof(SafetyStateReason));
-
-                // Write safety status to file if enabled
-                WriteSafetyStatusFile();
+                ApplyAnalysisResult(result);
 
                 // Save frame for debugging/logging (optional)
                 var captureFolder = Path.Combine(CoreUtil.APPLICATIONTEMPPATH, "AllSkyCameraPlugin");
@@ -803,7 +859,7 @@ namespace AIWeather.Equipment
         {
             return _lastAnalysisUtc == DateTime.MinValue
                 ? "no analysis yet"
-                : $"{(DateTime.UtcNow - _lastAnalysisUtc).TotalMinutes:F1} min";
+                : $"{(UtcNow() - _lastAnalysisUtc).TotalMinutes:F1} min";
         }
 
         // Debug captures are only needed for recent history; keep the folder bounded
@@ -870,9 +926,9 @@ namespace AIWeather.Equipment
         {
             // A start right after a start (a user pressing play and stop to test a camera)
             // does not need a fresh provider call: the sky of thirty seconds ago is the sky.
-            if (AnalysisThrottle.ShouldReuse(_lastAnalysisUtc, DateTime.UtcNow) && _lastResult != null)
+            if (AnalysisThrottle.ShouldReuse(_lastAnalysisUtc, UtcNow()) && _lastResult != null)
             {
-                Logger.Info($"Immediate check skipped: the last analysis is {(DateTime.UtcNow - _lastAnalysisUtc).TotalSeconds:F0}s old and is reused");
+                Logger.Info($"Immediate check skipped: the last analysis is {(UtcNow() - _lastAnalysisUtc).TotalSeconds:F0}s old and is reused");
                 return _lastResult;
             }
 

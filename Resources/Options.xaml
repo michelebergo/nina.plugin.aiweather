@@ -137,7 +137,7 @@
             <TextBlock Text="If no sky analysis succeeds within this time — a dead camera, an unreachable stream — the monitor reports Unsafe instead of holding the last known state. Automatic means three check intervals, never less than 10 minutes."
                        Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
-            <!-- External ASCOM safety monitor, ANDed with the sky verdict -->
+            <!-- External ASCOM safety monitor, combined with the sky verdict with AND or OR (#19) -->
             <TextBlock Text="External ASCOM Safety Monitor" Margin="0,20,0,2" FontWeight="Bold"/>
             <TextBlock Text="Combine with an external safety monitor:" Margin="0,0,0,6"/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
@@ -155,9 +155,14 @@
                         IsEnabled="{Binding Options.UseAscomSafetyMonitor}"
                         Click="ChooseAscomSafetyMonitor_Click"/>
             </StackPanel>
-            <TextBlock Text="The result is combined with AND: imaging is Safe only when both the sky analysis and the external device report Safe. Use it to pair all-sky cloud/rain/fog detection with an environmental monitor (humidity, dew point, rain sensor)."
+            <TextBlock Text="Combination:" Margin="0,0,0,2"/>
+            <ComboBox SelectedIndex="{Binding Options.ExternalMonitorMode, Mode=TwoWay}" IsEnabled="{Binding Options.UseAscomSafetyMonitor}" Width="440" HorizontalAlignment="Left" Margin="0,0,0,4">
+                <ComboBoxItem Content="AND — Safe only when both the sky analysis and the device say Safe"/>
+                <ComboBoxItem Content="OR — Unsafe only when both say Unsafe (the device confirms the sky verdict)"/>
+            </ComboBox>
+            <TextBlock Text="AND pairs all-sky cloud/rain/fog detection with an environmental monitor (humidity, dew point, rain sensor): either one stops imaging. OR is for a second cloud sensor that cries cloudy too often, such as a narrow-field IR sensor reacting to clouds far from the target: imaging stops only when both agree."
                        Margin="0,0,0,4" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
-            <TextBlock Text="If the external device cannot be connected or read, the monitor reports Unsafe."
+            <TextBlock Text="A device that cannot be connected or read counts as Unsafe; sky data older than the maximum data age counts as Unsafe. With AND that stops imaging; with OR the other side decides alone, and the panel says so. Rain or fog seen by the sky analysis is Unsafe in both modes — a cloud sensor that says clear does not dry the lens."
                        Margin="0,0,0,8" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
 

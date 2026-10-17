@@ -5,7 +5,7 @@ using NINA.Core.Utility;
 namespace AIWeather.Services
 {
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
-    internal sealed class AscomSafetyMonitorClient : IDisposable
+    internal sealed class AscomSafetyMonitorClient : IExternalSafetyMonitor, IDisposable
     {
         private object? _driver;
 

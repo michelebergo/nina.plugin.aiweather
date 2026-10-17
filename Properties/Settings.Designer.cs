@@ -311,6 +311,18 @@ namespace AIWeather.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int ExternalMonitorMode {
+            get {
+                return ((int)(this["ExternalMonitorMode"]));
+            }
+            set {
+                this["ExternalMonitorMode"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string AscomSafetyMonitorProgId {
             get {
