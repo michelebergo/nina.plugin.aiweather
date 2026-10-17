@@ -70,10 +70,12 @@ namespace AIWeather.Equipment
         private long _lastSuccessfulAnalysisRevision = -1;
         private bool _staleLogged;
 
-        // Optional external ASCOM safety monitor, ANDed with the sky verdict so the two
-        // protections are independent: this plugin watches the sky, the external device
-        // watches whatever it was built to watch (humidity, dew point, rain sensor).
-        private readonly AscomSafetyMonitorClient _externalMonitor = new AscomSafetyMonitorClient();
+        // Optional local ASCOM device: AND by default, explicit OR for a corroborating
+        // cloud sensor. Following replicas keep their local device as an AND-only veto.
+        private readonly IExternalSafetyMonitor _externalMonitor;
+
+        /// <summary>The clock every age check runs against; the tests move it by hand.</summary>
+        internal Func<DateTime> UtcNow = () => DateTime.UtcNow;
         private readonly object _externalGate = new object();
         private bool _externalSafeCached;
         private DateTime _externalReadUtc = DateTime.MinValue;
@@ -99,11 +101,17 @@ namespace AIWeather.Equipment
         /// </summary>
         public event EventHandler? MonitoringStarted;
 
-        public AIWeatherSafetyMonitor()
+        public AIWeatherSafetyMonitor() : this(new AscomSafetyMonitorClient())
         {
+        }
+
+        internal AIWeatherSafetyMonitor(IExternalSafetyMonitor externalMonitor, bool observeSettings = true)
+        {
+            _externalMonitor = externalMonitor;
             _captureService = new UnifiedCaptureService(cameraMediator: null);
             _analysisOrchestrator = new WeatherAnalysisOrchestrator();
             _datasetRecorder = new TeacherStudentDatasetRecorder(
+                optionsProvider: observeSettings ? null : () => new DatasetRecorderOptions { Enabled = false },
                 logger: new NinaDatasetRecorderLogger());
             _analysisService = new LocalWeatherAnalysisService();
             _datasetRecorder.StatusChanged += (_, _) =>
@@ -113,7 +121,7 @@ namespace AIWeather.Equipment
             };
             
             // Subscribe to settings changes
-            Properties.Settings.Default.PropertyChanged += (s, e) =>
+            if (observeSettings) Properties.Settings.Default.PropertyChanged += (s, e) =>
             {
                 // Conservative invalidation: never reuse a result from before a settings
                 // change (including credentials, source, prompt, thresholds and sync cache).
@@ -274,7 +282,7 @@ namespace AIWeather.Equipment
         public bool Connected
         {
             get => _connected;
-            private set
+            internal set
             {
                 if (_connected == value)
                 {
@@ -356,13 +364,13 @@ namespace AIWeather.Equipment
                     var progId = Properties.Settings.Default.AscomSafetyMonitorProgId;
                     lock (_externalGate)
                     {
-                        _externalConnectAttemptUtc = DateTime.UtcNow;
+                        _externalConnectAttemptUtc = UtcNow();
                         _externalSafeCached = _externalMonitor.TryConnect(progId ?? string.Empty)
                                               && _externalMonitor.TryGetIsSafe(out var s) && s;
-                        _externalReadUtc = DateTime.UtcNow;
+                        _externalReadUtc = UtcNow();
                     }
                     Logger.Info($"External ASCOM safety monitor enabled ('{progId}'): " +
-                                $"{(_externalMonitor.Connected ? "connected" : "NOT connected - the monitor will report UNSAFE until it is")}");
+                                $"{(_externalMonitor.Connected ? "connected" : "NOT connected - external input counts as UNSAFE")}");
                 }
 
                 // Mark as connected BEFORE starting periodic monitoring
@@ -462,11 +470,11 @@ namespace AIWeather.Equipment
                 var progId = Properties.Settings.Default.AscomSafetyMonitorProgId;
                 lock (_externalGate)
                 {
-                    _externalConnectAttemptUtc = DateTime.UtcNow;
+                    _externalConnectAttemptUtc = UtcNow();
                     _externalSafeCached = _externalMonitor.TryConnect(progId ?? string.Empty)
                                           && _externalMonitor.TryGetIsSafe(out var externalSafe)
                                           && externalSafe;
-                    _externalReadUtc = DateTime.UtcNow;
+                    _externalReadUtc = UtcNow();
                 }
             }
 
@@ -547,9 +555,12 @@ namespace AIWeather.Equipment
                 Model = result?.Provenance.Model ?? "Unknown",
                 AnalysisUtc = analysisUtc,
                 AnalysisAgeSeconds = analysisUtc.HasValue
-                    ? Math.Max(0, (DateTime.UtcNow - analysisUtc.Value).TotalSeconds)
+                    ? Math.Max(0, (UtcNow() - analysisUtc.Value).TotalSeconds)
                     : null,
                 SourceFresh = !_isSolarAltitudeSuspended && IsAnalysisFresh(),
+                SafetyDecisionFresh = Connected && _isMonitoring && !_isSolarAltitudeSuspended
+                    && (IsAnalysisFresh() || (ExternalMode == ExternalMonitorMode.Or
+                        && Properties.Settings.Default.UseAscomSafetyMonitor && IsExternalMonitorSafe())),
                 FailoverConfigurationAvailable = failoverConfiguration != null,
                 FailoverConfigurationRevision = failoverConfiguration != null
                     ? AIWeatherClusterProtocol.ComputeConfigurationRevision(failoverConfiguration, sharedToken)
@@ -566,7 +577,14 @@ namespace AIWeather.Equipment
         private string PrimarySafetyReasonCode()
         {
             if (!Connected) return "not-connected";
+            if (!_isMonitoring) return "monitoring-stopped";
             if (_isSolarAltitudeSuspended) return _solarContextUnavailable ? "solar-context-unavailable" : "solar-altitude-suspended";
+            if (IsSafe)
+            {
+                if (!IsAnalysisFresh() || !_isCurrentlySafe) return "safe-external-only";
+                if (Properties.Settings.Default.UseAscomSafetyMonitor && !IsExternalMonitorSafe()) return "safe-sky-only";
+                return "safe";
+            }
             if (_lastAnalysisUtc == DateTime.MinValue) return "waiting-first-analysis";
             if (!IsAnalysisFresh()) return "analysis-stale";
             if (Properties.Settings.Default.UseAscomSafetyMonitor && !IsExternalMonitorSafe()) return "external-monitor-unsafe";
@@ -607,7 +625,7 @@ namespace AIWeather.Equipment
                 {
                     snapshot = await client.PollAsync(cancellationToken).ConfigureAwait(false);
                     _replicaSnapshot = snapshot;
-                    _replicaLastReceivedUtc = DateTime.UtcNow;
+                    _replicaLastReceivedUtc = UtcNow();
                     _replicaFailure = AIWeatherReplicaFailure.None;
                     _replicaLastError = string.Empty;
 
@@ -618,7 +636,7 @@ namespace AIWeather.Equipment
 
                     var transition = _replicaFailoverState.Observe(
                         AIWeatherFailoverObservation.PrimaryReachable,
-                        DateTime.UtcNow,
+                        UtcNow(),
                         Properties.Settings.Default.ClusterAutomaticFailoverEnabled,
                         _replicaFailoverConfiguration != null,
                         FailoverAfter(),
@@ -674,20 +692,20 @@ namespace AIWeather.Equipment
             bool forceLocalCheck)
         {
             if (!_replicaFailoverState.LocalActive
-                || (!forceLocalCheck && DateTime.UtcNow < _replicaNextLocalCheckUtc))
+                || (!forceLocalCheck && UtcNow() < _replicaNextLocalCheckUtc))
             {
                 return;
             }
 
             await PerformWeatherCheckAsync(cancellationToken, reuseRecent: forceLocalCheck).ConfigureAwait(false);
-            _replicaNextLocalCheckUtc = DateTime.UtcNow.AddMinutes(EffectiveCheckIntervalMinutes());
+            _replicaNextLocalCheckUtc = UtcNow().AddMinutes(EffectiveCheckIntervalMinutes());
         }
 
         private async Task ObserveReplicaFailureAsync(
             AIWeatherFailoverObservation observation,
             CancellationToken cancellationToken)
         {
-            var now = DateTime.UtcNow;
+            var now = UtcNow();
             var configurationReady = _replicaFailoverConfiguration != null
                                      && now >= _replicaFailoverRetryAfterUtc;
             var transition = _replicaFailoverState.Observe(
@@ -945,7 +963,7 @@ namespace AIWeather.Equipment
                 return false;
             }
             var staleSeconds = Math.Clamp(Properties.Settings.Default.ClusterStaleSeconds, 3, 3600);
-            return DateTime.UtcNow - _replicaLastReceivedUtc <= TimeSpan.FromSeconds(staleSeconds);
+            return UtcNow() - _replicaLastReceivedUtc <= TimeSpan.FromSeconds(staleSeconds);
         }
 
         private void StopClusterTransport()
@@ -1006,16 +1024,18 @@ namespace AIWeather.Equipment
         }
 
         /// <summary>
-        /// The state NINA acts on. Three independent conditions, all of which must hold:
-        /// the sky verdict from the latest analysis, that verdict still being recent enough
-        /// to describe the current sky, and the external ASCOM safety monitor (when one is
-        /// configured). Anything unknown counts as unsafe — a missing answer is not a
-        /// permission to keep imaging.
+        /// Local analysis uses the owner's AND/OR policy. A following replica consumes
+        /// the primary's final verdict and may only add a local veto, never override a
+        /// failed/stale link or an unsafe primary with its own OR setting.
         /// </summary>
         public bool IsSafe
         {
             get
             {
+                // OR combines observations; it cannot authorize a disconnected monitor,
+                // bypass the daylight gate, or override a failed primary connection.
+                if (!Connected || !_isMonitoring || _isSolarAltitudeSuspended) return false;
+                if (IsReplicaFailoverActive && _lastAnalysisUtc == DateTime.MinValue) return false;
                 if (_connectedNodeMode == ClusterNodeMode.Replica
                     && !_replicaFailoverState.LocalActive)
                 {
@@ -1026,17 +1046,24 @@ namespace AIWeather.Equipment
                            && IsReplicaTransportFresh()
                            && snapshot?.Connected == true
                            && snapshot.Monitoring
-                           && snapshot.SourceFresh
+                           && snapshot.HasFreshSafetyDecision
                            && snapshot.IsSafe
                            && IsExternalMonitorSafe();
                 }
 
-                return !_isSolarAltitudeSuspended
-                       && _isCurrentlySafe
-                       && IsAnalysisFresh()
-                       && IsExternalMonitorSafe();
+                return SafetyVerdict.Combine(
+                    ExternalMode, _isCurrentlySafe, IsAnalysisFresh(), HasSkyHazard,
+                    Properties.Settings.Default.UseAscomSafetyMonitor, IsExternalMonitorSafe());
             }
         }
+
+        private static ExternalMonitorMode ExternalMode =>
+            Properties.Settings.Default.ExternalMonitorMode == (int)ExternalMonitorMode.Or
+                ? ExternalMonitorMode.Or : ExternalMonitorMode.And;
+
+        // An explicit unreadable frame remains a fresh unsafe observation in ADVANCED.
+        private bool HasSkyHazard => _lastResult is { } result
+            && (result.RainDetected || result.FogDetected || result.IsSkyUnreadable);
 
         /// <summary>The sky verdict alone, without freshness or the external monitor.</summary>
         public bool IsSkyConditionSafe => _isCurrentlySafe;
@@ -1113,14 +1140,14 @@ namespace AIWeather.Equipment
                 {
                     if (_replicaFailoverState.RecoverySinceUtc is DateTime recoverySince)
                     {
-                        var recoveryAge = Math.Max(0, (DateTime.UtcNow - recoverySince).TotalSeconds);
+                        var recoveryAge = Math.Max(0, (UtcNow() - recoverySince).TotalSeconds);
                         return UiLocalization.Text(
                             "Cluster.FailoverRecovering",
                             recoveryAge,
                             (int)RecoveryStableFor().TotalSeconds);
                     }
                     var unavailableAge = _replicaFailoverState.UnavailableSinceUtc is DateTime unavailableSince
-                        ? Math.Max(0, (DateTime.UtcNow - unavailableSince).TotalSeconds)
+                        ? Math.Max(0, (UtcNow() - unavailableSince).TotalSeconds)
                         : 0;
                     return UiLocalization.Text("Cluster.FailoverActive", unavailableAge);
                 }
@@ -1130,7 +1157,7 @@ namespace AIWeather.Equipment
                         ? UiLocalization.Text("Cluster.Waiting")
                         : UiLocalization.Text("Cluster.Error", _replicaLastError);
                 }
-                var age = Math.Max(0, (DateTime.UtcNow - _replicaLastReceivedUtc).TotalSeconds);
+                var age = Math.Max(0, (UtcNow() - _replicaLastReceivedUtc).TotalSeconds);
                 return UiLocalization.Text(
                     "Cluster.Synchronized",
                     _replicaSnapshot.NodeId,
@@ -1165,6 +1192,8 @@ namespace AIWeather.Equipment
                     return UiLocalization.Text("Runtime.NotConnected");
                 }
 
+                if (!_isMonitoring) return UiLocalization.Text("Runtime.MonitoringStopped");
+
                 if (_connectedNodeMode == ClusterNodeMode.Replica
                     && !_replicaFailoverState.LocalActive)
                 {
@@ -1182,7 +1211,7 @@ namespace AIWeather.Equipment
                     }
                     if (!IsReplicaTransportFresh())
                     {
-                        var age = Math.Max(0, (DateTime.UtcNow - _replicaLastReceivedUtc).TotalSeconds);
+                        var age = Math.Max(0, (UtcNow() - _replicaLastReceivedUtc).TotalSeconds);
                         return UiLocalization.Text(
                             "Cluster.TransportStale",
                             age,
@@ -1192,7 +1221,7 @@ namespace AIWeather.Equipment
                     {
                         return UiLocalization.Text("Cluster.PrimaryNotMonitoring");
                     }
-                    if (!_replicaSnapshot.SourceFresh || !_replicaSnapshot.IsSafe)
+                    if (!_replicaSnapshot.HasFreshSafetyDecision || !_replicaSnapshot.IsSafe)
                     {
                         return UiLocalization.Text("Cluster.PrimaryUnsafe", _replicaSnapshot.SafetyReason);
                     }
@@ -1202,7 +1231,9 @@ namespace AIWeather.Equipment
                             ? UiLocalization.Text("Runtime.ExternalUnsafe")
                             : UiLocalization.Text("Runtime.ExternalUnreadable");
                     }
-                    return UiLocalization.Text("Cluster.PrimarySafe");
+                    return _replicaSnapshot.SafetyReason == "safe-external-only"
+                        ? UiLocalization.Text("Cluster.PrimaryExternalOnly")
+                        : UiLocalization.Text("Cluster.PrimarySafe");
                 }
 
                 if (_isSolarAltitudeSuspended)
@@ -1215,51 +1246,56 @@ namespace AIWeather.Equipment
                             _activeSunAltitudeLimit);
                 }
 
-                if (_lastAnalysisUtc == DateTime.MinValue)
-                {
+                if (IsReplicaFailoverActive && _lastAnalysisUtc == DateTime.MinValue)
                     return UiLocalization.Text("Runtime.WaitingFirst");
-                }
 
-                if (!IsAnalysisFresh())
+                var fresh = IsAnalysisFresh();
+                var externalEnabled = Properties.Settings.Default.UseAscomSafetyMonitor;
+                var externalSafe = IsExternalMonitorSafe();
+                var orMode = externalEnabled && ExternalMode == ExternalMonitorMode.Or;
+
+                if (orMode)
                 {
-                    var age = (DateTime.UtcNow - _lastAnalysisUtc).TotalMinutes;
-                    return UiLocalization.Text("Runtime.Stale", age, MaxDataAge().TotalMinutes);
+                    if (fresh && HasSkyHazard)
+                        return UiLocalization.Text("Runtime.HazardVeto", SkyUnsafeReason());
+                    if (IsSafe)
+                    {
+                        if (_lastAnalysisUtc == DateTime.MinValue)
+                            return UiLocalization.Text("Runtime.SafeExternalWaiting");
+                        if (!fresh) return UiLocalization.Text("Runtime.SafeExternalStale");
+                        if (!_isCurrentlySafe) return UiLocalization.Text("Runtime.SafeExternalCloudy");
+                        if (!externalSafe) return UiLocalization.Text("Runtime.SafeSkyOnly");
+                        return UiLocalization.Text("Runtime.SkyClear");
+                    }
+                    var sky = _lastAnalysisUtc == DateTime.MinValue
+                        ? UiLocalization.Text("Runtime.WaitingFirst")
+                        : fresh ? SkyUnsafeReason() : UiLocalization.Text("Runtime.SkyDataStale");
+                    return UiLocalization.Text("Runtime.BothUnsafe", sky,
+                        UiLocalization.Text(_externalMonitor.Connected
+                            ? "Runtime.ExternalUnsafe" : "Runtime.ExternalUnreadable"));
                 }
 
-                if (Properties.Settings.Default.UseAscomSafetyMonitor && !IsExternalMonitorSafe())
-                {
-                    return _externalMonitor.Connected
-                        ? UiLocalization.Text("Runtime.ExternalUnsafe")
-                        : UiLocalization.Text("Runtime.ExternalUnreadable");
-                }
-
-                if (!_isCurrentlySafe)
-                {
-                    var r = _lastResult;
-                    if (r == null)
-                    {
-                        return UiLocalization.Text("Runtime.NoUsable");
-                    }
-                    if (r.IsSkyUnreadable || r.Condition == WeatherCondition.Unknown)
-                    {
-                        return UiLocalization.Text("Runtime.SkyUnreadable");
-                    }
-                    if (r.RainDetected)
-                    {
-                        return UiLocalization.Text("Runtime.Rain");
-                    }
-                    if (r.FogDetected)
-                    {
-                        return UiLocalization.Text("Runtime.Fog");
-                    }
-                    return UiLocalization.Text(
-                        "Runtime.CloudUnsafe",
-                        r.CloudCoverage,
-                        EffectiveCloudSafeThreshold());
-                }
-
-                return UiLocalization.Text("Runtime.SkyClear");
+                if (_lastAnalysisUtc == DateTime.MinValue)
+                    return UiLocalization.Text("Runtime.WaitingFirst");
+                if (!fresh)
+                    return UiLocalization.Text("Runtime.Stale",
+                        (UtcNow() - _lastAnalysisUtc).TotalMinutes, MaxDataAge().TotalMinutes);
+                if (externalEnabled && !externalSafe)
+                    return UiLocalization.Text(_externalMonitor.Connected
+                        ? "Runtime.ExternalUnsafe" : "Runtime.ExternalUnreadable");
+                return _isCurrentlySafe ? UiLocalization.Text("Runtime.SkyClear") : SkyUnsafeReason();
             }
+        }
+
+        private string SkyUnsafeReason()
+        {
+            var result = _lastResult;
+            if (result == null) return UiLocalization.Text("Runtime.NoUsable");
+            if (result.RainDetected) return UiLocalization.Text("Runtime.Rain");
+            if (result.FogDetected) return UiLocalization.Text("Runtime.Fog");
+            if (result.IsSkyUnreadable || result.Condition == WeatherCondition.Unknown)
+                return UiLocalization.Text("Runtime.SkyUnreadable");
+            return UiLocalization.Text("Runtime.CloudUnsafe", result.CloudCoverage, EffectiveCloudSafeThreshold());
         }
 
         /// <summary>
@@ -1317,7 +1353,7 @@ namespace AIWeather.Equipment
                 return false; // nothing analysed yet since connecting
             }
 
-            var age = DateTime.UtcNow - _lastAnalysisUtc;
+            var age = UtcNow() - _lastAnalysisUtc;
             if (age <= MaxDataAge())
             {
                 return true;
@@ -1326,7 +1362,7 @@ namespace AIWeather.Equipment
             if (!_staleLogged)
             {
                 _staleLogged = true;
-                Logger.Warning($"Safety monitor reporting UNSAFE: no successful sky analysis for {age.TotalMinutes:F1} minutes " +
+                Logger.Warning($"Sky analysis is stale: no successful sky analysis for {age.TotalMinutes:F1} minutes " +
                                $"(limit {MaxDataAge().TotalMinutes:F0} min). Check the all-sky camera source.");
             }
             return false;
@@ -1348,7 +1384,7 @@ namespace AIWeather.Equipment
 
             lock (_externalGate)
             {
-                var now = DateTime.UtcNow;
+                var now = UtcNow();
                 if (now - _externalReadUtc < ExternalReadCacheDuration)
                 {
                     return _externalSafeCached;
@@ -1413,7 +1449,54 @@ namespace AIWeather.Equipment
                 return;
             }
             _externalFailureLogged = true;
-            Logger.Warning($"Safety monitor reporting UNSAFE: {message}");
+            Logger.Warning($"External safety input is unsafe/unavailable: {message}");
+        }
+
+        /// <summary>
+        /// One analysis has arrived: the verdict, the freshness clock, the sequencer symbols,
+        /// the log, the wiki digest and the status file all follow from it here. Internal so
+        /// a night can be replayed in the tests result by result, external device included.
+        /// </summary>
+        internal bool ApplyAnalysisResult(WeatherAnalysisResult result,
+            AnalysisProvenance? providerProvenance = null, long? configurationRevision = null)
+        {
+            // Invalid/failure envelopes must not manufacture fresh weather. This is also
+            // the entry point used by the deterministic upstream night-replay tests.
+            if (!AnalysisThrottle.CanApplyResult(result))
+            {
+                RaisePropertyChanged(nameof(IsSafe));
+                RaisePropertyChanged(nameof(SafetyStateReason));
+                WriteSafetyStatusFile();
+                return false;
+            }
+
+            _lastResult = result;
+            if (_providerHealth.Record(providerProvenance ?? result.Provenance))
+                Logger.Info($"Online provider health changed: {_providerHealth.Provider}, consecutive failures {_providerHealth.ConsecutiveFallbacks}");
+            RaisePropertyChanged(nameof(ProviderHealth));
+            _lastAnalysisUtc = UtcNow();
+            _lastSuccessfulAnalysisRevision = configurationRevision
+                ?? Interlocked.Read(ref _analysisConfigurationRevision);
+            _staleLogged = false;
+            UpdateSafetyState(result);
+
+            var safe = IsSafe;
+            SequencerSymbolPublisher.Publish(result, safe);
+            Logger.Info($"Weather Analysis - Condition: {result.Condition}, " +
+                      $"Cloud Coverage: {result.CloudCoverage:F1}%, " +
+                      $"Safe: {safe}, Confidence: {result.Confidence:F1}%, " +
+                      $"Source: {result.Provenance.Provider}/{result.Provenance.Model}, " +
+                      $"Fallback: {result.Provenance.IsFallback}");
+            if (Properties.Settings.Default.UseAscomSafetyMonitor)
+                Logger.Info($"Safety state - sky: {(_isCurrentlySafe ? "SAFE" : "UNSAFE")}, " +
+                            $"external ASCOM monitor: {(IsExternalMonitorSafe() ? "SAFE" : "UNSAFE")}, " +
+                            $"mode: {ExternalMode}, combined: {(safe ? "SAFE" : "UNSAFE")}");
+
+            LlmWikiRawWriter.RecordAnalysis(result);
+            RaisePropertyChanged(nameof(IsSafe));
+            RaisePropertyChanged(nameof(SafetyStateReason));
+            WriteSafetyStatusFile();
+            return true;
         }
 
         private void UpdateSafetyState(WeatherAnalysisResult result)
@@ -1729,7 +1812,7 @@ namespace AIWeather.Equipment
                 // The Sun gate deliberately runs before opening/capturing the camera and
                 // before invoking any model. This is what prevents daylight overexposure
                 // from entering the dataset and avoids spending online API quota.
-                var astroContext = TryComputeAstroContext(DateTime.UtcNow);
+                var astroContext = TryComputeAstroContext(UtcNow());
                 var solarDecision = SolarAltitudeGuard.Evaluate(
                     EffectiveUseSunAltitudeLimit(),
                     EffectiveSunAltitudeLimitDegrees(),
@@ -1747,7 +1830,7 @@ namespace AIWeather.Equipment
                 // Connect/disconnect still clears _lastAnalysisUtc: a new connection must
                 // obtain a new verdict rather than inherit a cached SAFE state.
                 if (reuseRecent && AnalysisThrottle.ShouldReuseResult(_lastResult, _lastAnalysisUtc,
-                    DateTime.UtcNow, _lastSuccessfulAnalysisRevision, configurationRevision))
+                    UtcNow(), _lastSuccessfulAnalysisRevision, configurationRevision))
                 {
                     Logger.Info("Immediate weather check reused a valid result less than 30 seconds old; timestamp unchanged");
                     return;
@@ -1762,16 +1845,18 @@ namespace AIWeather.Equipment
                     // No new data. The state is deliberately NOT flipped here on a single
                     // miss - a dropped frame on an RTSP stream would make the monitor flap
                     // and abort sequences - but it is not silently kept either: the analysis
-                    // ages, and IsSafe turns unsafe once it passes the maximum data age.
+                    // ages, and the sky input turns unsafe at the maximum data age.
+                    // Explicit OR can still rely on a safe external input.
                     Logger.Warning($"Failed to capture image from {captureMode} source; " +
                                    $"last successful analysis is {LastAnalysisAgeDescription()} old");
                     RaisePropertyChanged(nameof(IsSafe));
-                RaisePropertyChanged(nameof(SafetyStateReason));
+                    RaisePropertyChanged(nameof(SafetyStateReason));
+                    WriteSafetyStatusFile();
                     return;
                 }
 
                 Logger.Debug($"Image captured from {captureMode}, size: {frame.Width}x{frame.Height}");
-                var capturedUtc = DateTime.UtcNow;
+                var capturedUtc = UtcNow();
                 NoteFrameIdentity(frame);
 
                 // Analyze the frame
@@ -1790,8 +1875,7 @@ namespace AIWeather.Equipment
                 if (!AnalysisThrottle.CanApplyResult(result))
                 {
                     Logger.Warning("Weather analysis produced no valid measurement; previous verdict continues ageing toward the fail-safe limit");
-                    RaisePropertyChanged(nameof(IsSafe));
-                    RaisePropertyChanged(nameof(SafetyStateReason));
+                    ApplyAnalysisResult(result); // publish expiry without refreshing the reading
                     return;
                 }
                 Logger.Debug(
@@ -1799,28 +1883,11 @@ namespace AIWeather.Equipment
                     $"fallback={analysis.UsedFallback}, " +
                     $"teacher={analysis.Teacher?.Provenance.Provider ?? "none"}, " +
                     $"student={analysis.Student.Provenance.Model}");
-                _lastResult = result;
                 _lastAnalysisBundle = analysis;
-                if (_providerHealth.Record(analysis.Teacher?.Provenance ?? result.Provenance))
-                    Logger.Info($"Online provider health changed: {_providerHealth.Provider}, consecutive failures {_providerHealth.ConsecutiveFallbacks}");
-                RaisePropertyChanged(nameof(ProviderHealth));
                 _lastAstroContext = astroContext;
-
-                // A successful unreadable-sky answer is a fresh UNSAFE observation, not a
-                // cloud measurement. API failure envelopes have already been excluded above.
-                if (AnalysisThrottle.CanApplyResult(result))
-                {
-                    _lastAnalysisUtc = DateTime.UtcNow;
-                    _lastSuccessfulAnalysisRevision = configurationRevision;
-                    _staleLogged = false;
-                }
-
-                // Store a copy of the image for UI restoration
                 _lastImage?.Dispose();
                 _lastImage = new Bitmap(frame);
-
-                // Update Safety State (Hysteresis)
-                UpdateSafetyState(result);
+                ApplyAnalysisResult(result, analysis.Teacher?.Provenance, configurationRevision);
 
                 var externalSafe = Properties.Settings.Default.UseAscomSafetyMonitor
                     ? IsExternalMonitorSafe()
@@ -1843,19 +1910,6 @@ namespace AIWeather.Equipment
                         lowThreshold: EffectiveCloudSafeThreshold());
                 }
 
-                // Expose the reading to the Advanced Sequencer's Symbols sidebar (N.I.N.A. 3.3+).
-                // The published Safe symbol is the composite state, so an expression in the
-                // sequencer sees the same verdict NINA's safety monitor sees.
-                SequencerSymbolPublisher.Publish(result, IsSafe);
-
-                // Log the results
-                Logger.Info($"Weather Analysis - Condition: {result.Condition}, " +
-                          $"Cloud Coverage: {result.CloudCoverage:F1}%, " +
-                          $"Safe: {result.IsSafeForImaging}, " +
-                          $"Confidence: {result.Confidence:F1}%, " +
-                          $"Source: {result.Provenance.Provider}/{result.Provenance.Model}, " +
-                          $"Fallback: {result.Provenance.IsFallback}");
-
                 if (analysis.TeacherStudentCloudDifference is double difference)
                 {
                     Logger.Info(
@@ -1863,23 +1917,6 @@ namespace AIWeather.Equipment
                         $"{analysis.Teacher!.Result!.CloudCoverage:F1}%, student: " +
                         $"{analysis.Student.CloudCoverage:F1}%, difference: {difference:F1}%");
                 }
-
-                if (Properties.Settings.Default.UseAscomSafetyMonitor)
-                {
-                    Logger.Info($"Safety state - sky: {(_isCurrentlySafe ? "SAFE" : "UNSAFE")}, " +
-                                $"external ASCOM monitor: {(IsExternalMonitorSafe() ? "SAFE" : "UNSAFE")}, " +
-                                $"combined: {(IsSafe ? "SAFE" : "UNSAFE")}");
-                }
-
-                // Append state changes to the shared LLM wiki daily digest (raw/)
-                LlmWikiRawWriter.RecordAnalysis(result);
-
-                // Raise property changed to notify NINA of safety status change
-                RaisePropertyChanged(nameof(IsSafe));
-                RaisePropertyChanged(nameof(SafetyStateReason));
-
-                // Write safety status to file if enabled
-                WriteSafetyStatusFile();
 
                 // Save frame for debugging/logging (optional)
                 var captureFolder = Path.Combine(CoreUtil.APPLICATIONTEMPPATH, "AllSkyCameraPlugin");
@@ -1917,7 +1954,7 @@ namespace AIWeather.Equipment
         {
             return _lastAnalysisUtc == DateTime.MinValue
                 ? "no analysis yet"
-                : $"{(DateTime.UtcNow - _lastAnalysisUtc).TotalMinutes:F1} min";
+                : $"{(UtcNow() - _lastAnalysisUtc).TotalMinutes:F1} min";
         }
 
         // Debug captures are only needed for recent history; keep the folder bounded
@@ -1998,7 +2035,7 @@ namespace AIWeather.Equipment
                     : (bool?)null;
                 return _datasetRecorder.TryEnqueue(
                     image,
-                    DateTime.UtcNow,
+                    UtcNow(),
                     _lastAstroContext,
                     _lastAnalysisBundle,
                     effectiveSafe: IsSafe,

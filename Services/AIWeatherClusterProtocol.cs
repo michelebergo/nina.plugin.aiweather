@@ -396,6 +396,13 @@ namespace AIWeather.Services
         public DateTime? AnalysisUtc { get; set; }
         public double? AnalysisAgeSeconds { get; set; }
         public bool SourceFresh { get; set; }
+        // SourceFresh keeps its original sky-analysis meaning. New peers also understand
+        // a fresh external-only OR verdict; old peers remain conservatively unsafe when
+        // the sky is stale. Never forge AnalysisUtc just because a sensor is readable.
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public bool? SafetyDecisionFresh { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public bool HasFreshSafetyDecision => SafetyDecisionFresh ?? SourceFresh;
         public bool FailoverConfigurationAvailable { get; set; }
         public string FailoverConfigurationRevision { get; set; } = string.Empty;
     }

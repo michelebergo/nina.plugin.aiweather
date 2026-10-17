@@ -20,8 +20,11 @@ namespace AIWeather.Services
         private static bool? _lastSafe;
         private static int _lastCoverageBucket = -1;
 
+        /// <summary>Where the digest goes; the tests point it at a temporary folder.</summary>
+        internal static string? RootOverride;
+
         private static string WikiRoot =>
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NINA", "llmwiki");
+            RootOverride ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NINA", "llmwiki");
 
         /// <summary>
         /// Records the analysis result if it represents a state change. Never throws.

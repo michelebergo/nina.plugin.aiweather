@@ -714,6 +714,18 @@ namespace AIWeather
             }
         }
 
+        /// <summary>0 = AND (safe only when both say safe), 1 = OR (unsafe only when both say unsafe). See SafetyVerdict.</summary>
+        public int ExternalMonitorMode
+        {
+            get => Properties.Settings.Default.ExternalMonitorMode;
+            set
+            {
+                Properties.Settings.Default.ExternalMonitorMode = value == 1 ? 1 : 0;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
         public string AscomSafetyMonitorProgId
         {
             get => Properties.Settings.Default.AscomSafetyMonitorProgId ?? string.Empty;

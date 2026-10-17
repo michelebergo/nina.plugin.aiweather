@@ -331,7 +331,7 @@
                            Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
             </StackPanel>
 
-            <!-- External ASCOM safety monitor, ANDed with the sky verdict -->
+            <!-- Local AND/OR policy; a following replica always keeps a local AND veto. -->
             <TextBlock Text="{i18n:Loc Options.ExternalMonitor}" Margin="0,20,0,2" FontWeight="Bold"/>
             <TextBlock Text="{i18n:Loc Options.CombineExternal}" Margin="0,0,0,6"/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
@@ -349,9 +349,15 @@
                         IsEnabled="{Binding Options.UseAscomSafetyMonitor}"
                         Click="ChooseAscomSafetyMonitor_Click"/>
             </StackPanel>
-            <TextBlock Text="{i18n:Loc Options.ExternalHelp}"
+            <TextBlock Text="{i18n:Loc Options.ExternalCombination}" Margin="0,0,0,2"/>
+            <ComboBox SelectedIndex="{Binding Options.ExternalMonitorMode, Mode=TwoWay}"
+                      IsEnabled="{Binding Options.UseAscomSafetyMonitor}" Width="440" HorizontalAlignment="Left" Margin="0,0,0,4">
+                <ComboBoxItem Content="{i18n:Loc Options.ExternalAnd}"/>
+                <ComboBoxItem Content="{i18n:Loc Options.ExternalOr}"/>
+            </ComboBox>
+            <TextBlock Text="{i18n:Loc Options.ExternalPolicyHelp}"
                        Margin="0,0,0,4" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
-            <TextBlock Text="{i18n:Loc Options.ExternalFail}"
+            <TextBlock Text="{i18n:Loc Options.ExternalPolicySafety}"
                        Margin="0,0,0,8" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
             <StackPanel Visibility="{Binding Options.AreLocalOperationalSettingsVisible, Converter={StaticResource BoolToVisibility}}">

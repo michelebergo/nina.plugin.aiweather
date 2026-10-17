@@ -14,7 +14,7 @@ Unattended imaging sessions are at risk from sudden weather changes. Traditional
 
 The same plugin package supports three explicit roles. **Standalone** analyzes locally. **Primary** runs the configured analysis, writes the teacher-student dataset and publishes its final safety verdict over an authenticated LAN endpoint. **Replica** normally follows that verdict while displaying its own synchronized camera preview; preview and analysis share the terminal's video session. It only runs its own analysis during an explicitly enabled local failover, and does not write the dataset during takeover.
 
-This is deliberately not automatic leader election. A role is frozen when the NINA Safety Monitor connects, so changing it requires disconnecting and reconnecting the device. Replica startup, authentication/protocol errors, stale transport, stale primary analysis and an unsafe primary verdict all report **Unsafe**. Configure a unique shared token of at least 16 characters and restrict the primary TCP port (default `18910`) to trusted observatory hosts with Windows Firewall. See the [frozen cluster design](docs/LAN_PRIMARY_REPLICA_CLUSTER_DESIGN.zh-CN.md) for the protocol and safety model.
+This is deliberately not automatic leader election. A role is frozen when the NINA Safety Monitor connects, so changing it requires disconnecting and reconnecting the device. Replica startup, authentication/protocol errors, stale transport, expired primary decision inputs and an unsafe primary verdict all report **Unsafe**. Explicit OR on the primary may use its external sensor when sky data is stale; see section 7 for compatibility and safety boundaries. Configure a unique shared token of at least 16 characters and restrict the primary TCP port (default `18910`) to trusted observatory hosts with Windows Firewall. See the [frozen cluster design](docs/LAN_PRIMARY_REPLICA_CLUSTER_DESIGN.zh-CN.md) and [latest integration notes](docs/UPSTREAM_MERGE_20261017.zh-CN.md) for the protocol and safety model.
 
 Optional primary-preferred failover lets a Replica take over locally only after a sustained network outage and only when it has a valid encrypted camera/AI configuration. It returns to the Primary after a stable recovery window; authentication and protocol errors never authorize takeover. In Replica mode the synchronized takeover configuration is shown as a read-only panel with its revision and synchronization time. Camera/API secrets are never displayed—only redacted sources and configured/not-configured status. Turning synchronization off switches to explicitly editable local standby values and ignores any older synchronized cache.
 
@@ -73,14 +73,18 @@ The plugin registers as a NINA Safety Monitor device. When connected:
 - NINA's sequencer can automatically pause or abort imaging when the status changes to Unsafe.
 - An optional status file can be written for integration with ASCOM Generic File SafetyMonitor or external automation tools.
 
-The reported state is the AND of three independent conditions — **anything unknown counts
-as unsafe**, because a missing answer is not permission to keep imaging:
+The reported state combines three independent conditions — **anything unknown counts
+as unsafe** on its own side, because a missing answer is not permission to keep imaging:
 
 | Condition | Unsafe when |
 |---|---|
 | Sky verdict | cloud coverage above the threshold, rain, or fog (with hysteresis between the high and low thresholds) |
 | Data freshness | no successful analysis within the maximum data age — a dead camera or unreachable stream can never leave a stale **Safe** standing |
 | External monitor | the optional ASCOM safety monitor reports unsafe, or cannot be connected or read |
+
+Sky verdict and freshness are always ANDed. The external monitor is combined with **AND**
+(the default: either side stops imaging) or **OR** (imaging stops only when both sides say
+unsafe; see section 7).
 
 The preview panel shows the **reason** under the Safe/Unsafe line, so a cloudy sky, a
 camera that stopped delivering and an unreachable external device are never confused for
@@ -220,21 +224,41 @@ is a useful starting range.
 ### 6. Fail-safe
 
 - **Maximum data age** (minutes, 0 = automatic): if no analysis succeeds within this time,
-  the monitor reports **Unsafe** instead of holding the last known state. Automatic means
-  three check intervals, never below 10 minutes. This is what makes a camera that dies at
-  midnight stop the sequence instead of reporting the sky it saw before it died.
+  the sky input becomes **Unsafe** instead of holding the last known state. Automatic means
+  three check intervals, never below 10 minutes. With the default AND policy, or without an
+  external monitor, this stops imaging. Explicit OR mode can instead rely on a readable,
+  safe external device; it never refreshes the timestamp of an old sky analysis.
 
 ### 7. Optional: External ASCOM Safety Monitor
 
 - Enable **Combine with an external safety monitor** and pick a device with **Choose...**
-  (or type its ProgID). The verdicts are combined with AND: imaging is **Safe** only when
-  the sky analysis *and* the external device both say so.
-- The intended pairing for unattended operation: this plugin watches the sky
-  (cloud/rain/fog) while the external device watches the environment (humidity, dew point,
-  a rain sensor). NINA keeps a single Safety Monitor selected — this one — and gets both
-  protections through it.
-- If the external device cannot be connected or read, the state is **Unsafe**. A driver
-  that stops answering is exactly the situation its owner installed it for.
+  (or type its ProgID), then choose how the two verdicts combine:
+  - **AND** (the default): imaging is **Safe** only when the sky analysis *and* the
+    external device both say so. The pairing for unattended operation: this plugin watches
+    the sky (cloud/rain/fog) while the device watches the environment (humidity, dew point,
+    a rain sensor). NINA keeps a single Safety Monitor selected — this one — and gets both
+    protections through it.
+  - **OR**: imaging stops only when *both* say **Unsafe**. For a second cloud sensor that
+    cries cloudy too often — a narrow-field IR sensor reacting to clouds far from the
+    target while AI Weather judges a crop of the sky around the pointing (Folder Watch):
+    the device confirms the sky verdict instead of adding to it.
+- A device that cannot be connected or read counts as **Unsafe**, and sky data older than
+  the maximum data age counts as **Unsafe**. With AND that stops imaging — a driver that
+  stops answering is exactly the situation its owner installed it for. With OR the other
+  side decides alone, and the panel's reason line says which one carried the verdict
+  ("Safe on the sky analysis alone — external monitor unsafe or unreadable").
+- Fresh rain, fog or an explicit unreadable-sky observation is **Unsafe** in both modes.
+  As in upstream, an expired observation no longer vetoes a fresh external input in
+  explicit OR mode. OR is not appropriate when either sensor must independently stop imaging.
+- Disconnection, stopped monitoring and the daylight guard remain **Unsafe** in both modes.
+  A following LAN replica requires a fresh, authenticated, safe primary verdict and may only
+  add a local external-device veto; its OR setting cannot override primary failure or Unsafe.
+  Local takeover requires a first valid local analysis before local OR can apply. External
+  device configuration and AND/OR selection remain local to each computer, not synchronized.
+- LAN snapshots distinguish final decision freshness (`safetyDecisionFresh`) from sky
+  freshness (`sourceFresh`) and preserve the real analysis timestamp. New replicas can follow
+  an external-only OR decision; old replicas conservatively reject it when sky data is stale.
+  Upgrade both ends to use the new behavior.
 
 ### 8. Optional: Status File
 
