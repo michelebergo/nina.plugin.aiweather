@@ -232,6 +232,29 @@ namespace AIWeather
             }
         }
 
+        /// <summary>A second ASCOM device (humidity, dew point, rain sensor) that is always ANDed: (sky OR cloud sensor) AND environment.</summary>
+        public bool UseEnvironmentSafetyMonitor
+        {
+            get => Properties.Settings.Default.UseEnvironmentSafetyMonitor;
+            set
+            {
+                Properties.Settings.Default.UseEnvironmentSafetyMonitor = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        public string EnvironmentSafetyMonitorProgId
+        {
+            get => Properties.Settings.Default.EnvironmentSafetyMonitorProgId ?? string.Empty;
+            set
+            {
+                Properties.Settings.Default.EnvironmentSafetyMonitorProgId = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
         public string AscomSafetyMonitorProgId
         {
             get => Properties.Settings.Default.AscomSafetyMonitorProgId ?? string.Empty;

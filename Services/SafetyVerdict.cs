@@ -27,8 +27,15 @@ namespace AIWeather.Services
         /// cloud far from the target: in OR mode a clear-reading cloud sensor does not dry it.</param>
         /// <param name="externalEnabled">Whether an external monitor is configured at all.</param>
         /// <param name="externalSafe">Its verdict; unreadable counts as unsafe.</param>
-        public static bool Combine(ExternalMonitorMode mode, bool skySafe, bool fresh, bool hazard, bool externalEnabled, bool externalSafe)
+        /// <param name="environmentEnabled">Whether a second, environment monitor is configured
+        /// (humidity, dew point, rain sensor). It is ANDed on top whatever the mode: anything
+        /// that must stop imaging on its own cannot sit on the OR side.</param>
+        /// <param name="environmentSafe">Its verdict; unreadable counts as unsafe.</param>
+        public static bool Combine(ExternalMonitorMode mode, bool skySafe, bool fresh, bool hazard, bool externalEnabled, bool externalSafe,
+                                   bool environmentEnabled = false, bool environmentSafe = false)
         {
+            if (environmentEnabled && !environmentSafe) return false;
+
             // Stale data makes the sky unknown, and an unknown sky is an unsafe one - also in OR
             // mode, where it hands the decision to the external device alone. A hazard seen in
             // a stale analysis says nothing about now, so it is not carried past the freshness check.

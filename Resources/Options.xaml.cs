@@ -336,7 +336,11 @@ namespace AIWeather
                 try
                 {
                     chooser.DeviceType = "SafetyMonitor";
-                    var current = Properties.Settings.Default.AscomSafetyMonitorProgId ?? string.Empty;
+                    // The same chooser serves both device rows; the button's Tag says which.
+                    var forEnvironment = sender is FrameworkElement { Tag: "Environment" };
+                    var current = (forEnvironment
+                        ? Properties.Settings.Default.EnvironmentSafetyMonitorProgId
+                        : Properties.Settings.Default.AscomSafetyMonitorProgId) ?? string.Empty;
                     var selected = (string)chooser.Choose(current);
 
                     if (!string.IsNullOrWhiteSpace(selected)

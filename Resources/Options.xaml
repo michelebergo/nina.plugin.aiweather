@@ -165,6 +165,28 @@
             <TextBlock Text="A device that cannot be connected or read counts as Unsafe; sky data older than the maximum data age counts as Unsafe. With AND that stops imaging; with OR the other side decides alone, and the panel says so. Rain or fog seen by the sky analysis is Unsafe in both modes — a cloud sensor that says clear does not dry the lens."
                        Margin="0,0,0,8" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
+            <!-- Environment monitor: a second device that is always ANDed, so a humidity or
+                 rain limit cannot be overridden by a clear sky in OR mode (#19). -->
+            <TextBlock Text="Environment safety monitor (always AND):" Margin="0,6,0,6"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,4" HorizontalAlignment="Left">
+                <CheckBox IsChecked="{Binding Options.UseEnvironmentSafetyMonitor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          VerticalAlignment="Center"
+                          Width="64"
+                          Margin="0,0,8,0"/>
+                <TextBox Text="{Binding Options.EnvironmentSafetyMonitorProgId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="{Binding Options.UseEnvironmentSafetyMonitor}"
+                         Width="360"
+                         VerticalContentAlignment="Center"/>
+                <Button Content="Choose..."
+                        Margin="8,0,0,0"
+                        Padding="10,2"
+                        Tag="Environment"
+                        IsEnabled="{Binding Options.UseEnvironmentSafetyMonitor}"
+                        Click="ChooseAscomSafetyMonitor_Click"/>
+            </StackPanel>
+            <TextBlock Text="A second ASCOM safety monitor for what must stop imaging on its own — humidity, dew point, a rain sensor. It is ANDed whatever the combination above: (sky OR cloud sensor) AND environment. Unreadable counts as Unsafe."
+                       Margin="0,0,0,8" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+
 
             <!-- GitHub Models Token -->
             <StackPanel Margin="0,10,0,0"

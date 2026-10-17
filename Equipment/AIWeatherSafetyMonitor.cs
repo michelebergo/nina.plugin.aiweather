@@ -42,23 +42,14 @@ namespace AIWeather.Equipment
         private DateTime _lastAnalysisUtc = DateTime.MinValue;
         private bool _staleLogged;
 
-        // Optional external ASCOM safety monitor, ANDed with the sky verdict so the two
-        // protections are independent: this plugin watches the sky, the external device
-        // watches whatever it was built to watch (humidity, dew point, rain sensor).
-        private readonly IExternalSafetyMonitor _externalMonitor;
+        // Optional external ASCOM safety monitor, combined with the sky verdict with AND or
+        // OR as the owner chose, and an optional environment monitor (humidity, dew point,
+        // rain sensor) that is always ANDed on top: (sky OR cloud sensor) AND environment.
+        private readonly ExternalSafetyDevice _externalDevice;
+        private readonly ExternalSafetyDevice _environmentDevice;
 
         /// <summary>The clock every age check runs against; the tests move it by hand.</summary>
         internal Func<DateTime> UtcNow = () => DateTime.UtcNow;
-        private readonly object _externalGate = new object();
-        private bool _externalSafeCached;
-        private DateTime _externalReadUtc = DateTime.MinValue;
-        private DateTime _externalConnectAttemptUtc = DateTime.MinValue;
-        private bool _externalFailureLogged;
-
-        // The last state the external monitor was logged in, so a clean SAFE/UNSAFE flip
-        // from the device leaves one line in the log. Without it an UNSAFE at dawn from a
-        // rain sensor is indistinguishable from anything else after the fact.
-        private bool? _externalStateLogged;
 
         // How many checks in a row the chosen provider failed to answer. Shown in the
         // panel from the first one: a fallback the owner cannot see is a bill for nothing.
@@ -70,12 +61,6 @@ namespace AIWeather.Equipment
         private ulong? _lastFrameFingerprint;
         private int _identicalFrameRun;
 
-        /// <summary>IsSafe is polled often; a COM read per poll would hammer the driver.</summary>
-        private static readonly TimeSpan ExternalReadCacheDuration = TimeSpan.FromSeconds(5);
-
-        /// <summary>How long to wait before retrying a driver that failed to connect or read.</summary>
-        private static readonly TimeSpan ExternalReconnectInterval = TimeSpan.FromSeconds(30);
-
         /// <summary>Floor for the automatic data-age limit, whatever the check interval.</summary>
         private static readonly TimeSpan MinimumAutomaticDataAge = TimeSpan.FromMinutes(10);
 
@@ -84,13 +69,14 @@ namespace AIWeather.Equipment
         /// </summary>
         public event EventHandler? MonitoringStarted;
 
-        public AIWeatherSafetyMonitor() : this(new AscomSafetyMonitorClient())
+        public AIWeatherSafetyMonitor() : this(new AscomSafetyMonitorClient(), new AscomSafetyMonitorClient())
         {
         }
 
-        internal AIWeatherSafetyMonitor(IExternalSafetyMonitor externalMonitor)
+        internal AIWeatherSafetyMonitor(IExternalSafetyMonitor externalMonitor, IExternalSafetyMonitor environmentMonitor)
         {
-            _externalMonitor = externalMonitor;
+            _externalDevice = new ExternalSafetyDevice(externalMonitor, "external ASCOM safety monitor");
+            _environmentDevice = new ExternalSafetyDevice(environmentMonitor, "environment ASCOM safety monitor");
             _captureService = new UnifiedCaptureService(cameraMediator: null);
             _analysisService = new LocalWeatherAnalysisService();
             
@@ -220,24 +206,16 @@ namespace AIWeather.Equipment
                 _providerHealth.Reset();
                 _lastFrameFingerprint = null;
                 _identicalFrameRun = 0;
-                _externalStateLogged = null;
                 _isCurrentlySafe = false;
                 _staleLogged = false;
 
-                // Best-effort: the lazy path in IsExternalMonitorSafe retries on its own
-                // schedule, but connecting here surfaces a wrong ProgID in the log at once.
                 if (Properties.Settings.Default.UseAscomSafetyMonitor)
                 {
-                    var progId = Properties.Settings.Default.AscomSafetyMonitorProgId;
-                    lock (_externalGate)
-                    {
-                        _externalConnectAttemptUtc = UtcNow();
-                        _externalSafeCached = _externalMonitor.TryConnect(progId ?? string.Empty)
-                                              && _externalMonitor.TryGetIsSafe(out var s) && s;
-                        _externalReadUtc = UtcNow();
-                    }
-                    Logger.Info($"External ASCOM safety monitor enabled ('{progId}'): " +
-                                $"{(_externalMonitor.Connected ? "connected" : "NOT connected - the monitor will report UNSAFE until it is")}");
+                    _externalDevice.ConnectNow(Properties.Settings.Default.AscomSafetyMonitorProgId, UtcNow());
+                }
+                if (Properties.Settings.Default.UseEnvironmentSafetyMonitor)
+                {
+                    _environmentDevice.ConnectNow(Properties.Settings.Default.EnvironmentSafetyMonitorProgId, UtcNow());
                 }
 
                 // Mark as connected BEFORE starting periodic monitoring
@@ -276,12 +254,8 @@ namespace AIWeather.Equipment
                 _lastAnalysisUtc = DateTime.MinValue;
                 _isCurrentlySafe = false;
 
-                lock (_externalGate)
-                {
-                    _externalMonitor.Disconnect();
-                    _externalSafeCached = false;
-                    _externalReadUtc = DateTime.MinValue;
-                }
+                _externalDevice.Disconnect();
+                _environmentDevice.Disconnect();
 
                 Connected = false;
                 Logger.Info("All Sky Camera Safety Monitor disconnected");
@@ -305,7 +279,9 @@ namespace AIWeather.Equipment
             IsAnalysisFresh(),
             _lastResult is { } r && (r.RainDetected || r.FogDetected),
             Properties.Settings.Default.UseAscomSafetyMonitor,
-            IsExternalMonitorSafe());
+            IsExternalMonitorSafe(),
+            Properties.Settings.Default.UseEnvironmentSafetyMonitor,
+            IsEnvironmentMonitorSafe());
 
         private static ExternalMonitorMode ExternalMode => (ExternalMonitorMode)Properties.Settings.Default.ExternalMonitorMode;
 
@@ -370,6 +346,13 @@ namespace AIWeather.Equipment
                     return "Waiting for the first sky analysis";
                 }
 
+                if (Properties.Settings.Default.UseEnvironmentSafetyMonitor && !IsEnvironmentMonitorSafe())
+                {
+                    return _environmentDevice.Connected
+                        ? "Environment safety monitor reports unsafe"
+                        : "Environment safety monitor cannot be connected or read";
+                }
+
                 var externalEnabled = Properties.Settings.Default.UseAscomSafetyMonitor;
                 var orMode = externalEnabled && ExternalMode == ExternalMonitorMode.Or;
 
@@ -389,7 +372,7 @@ namespace AIWeather.Equipment
 
                 if (externalEnabled && !IsExternalMonitorSafe() && !orMode)
                 {
-                    return _externalMonitor.Connected
+                    return _externalDevice.Connected
                         ? "External safety monitor reports unsafe"
                         : "External safety monitor cannot be connected or read";
                 }
@@ -401,7 +384,7 @@ namespace AIWeather.Equipment
                         // Only rain or fog get here: the one sky verdict a clear-reading sensor cannot override.
                         return "Sky " + SkyUnsafeReason() + " — rain and fog stop imaging whatever the external monitor says";
                     }
-                    var external = _externalMonitor.Connected ? "reports unsafe" : "cannot be connected or read";
+                    var external = _externalDevice.Connected ? "reports unsafe" : "cannot be connected or read";
                     var sky = IsAnalysisFresh() ? SkyUnsafeReason() : "data is stale";
                     return $"Sky {sky}; external safety monitor {external}";
                 }
@@ -478,89 +461,18 @@ namespace AIWeather.Equipment
             return false;
         }
 
-        /// <summary>
-        /// The external ASCOM safety monitor's verdict, or true when the feature is off.
-        /// Every failure mode - not configured, driver missing, connection lost, read error -
-        /// reports unsafe, because an external monitor that cannot be read is exactly the
-        /// situation its user installed it to be protected from. Reads are cached briefly
-        /// and reconnects are rate-limited so a polled property cannot hammer a COM driver.
-        /// </summary>
+        /// <summary>The external ASCOM safety monitor's verdict, or true when the feature is off.</summary>
         private bool IsExternalMonitorSafe()
         {
-            if (!Properties.Settings.Default.UseAscomSafetyMonitor)
-            {
-                return true;
-            }
-
-            lock (_externalGate)
-            {
-                var now = UtcNow();
-                if (now - _externalReadUtc < ExternalReadCacheDuration)
-                {
-                    return _externalSafeCached;
-                }
-                _externalReadUtc = now;
-
-                var progId = Properties.Settings.Default.AscomSafetyMonitorProgId;
-                if (string.IsNullOrWhiteSpace(progId))
-                {
-                    _externalSafeCached = false;
-                    LogExternalFailureOnce("the external ASCOM safety monitor is enabled but no driver is selected");
-                    return false;
-                }
-
-                if (!_externalMonitor.Connected || !string.Equals(_externalMonitor.ProgId, progId, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (now - _externalConnectAttemptUtc < ExternalReconnectInterval)
-                    {
-                        _externalSafeCached = false;
-                        return false;
-                    }
-
-                    _externalConnectAttemptUtc = now;
-                    if (!_externalMonitor.TryConnect(progId))
-                    {
-                        _externalSafeCached = false;
-                        LogExternalFailureOnce($"cannot connect to the external ASCOM safety monitor '{progId}'");
-                        return false;
-                    }
-                }
-
-                if (!_externalMonitor.TryGetIsSafe(out var externalSafe))
-                {
-                    // The driver answered before and does not now: drop the connection so the
-                    // next cycle rebuilds it instead of polling a dead object forever.
-                    _externalMonitor.Disconnect();
-                    _externalSafeCached = false;
-                    LogExternalFailureOnce($"cannot read IsSafe from the external ASCOM safety monitor '{progId}'");
-                    return false;
-                }
-
-                if (_externalFailureLogged)
-                {
-                    _externalFailureLogged = false;
-                    Logger.Info($"External ASCOM safety monitor '{progId}' is readable again");
-                }
-
-                if (_externalStateLogged != externalSafe)
-                {
-                    Logger.Info($"External ASCOM safety monitor '{progId}' reports {(externalSafe ? "SAFE" : "UNSAFE")}");
-                    _externalStateLogged = externalSafe;
-                }
-
-                _externalSafeCached = externalSafe;
-                return externalSafe;
-            }
+            return !Properties.Settings.Default.UseAscomSafetyMonitor
+                || _externalDevice.IsSafe(Properties.Settings.Default.AscomSafetyMonitorProgId, UtcNow());
         }
 
-        private void LogExternalFailureOnce(string message)
+        /// <summary>The environment ASCOM safety monitor's verdict, or true when the feature is off.</summary>
+        private bool IsEnvironmentMonitorSafe()
         {
-            if (_externalFailureLogged)
-            {
-                return;
-            }
-            _externalFailureLogged = true;
-            Logger.Warning($"Safety monitor reporting UNSAFE: {message}");
+            return !Properties.Settings.Default.UseEnvironmentSafetyMonitor
+                || _environmentDevice.IsSafe(Properties.Settings.Default.EnvironmentSafetyMonitorProgId, UtcNow());
         }
 
         /// <summary>
@@ -605,10 +517,13 @@ namespace AIWeather.Equipment
                       $"Safe: {result.IsSafeForImaging}, " +
                       $"Confidence: {result.Confidence:F1}%");
 
-            if (Properties.Settings.Default.UseAscomSafetyMonitor)
+            if (Properties.Settings.Default.UseAscomSafetyMonitor || Properties.Settings.Default.UseEnvironmentSafetyMonitor)
             {
-                Logger.Info($"Safety state - sky: {(_isCurrentlySafe ? "SAFE" : "UNSAFE")}, " +
-                            $"external ASCOM monitor: {(IsExternalMonitorSafe() ? "SAFE" : "UNSAFE")}, " +
+                var external = Properties.Settings.Default.UseAscomSafetyMonitor
+                    ? $"external ASCOM monitor ({ExternalMode}): {(IsExternalMonitorSafe() ? "SAFE" : "UNSAFE")}, " : string.Empty;
+                var environment = Properties.Settings.Default.UseEnvironmentSafetyMonitor
+                    ? $"environment ASCOM monitor: {(IsEnvironmentMonitorSafe() ? "SAFE" : "UNSAFE")}, " : string.Empty;
+                Logger.Info($"Safety state - sky: {(_isCurrentlySafe ? "SAFE" : "UNSAFE")}, " + external + environment +
                             $"combined: {(IsSafe ? "SAFE" : "UNSAFE")}");
             }
 

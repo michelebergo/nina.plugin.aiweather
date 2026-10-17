@@ -31,17 +31,19 @@ namespace NINA.Plugin.AIWeather.Test
         }
 
         private FakeDevice _device = null!;
+        private FakeDevice _environment = null!;
         private AIWeatherSafetyMonitor _monitor = null!;
         private DateTime _clock;
         private string _statusFile = null!;
         private string _wikiRoot = null!;
-        private (bool use, int mode, string progId, double high, double low, int maxAge, int interval, bool writeFile, string path) _before;
+        private (bool use, int mode, string progId, double high, double low, int maxAge, int interval, bool writeFile, string path, bool useEnv, string envProgId) _before;
 
         [SetUp]
         public void SetUp() {
             var s = global::AIWeather.Properties.Settings.Default;
             _before = (s.UseAscomSafetyMonitor, s.ExternalMonitorMode, s.AscomSafetyMonitorProgId, s.CloudCoverageThreshold, s.CloudCoverageSafeThreshold,
-                       s.MaxDataAgeMinutes, s.CheckIntervalMinutes, s.WriteSafetyStatusFile, s.SafetyStatusFilePath);
+                       s.MaxDataAgeMinutes, s.CheckIntervalMinutes, s.WriteSafetyStatusFile, s.SafetyStatusFilePath,
+                       s.UseEnvironmentSafetyMonitor, s.EnvironmentSafetyMonitorProgId);
             _statusFile = Path.Combine(Path.GetTempPath(), "aiweather-test-" + Guid.NewGuid().ToString("N") + ".txt");
             _wikiRoot = Path.Combine(Path.GetTempPath(), "aiweather-wiki-" + Guid.NewGuid().ToString("N"));
             LlmWikiRawWriter.RootOverride = _wikiRoot;
@@ -54,10 +56,13 @@ namespace NINA.Plugin.AIWeather.Test
             s.CheckIntervalMinutes = 5;
             s.WriteSafetyStatusFile = true;
             s.SafetyStatusFilePath = _statusFile;
+            s.UseEnvironmentSafetyMonitor = false;
+            s.EnvironmentSafetyMonitorProgId = "ASCOM.FakeEnvironment.SafetyMonitor";
 
             _device = new FakeDevice();
+            _environment = new FakeDevice();
             _clock = new DateTime(2026, 10, 16, 22, 0, 0, DateTimeKind.Utc);
-            _monitor = new AIWeatherSafetyMonitor(_device) { Connected = true };
+            _monitor = new AIWeatherSafetyMonitor(_device, _environment) { Connected = true };
             _monitor.UtcNow = () => _clock;
         }
 
@@ -65,7 +70,8 @@ namespace NINA.Plugin.AIWeather.Test
         public void TearDown() {
             var s = global::AIWeather.Properties.Settings.Default;
             (s.UseAscomSafetyMonitor, s.ExternalMonitorMode, s.AscomSafetyMonitorProgId, s.CloudCoverageThreshold, s.CloudCoverageSafeThreshold,
-             s.MaxDataAgeMinutes, s.CheckIntervalMinutes, s.WriteSafetyStatusFile, s.SafetyStatusFilePath) = _before;
+             s.MaxDataAgeMinutes, s.CheckIntervalMinutes, s.WriteSafetyStatusFile, s.SafetyStatusFilePath,
+             s.UseEnvironmentSafetyMonitor, s.EnvironmentSafetyMonitorProgId) = _before;
             LlmWikiRawWriter.RootOverride = null;
             try { File.Delete(_statusFile); } catch { }
             try { Directory.Delete(_wikiRoot, true); } catch { }
@@ -93,6 +99,87 @@ namespace NINA.Plugin.AIWeather.Test
         private void DeviceSays(bool safe) { _device.Safe = safe; _clock = _clock.AddSeconds(6); }
 
         private string StatusFile => File.Exists(_statusFile) ? File.ReadAllText(_statusFile) : "(not written)";
+
+        /// <summary>The humidity monitor on the dome changed its mind; re-read after the 5 s cache.</summary>
+        private void EnvironmentSays(bool safe) {
+            global::AIWeather.Properties.Settings.Default.UseEnvironmentSafetyMonitor = true;
+            _environment.Safe = safe;
+            _clock = _clock.AddSeconds(6);
+        }
+
+        // ---- the follow-up: a humidity limit that no clear sky may override ----
+
+        [Test]
+        public void Or_HumidityMonitorVetoesAClearTargetAndACryingIrSensor() {
+            Mode(ExternalMonitorMode.Or);
+            DeviceSays(false);          // IR cries cloudy
+            EnvironmentSays(false);     // humidity above the limit
+            Analysis(10);               // the target is clear
+
+            _monitor.IsSafe.Should().BeFalse("(sky OR cloud sensor) AND environment");
+            _monitor.SafetyStateReason.Should().Be("Environment safety monitor reports unsafe");
+            StatusFile.Should().Be("Unsafe");
+
+            EnvironmentSays(true);      // the air dries
+            _monitor.IsSafe.Should().BeTrue();
+            _monitor.SafetyStateReason.Should().Be("Safe on the sky analysis alone — external monitor unsafe or unreadable");
+        }
+
+        [Test]
+        public void Or_HumidityMonitorUnreadable_ImagingStops() {
+            Mode(ExternalMonitorMode.Or);
+            DeviceSays(true);
+            EnvironmentSays(true);
+            Analysis(10);
+            _monitor.IsSafe.Should().BeTrue();
+
+            _environment.Readable = false;
+            _clock = _clock.AddSeconds(6);
+            _monitor.IsSafe.Should().BeFalse("a device that cannot be read is exactly what its owner installed it against");
+            _monitor.SafetyStateReason.Should().Be("Environment safety monitor cannot be connected or read");
+        }
+
+        [Test]
+        public void And_TheEnvironmentMonitorIsAThirdAndInput() {
+            Mode(ExternalMonitorMode.And);
+            DeviceSays(true);
+            EnvironmentSays(false);
+            Analysis(10);
+
+            _monitor.IsSafe.Should().BeFalse();
+            _monitor.SafetyStateReason.Should().Be("Environment safety monitor reports unsafe");
+
+            EnvironmentSays(true);
+            _monitor.IsSafe.Should().BeTrue();
+            _monitor.SafetyStateReason.Should().Be("Sky clear and data current");
+        }
+
+        [Test]
+        public void TheEnvironmentMonitorWorksWithoutAFirstExternalMonitor() {
+            global::AIWeather.Properties.Settings.Default.UseAscomSafetyMonitor = false;
+            EnvironmentSays(false);
+            Analysis(10);
+            _monitor.IsSafe.Should().BeFalse();
+
+            EnvironmentSays(true);
+            _monitor.IsSafe.Should().BeTrue();
+        }
+
+        [Test]
+        public void TheTwoDevicesAreReadIndependently() {
+            // The IR driver dying must not take the humidity monitor with it, and vice versa.
+            Mode(ExternalMonitorMode.Or);
+            DeviceSays(true);
+            EnvironmentSays(true);
+            Analysis(70);                       // sky unsafe: the IR sensor carries the verdict
+            _monitor.IsSafe.Should().BeTrue();
+
+            _device.Readable = false;
+            _clock = _clock.AddSeconds(6);
+            _monitor.IsSafe.Should().BeFalse();
+            _monitor.SafetyStateReason.Should().Be("Sky cloud coverage 70% (safe below 30%); external safety monitor cannot be connected or read");
+            _environment.Connected.Should().BeTrue("the environment device was never touched");
+        }
 
         // ---- the reporter's night ----
 

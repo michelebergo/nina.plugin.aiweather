@@ -323,6 +323,30 @@ namespace AIWeather.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool UseEnvironmentSafetyMonitor {
+            get {
+                return ((bool)(this["UseEnvironmentSafetyMonitor"]));
+            }
+            set {
+                this["UseEnvironmentSafetyMonitor"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string EnvironmentSafetyMonitorProgId {
+            get {
+                return ((string)(this["EnvironmentSafetyMonitorProgId"]));
+            }
+            set {
+                this["EnvironmentSafetyMonitorProgId"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string AscomSafetyMonitorProgId {
             get {

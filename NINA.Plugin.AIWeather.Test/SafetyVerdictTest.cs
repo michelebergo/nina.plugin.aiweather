@@ -52,6 +52,33 @@ namespace NINA.Plugin.AIWeather.Test
                 .Should().BeFalse();
         }
 
+        // The environment monitor (humidity, dew point, rain sensor) is ANDed on top of
+        // whatever the first two decided: (sky OR cloud sensor) AND environment. Anything
+        // that must stop imaging on its own cannot sit on the OR side.
+        [TestCase(ExternalMonitorMode.Or, true, true, true, true)]
+        [TestCase(ExternalMonitorMode.Or, true, true, false, false)]
+        [TestCase(ExternalMonitorMode.Or, false, true, false, false)]
+        [TestCase(ExternalMonitorMode.And, true, true, false, false)]
+        [TestCase(ExternalMonitorMode.And, true, true, true, true)]
+        public void TheEnvironmentMonitorIsAlwaysAnded(ExternalMonitorMode mode, bool skySafe, bool externalSafe, bool environmentSafe, bool expected) {
+            SafetyVerdict.Combine(mode, skySafe, fresh: true, hazard: false, externalEnabled: true, externalSafe, environmentEnabled: true, environmentSafe)
+                .Should().Be(expected);
+        }
+
+        [Test]
+        public void TheEnvironmentMonitorCanBeTheOnlyDevice() {
+            SafetyVerdict.Combine(ExternalMonitorMode.Or, skySafe: true, fresh: true, hazard: false, externalEnabled: false, externalSafe: false, environmentEnabled: true, environmentSafe: false)
+                .Should().BeFalse();
+            SafetyVerdict.Combine(ExternalMonitorMode.Or, skySafe: true, fresh: true, hazard: false, externalEnabled: false, externalSafe: false, environmentEnabled: true, environmentSafe: true)
+                .Should().BeTrue();
+        }
+
+        [Test]
+        public void ADisabledEnvironmentMonitorChangesNothing() {
+            SafetyVerdict.Combine(ExternalMonitorMode.Or, skySafe: true, fresh: true, hazard: false, externalEnabled: true, externalSafe: false, environmentEnabled: false, environmentSafe: false)
+                .Should().BeTrue();
+        }
+
         [Test]
         public void AStaleHazardIsJustStaleData() {
             // Rain seen an hour ago says nothing about now; stale data makes the sky unknown,
