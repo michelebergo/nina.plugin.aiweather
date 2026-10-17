@@ -34,8 +34,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.15.9.0")]
-[assembly: AssemblyFileVersion("1.15.9.0")]
+[assembly: AssemblyVersion("1.15.10.0")]
+[assembly: AssemblyFileVersion("1.15.10.0")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MIT")]
@@ -90,7 +90,7 @@ using System.Runtime.InteropServices;
 • 60-Second Timeout: All AI providers have a 60-second timeout to prevent indefinite hangs during analysis
 • ASCOM SafetyMonitor Integration: Outputs a status file compatible with the ASCOM Generic File SafetyMonitor for third-party software integration
 • Fail-Safe Data Expiry: the verdict expires. If no analysis succeeds within the Maximum data age (configurable; automatic means three check intervals and never below 10 minutes), the monitor reports Unsafe instead of holding the last known state - a camera that dies while the sky is clear no longer reports Safe indefinitely. Disconnecting clears the verdict too, so a reconnect starts Unsafe until the first successful analysis
-• External ASCOM Safety Monitor: pick a second safety device with the ASCOM chooser and choose how it combines with the sky verdict. AND (the default): imaging is Safe only when both say so - pair cloud, rain and fog detection with a rain sensor or a humidity and dew-point monitor. OR: imaging stops only when both say Unsafe - for a second cloud sensor that cries cloudy too often, such as a narrow-field IR sensor; rain and fog seen by the sky analysis stay Unsafe either way. A device that cannot be reached counts as Unsafe
+• External ASCOM Safety Monitor: pick a second safety device with the ASCOM chooser and choose how it combines with the sky verdict. AND (the default): imaging is Safe only when both say so - pair cloud, rain and fog detection with a rain sensor or a humidity and dew-point monitor. OR: imaging stops only when both say Unsafe - for a second cloud sensor that cries cloudy too often, such as a narrow-field IR sensor; rain and fog seen by the sky analysis stay Unsafe either way. A device that cannot be reached counts as Unsafe. A second, environment safety monitor (humidity, dew point, rain sensor) is always ANDed on top: (sky OR cloud sensor) AND environment
 • It says WHY: the panel names the reason for the current state - a cloudy sky, data too old with the age and the limit, or an unreachable external device - instead of leaving it in the log
 
 🧠 IT LEARNS YOUR SITE:

@@ -75,10 +75,11 @@ as unsafe** on its own side, because a missing answer is not permission to keep 
 | Sky verdict | cloud coverage above the threshold, rain, or fog (with hysteresis between the high and low thresholds) |
 | Data freshness | no successful analysis within the maximum data age — a dead camera or unreachable stream can never leave a stale **Safe** standing |
 | External monitor | the optional ASCOM safety monitor reports unsafe, or cannot be connected or read |
+| Environment monitor | the optional second ASCOM safety monitor reports unsafe, or cannot be connected or read |
 
 Sky verdict and freshness are always ANDed. The external monitor is combined with **AND**
 (the default: either side stops imaging) or **OR** (imaging stops only when both sides say
-unsafe; see section 7).
+unsafe; see section 7). The environment monitor is always ANDed on top.
 
 The preview panel shows the **reason** under the Safe/Unsafe line, so a cloudy sky, a
 camera that stopped delivering and an unreachable external device are never confused for
@@ -283,6 +284,11 @@ A band of 5 to 15 points is the useful range: the feature was requested with 70 
   ("Safe on the sky analysis alone — external monitor unsafe or unreadable").
 - Rain or fog seen by the sky analysis is **Unsafe** in both modes. Water on the lens is
   not a cloud far from the target, and a cloud sensor that says clear does not dry it.
+- **Environment safety monitor (always AND)**: a second ASCOM device for what must stop
+  imaging on its own — humidity, dew point, a rain sensor. In OR mode such a limit cannot
+  live in the first device, because a clear sky would override it; this one is ANDed
+  whatever the combination: `(sky OR cloud sensor) AND environment`. Unreadable counts as
+  Unsafe, and the panel names it ("Environment safety monitor reports unsafe").
 
 ### 8. Optional: Status File
 
