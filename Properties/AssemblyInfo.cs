@@ -96,6 +96,7 @@ using System.Runtime.InteropServices;
 • It says WHY: the panel names the reason for the current state - a cloudy sky, data too old with the age and the limit, or an unreachable external device - instead of leaving it in the log
 
 🧠 IT LEARNS YOUR SITE:
+• Camera view and site darkness: tell it whether the camera is an all-sky fisheye or a fixed camera looking at part of the sky, and whether the site is light-polluted (clouds look bright) or dark (clouds are black holes in the star field). The prompt is composed from the answers, so a black sky at a dark site reads as overcast instead of clear. A frame with no readable sky at all is reported as Unknown and treated as unsafe, and noise specks are not counted as stars
 • Site notes: a free-text field for what the AI cannot guess about your location, in your own words - ""clouds to the south are lit orange by the city and can look like overcast"", ""in daylight the sun reflects off the dome and creates a hazy halo"". Sent with every analysis, for every provider. It steers interpretation only: the thresholds, the safety rules and the response format stay with the built-in prompt
 • Daily sky digest into the shared knowledge wiki: what the sky did is filed into the same local markdown wiki the AI Assistant plugin reads, so a question about last night can be answered from what was actually observed
 • Disable model thinking (Ollama, on by default): newer local models reason at length before answering, which took analyses from 14 to 78 seconds on the same image and past the timeout. Requests ask them not to

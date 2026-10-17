@@ -68,6 +68,16 @@ namespace AIWeather.Services
                     : string.Empty;
                 var confidence = root.TryGetProperty("confidence", out var confProp) ? confProp.GetDouble() : 85.0;
 
+                // Only a literal Unknown is the new unreadable-sky observation. Unknown
+                // enum names, numeric values and malformed answers must remain failures.
+                var unreadable = string.Equals(conditionStr, "Unknown", StringComparison.OrdinalIgnoreCase);
+                if (unreadable)
+                {
+                    cloudCoverage = 100; // safety sentinel, not measured cloud coverage
+                    isSafe = false;
+                    confidence = double.IsFinite(confidence) ? Math.Clamp(confidence, 0, 30) : 0;
+                }
+
                 return new WeatherAnalysisResult
                 {
                     Timestamp = DateTime.UtcNow,
@@ -78,6 +88,7 @@ namespace AIWeather.Services
                     Description = description,
                     RainDetected = rainDetected,
                     FogDetected = fogDetected,
+                    IsSkyUnreadable = unreadable,
                     RawAnalysisData = cleaned
                 };
             }

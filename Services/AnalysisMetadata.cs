@@ -63,7 +63,7 @@ namespace AIWeather.Services
                 Origin = origin,
                 Provider = provider,
                 Model = model,
-                PromptVersion = WeatherAnalysisPrompts.PromptVersion,
+                PromptVersion = WeatherAnalysisPrompts.CurrentPromptVersion,
                 OnlineSucceeded = true,
                 IsFallback = false,
                 FailureCategory = AnalysisFailureCategory.None,
@@ -98,7 +98,7 @@ namespace AIWeather.Services
                 Origin = origin,
                 Provider = provider,
                 Model = model,
-                PromptVersion = WeatherAnalysisPrompts.PromptVersion,
+                PromptVersion = WeatherAnalysisPrompts.CurrentPromptVersion,
                 OnlineSucceeded = false,
                 IsFallback = false,
                 FailureCategory = category,
@@ -135,6 +135,20 @@ namespace AIWeather.Services
 
     internal static class WeatherAnalysisValidator
     {
+        // A provider may successfully report that there is no readable sky. Accept the
+        // unsafe observation, but do not turn it into a valid cloud training label.
+        public static bool IsValidProviderResult(WeatherAnalysisResult? result, out string reason)
+        {
+            if (result is { IsSkyUnreadable: true, Condition: WeatherCondition.Unknown,
+                IsSafeForImaging: false, CloudCoverage: 100 }
+                && IsPercentage(result.Confidence) && !string.IsNullOrWhiteSpace(result.Description))
+            {
+                reason = string.Empty;
+                return true;
+            }
+            return IsValidTeacherResult(result, out reason);
+        }
+
         public static bool IsValidTeacherResult(WeatherAnalysisResult? result, out string reason)
         {
             if (result == null)
@@ -179,6 +193,11 @@ namespace AIWeather.Services
         /// </summary>
         public static bool IsInternallyConsistent(WeatherAnalysisResult result, out string reason)
         {
+            if (result.IsSkyUnreadable || result.Condition == WeatherCondition.Unknown)
+            {
+                reason = "sky is unreadable; cloudCoverage is a safety sentinel, not a training label";
+                return false;
+            }
             if (result.RainDetected && result.Condition != WeatherCondition.Rainy)
             {
                 reason = "rainDetected=true but condition is not Rainy";

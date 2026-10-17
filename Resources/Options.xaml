@@ -165,6 +165,7 @@
                         <TextBlock Grid.Row="13" Grid.Column="0" Text="{i18n:Loc Options.ReplicaProviderDetails}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,8,2"/>
                         <TextBlock Grid.Row="13" Grid.Column="1" Text="{Binding Options.ReplicaConfigurationProviderDetails}" Margin="0,2" TextWrapping="Wrap"/>
                     </Grid>
+                    <TextBlock Text="{Binding Options.ReplicaConfigurationPrompt}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
 
@@ -509,9 +510,13 @@
                     Visibility="{Binding IsModelSelectionVisible, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="{i18n:Loc Options.AiModel}" Margin="0,0,0,2"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <!-- Text, not SelectedItem: the box is editable so a model missing from the
+                         list (the list is a day old, or the provider shipped a new one) can be
+                         typed in; a SelectedItem binding dropped anything typed (#18). Saved when
+                         focus leaves, so a check starting mid-typing does not see half a name. -->
                     <ComboBox x:Name="ModelComboBox"
                           ItemsSource="{Binding AvailableModels}"
-                          SelectedItem="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          Text="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                           IsEditable="True"
                           Width="300"
                           HorizontalAlignment="Left"
@@ -528,6 +533,26 @@
                        Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
                 </StackPanel>
             </StackPanel>
+
+            <!-- Camera view and site darkness: the two facts the prompt cannot guess and used to
+                 assume. A fixed security camera has no fisheye circle to look for, and at a dark
+                 site clouds are black holes in the star field rather than bright milky patches.
+                 Defaults are the previous behaviour. -->
+            <TextBlock Text="{i18n:Loc Options.CameraView}" Margin="0,15,0,2" FontWeight="Bold"/>
+            <ComboBox SelectedIndex="{Binding CameraView, Mode=TwoWay}" Width="360" HorizontalAlignment="Left">
+                <ComboBoxItem Content="{i18n:Loc Options.CameraAllSky}"/>
+                <ComboBoxItem Content="{i18n:Loc Options.CameraFixed}"/>
+            </ComboBox>
+            <TextBlock Text="{i18n:Loc Options.CameraViewHelp}"
+                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+
+            <TextBlock Text="{i18n:Loc Options.SiteDarkness}" Margin="0,10,0,2" FontWeight="Bold"/>
+            <ComboBox SelectedIndex="{Binding SiteDarkness, Mode=TwoWay}" Width="360" HorizontalAlignment="Left">
+                <ComboBoxItem Content="{i18n:Loc Options.SiteLightPolluted}"/>
+                <ComboBoxItem Content="{i18n:Loc Options.SiteDark}"/>
+            </ComboBox>
+            <TextBlock Text="{i18n:Loc Options.SiteDarknessHelp}"
+                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
 
             <!-- Site notes: local knowledge appended to the analysis prompt of every provider.
                  Saved on focus loss rather than per keystroke, so typing does not rewrite the

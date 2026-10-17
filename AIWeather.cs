@@ -166,28 +166,8 @@ namespace AIWeather
                     "gemini-2.5-flash",
                     "gemini-2.5-pro",
                 },
-                ["GeminiFree"] = new[]
-                {
-                    "gemini-3.5-flash-lite",
-                    "gemini-3.1-flash-lite",
-                    "gemini-3.7-flash",
-                    "gemini-3.6-flash",
-                    "gemini-3.5-flash",
-                    "gemini-3-flash",
-                    "gemini-2.5-flash",
-                    "gemini-2.0-flash",
-                    "gemini-2.5-flash-lite",
-                    "gemini-2.0-flash-lite",
-                },
-                ["Anthropic"] = new[]
-                {
-                    "claude-sonnet-4-5-20250929",
-                    "claude-sonnet-4-20250514",
-                    "claude-haiku-4-5-20251001",
-                    "claude-3-5-sonnet-20241022",
-                    "claude-3-5-haiku-20241022",
-                    "claude-3-opus-20240229",
-                },
+                ["GeminiFree"] = Services.GeminiProviderProfile.DefaultFreeModelOrder.ToArray(),
+                ["Anthropic"] = Services.AnthropicAnalysisService.FallbackModels,
                 // Local servers don't advertise vision capability; these are common
                 // vision-capable Ollama models used only when /v1/models is unreachable.
                 ["Ollama"] = new[]
@@ -844,13 +824,7 @@ namespace AIWeather
                     {
                         var id = m.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
                         if (string.IsNullOrEmpty(id)) continue;
-                        // Only include Claude 3+ models that support vision.
-                        // Claude 2.x, claude-instant, etc. are text-only.
-                        if (!id.StartsWith("claude-3", StringComparison.OrdinalIgnoreCase)
-                            && !id.StartsWith("claude-sonnet-4", StringComparison.OrdinalIgnoreCase)
-                            && !id.StartsWith("claude-haiku-4", StringComparison.OrdinalIgnoreCase)
-                            && !id.StartsWith("claude-opus-4", StringComparison.OrdinalIgnoreCase))
-                            continue;
+                        if (!Services.AnthropicAnalysisService.IsVisionModel(id)) continue;
 
                         result.Add(id);
                     }
@@ -1149,7 +1123,7 @@ namespace AIWeather
                 if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
                     var model = string.IsNullOrWhiteSpace(Properties.Settings.Default.SelectedModel)
-                        ? "claude-sonnet-4-5-20250929"
+                        ? Services.AnthropicAnalysisService.DefaultModel
                         : Properties.Settings.Default.SelectedModel.Trim();
 
                     var payload = new
@@ -1520,6 +1494,36 @@ namespace AIWeather
             set
             {
                 Properties.Settings.Default.SiteNotes = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// 0 = all-sky fisheye, 1 = fixed camera looking at part of the sky. Decides which
+        /// part of the image the prompt calls sky (see WeatherAnalysisPrompts).
+        /// </summary>
+        public int CameraView
+        {
+            get => Properties.Settings.Default.CameraView;
+            set
+            {
+                Properties.Settings.Default.CameraView = value == 1 ? 1 : 0;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// 0 = light-polluted site (clouds lit from below look bright), 1 = dark site
+        /// (clouds are darker than the sky; stars are the only evidence).
+        /// </summary>
+        public int SiteDarkness
+        {
+            get => Properties.Settings.Default.SiteDarkness;
+            set
+            {
+                Properties.Settings.Default.SiteDarkness = value == 1 ? 1 : 0;
                 CoreUtil.SaveSettings(Properties.Settings.Default);
                 RaisePropertyChanged();
             }

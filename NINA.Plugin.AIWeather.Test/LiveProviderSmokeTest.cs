@@ -112,7 +112,7 @@ namespace NINA.Plugin.AIWeather.Test
         [Test]
         public async Task AnthropicAnswersThePluginsRealRequest() {
             var key = Require("AIWEATHER_ANTHROPIC_KEY");
-            var model = ModelOrDefault("AIWEATHER_ANTHROPIC_MODEL", "claude-haiku-4-5-20251001");
+            var model = ModelOrDefault("AIWEATHER_ANTHROPIC_MODEL", AnthropicAnalysisService.DefaultModel);
 
             await AssertProviderAnswers(new AnthropicAnalysisService(key, model), "Anthropic");
         }

@@ -238,7 +238,7 @@ namespace AIWeather.Services
 
                 var base64Image = ConvertImageToBase64(image);
 
-                var promptText = PromptText.FullPrompt;
+                var promptText = WeatherAnalysisPrompts.BuildSystemPrompt();
                 var promptPrefix = WeatherAnalysisPrompts.BuildPromptPrefix(astroContext);
                 if (promptPrefix.Length > 0)
                     promptText = promptPrefix + "\n" + promptText;
@@ -372,7 +372,7 @@ namespace AIWeather.Services
                             throw new WeatherResponseParseException("Gemini output was truncated (MAX_TOKENS)", string.Empty);
                         }
                         var result = WeatherResponseParser.Parse(text);
-                        if (!WeatherAnalysisValidator.IsValidTeacherResult(result, out var validationReason))
+                        if (!WeatherAnalysisValidator.IsValidProviderResult(result, out var validationReason))
                         {
                             Logger.Warning($"Gemini returned a response rejected by the weather schema: {validationReason}");
                             diagnostics[^1].FailureCategory = AnalysisFailureCategory.SchemaRejected;

@@ -16,6 +16,10 @@ namespace AIWeather.Models
         public double? Brightness { get; set; } // Optional: for detecting dawn/dusk
         public bool RainDetected { get; set; }
         public bool FogDetected { get; set; }
+
+        /// <summary>An explicit parsed Unknown answer, not an API failure envelope.
+        /// CloudCoverage is a conservative sentinel, never a training measurement.</summary>
+        public bool IsSkyUnreadable { get; set; }
         
         /// <summary>
         /// Additional metadata from the analysis
@@ -41,6 +45,7 @@ namespace AIWeather.Models
                 Brightness = Brightness,
                 RainDetected = RainDetected,
                 FogDetected = FogDetected,
+                IsSkyUnreadable = IsSkyUnreadable,
                 RawAnalysisData = includeRawAnalysisData ? RawAnalysisData : null,
                 Provenance = Provenance.Clone()
             };

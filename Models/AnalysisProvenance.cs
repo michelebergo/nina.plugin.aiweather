@@ -168,7 +168,7 @@ namespace AIWeather.Models
         public WeatherAnalysisResult Student { get; init; } = new WeatherAnalysisResult();
         public bool UsedFallback { get; init; }
         public double? TeacherStudentCloudDifference =>
-            Teacher?.Success == true && Teacher.Result != null
+            Teacher?.Success == true && Teacher.Result != null && !Teacher.Result.IsSkyUnreadable
                 ? Math.Abs(Teacher.Result.CloudCoverage - Student.CloudCoverage)
                 : null;
     }

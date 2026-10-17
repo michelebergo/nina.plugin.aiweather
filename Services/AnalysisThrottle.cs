@@ -19,6 +19,16 @@ namespace AIWeather.Services
             && double.IsFinite(result.CloudCoverage) && result.CloudCoverage >= 0 && result.CloudCoverage <= 100
             && double.IsFinite(result.Confidence) && result.Confidence > 0 && result.Confidence <= 100;
 
+        public static bool HasAuthoritativeUnreadableSky(WeatherAnalysisResult? result) =>
+            result is { IsSkyUnreadable: true, Condition: WeatherCondition.Unknown,
+                IsSafeForImaging: false, CloudCoverage: 100 }
+            && result.Provenance.OnlineSucceeded && !result.Provenance.IsFallback
+            && result.Provenance.FailureCategory == AnalysisFailureCategory.None
+            && double.IsFinite(result.Confidence) && result.Confidence >= 0 && result.Confidence <= 100;
+
+        public static bool CanApplyResult(WeatherAnalysisResult? result) =>
+            HasUsableMeasurement(result) || HasAuthoritativeUnreadableSky(result);
+
         public static bool ShouldReuseResult(WeatherAnalysisResult? result, DateTime lastAnalysisUtc,
             DateTime nowUtc, long resultRevision, long currentRevision) =>
             resultRevision == currentRevision && HasUsableMeasurement(result)

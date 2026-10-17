@@ -57,6 +57,22 @@ public class GeminiFreePoolIntegrationTest
     }
 
     [Test]
+    public async Task ExplicitUnreadableSkyStopsPoolAndDoesNotFallBackToStudent()
+    {
+        var payload = Success.Replace("\\\"Clear\\\"", "\\\"Unknown\\\"");
+        using var f = new Fixture((_, _) => (200, payload));
+        await f.Pool.InitializeAsync();
+        using var image = new Bitmap(32, 32);
+        var bundle = await new WeatherAnalysisOrchestrator().AnalyzeAsync(f.Pool, image, null, CancellationToken.None);
+        f.Handler.Models.Should().Equal(First);
+        bundle.UsedFallback.Should().BeFalse();
+        bundle.EffectiveResult.IsSkyUnreadable.Should().BeTrue();
+        bundle.EffectiveResult.IsSafeForImaging.Should().BeFalse();
+        bundle.TeacherStudentCloudDifference.Should().BeNull();
+        AnalysisThrottle.CanApplyResult(bundle.EffectiveResult).Should().BeTrue();
+    }
+
+    [Test]
     public async Task DailyQuotaOnFirstModelStillTries31LiteAndNextCheckSkipsOnlyExhaustedModel()
     {
         using var f = new Fixture((model, _) => model == First ? (429, DailyQuota) : (200, Success));

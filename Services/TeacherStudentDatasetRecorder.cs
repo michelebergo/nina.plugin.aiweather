@@ -773,7 +773,8 @@ namespace AIWeather.Services
                     },
                 Teacher = new DatasetAnalysisRecord
                 {
-                    Valid = teacher?.Success == true && teacherResult != null,
+                    Valid = teacher?.Success == true
+                            && WeatherAnalysisValidator.IsValidTeacherResult(teacherResult, out _),
                     Provenance = teacher?.Provenance.Clone() ?? new AnalysisProvenance(),
                     Result = teacherResult == null ? null : DatasetWeatherResult.From(teacherResult),
                     RawResponse = string.IsNullOrWhiteSpace(rawResponse) ? null : rawResponse,

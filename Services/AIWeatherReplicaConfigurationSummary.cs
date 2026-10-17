@@ -30,6 +30,9 @@ namespace AIWeather.Services
         public string GeminiFreeModelOrder { get; init; } = string.Empty;
         public string ProviderEndpoint { get; init; } = string.Empty;
         public bool OllamaDisableThinking { get; init; }
+        public int CameraView { get; init; }
+        public int SiteDarkness { get; init; }
+        public bool SiteNotesConfigured { get; init; }
         public string Revision { get; init; } = string.Empty;
         public DateTime GeneratedUtc { get; init; }
 
@@ -102,6 +105,9 @@ namespace AIWeather.Services
                     ? RedactUrlForDisplay(normalized.OllamaBaseUrl)
                     : string.Empty,
                 OllamaDisableThinking = normalized.OllamaDisableThinking,
+                CameraView = normalized.CameraView,
+                SiteDarkness = normalized.SiteDarkness,
+                SiteNotesConfigured = !string.IsNullOrWhiteSpace(normalized.SiteNotes),
                 Revision = revision?.Trim() ?? string.Empty,
                 GeneratedUtc = generatedUtc.Kind == DateTimeKind.Utc
                     ? generatedUtc

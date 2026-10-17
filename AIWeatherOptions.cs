@@ -246,6 +246,12 @@ namespace AIWeather
                     ? UiLocalization.Text("Options.ReplicaNotApplicable")
                     : DisplayOrDash(_replicaConfigurationSummary.SelectedModel);
 
+        public string ReplicaConfigurationPrompt => _replicaConfigurationSummary == null ? "—"
+            : UiLocalization.Text("Options.ReplicaPromptValue",
+                UiLocalization.Text(_replicaConfigurationSummary.CameraView == 1 ? "Options.CameraFixed" : "Options.CameraAllSky"),
+                UiLocalization.Text(_replicaConfigurationSummary.SiteDarkness == 1 ? "Options.SiteDark" : "Options.SiteLightPolluted"),
+                UiLocalization.Text(_replicaConfigurationSummary.SiteNotesConfigured ? "Options.ReplicaEnabled" : "Options.ReplicaDisabled"));
+
         public string ReplicaConfigurationApiCredential
         {
             get
@@ -508,6 +514,7 @@ namespace AIWeather
             RaisePropertyChanged(nameof(ReplicaConfigurationModel));
             RaisePropertyChanged(nameof(ReplicaConfigurationApiCredential));
             RaisePropertyChanged(nameof(ReplicaConfigurationProviderDetails));
+            RaisePropertyChanged(nameof(ReplicaConfigurationPrompt));
         }
 
         private static string DisplayOrDash(string? value) =>

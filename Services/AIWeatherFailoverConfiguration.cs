@@ -1,5 +1,6 @@
 using AIWeather.Models;
 using System;
+using System.Text.Json.Serialization;
 
 namespace AIWeather.Services
 {
@@ -33,6 +34,15 @@ namespace AIWeather.Services
         public string OllamaBaseUrl { get; set; } = string.Empty;
         public bool OllamaDisableThinking { get; set; } = true;
 
+        // Omit defaults to preserve the canonical JSON/HMAC of pre-1.15.8 configurations.
+        // Non-default prompt settings require upgraded replicas (old peers fail closed).
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int CameraView { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public int SiteDarkness { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? SiteNotes { get; set; }
+
         public static AIWeatherFailoverConfiguration FromSettings()
         {
             var settings = Properties.Settings.Default;
@@ -63,7 +73,10 @@ namespace AIWeather.Services
                 GeminiPaidRequestEveryChecks = settings.GeminiPaidRequestEveryChecks,
                 AnthropicKey = settings.AnthropicKey ?? string.Empty,
                 OllamaBaseUrl = settings.OllamaBaseUrl ?? string.Empty,
-                OllamaDisableThinking = settings.OllamaDisableThinking
+                OllamaDisableThinking = settings.OllamaDisableThinking,
+                CameraView = settings.CameraView,
+                SiteDarkness = settings.SiteDarkness,
+                SiteNotes = settings.SiteNotes
             }.Normalize();
         }
 
@@ -98,7 +111,11 @@ namespace AIWeather.Services
                 GeminiPaidRequestEveryChecks = Math.Clamp(GeminiPaidRequestEveryChecks, 1, 10000),
                 AnthropicKey = Clamp(AnthropicKey, 8192),
                 OllamaBaseUrl = Clamp(OllamaBaseUrl, 4096),
-                OllamaDisableThinking = OllamaDisableThinking
+                OllamaDisableThinking = OllamaDisableThinking,
+                CameraView = CameraView == 1 ? 1 : 0,
+                SiteDarkness = SiteDarkness == 1 ? 1 : 0,
+                SiteNotes = string.IsNullOrWhiteSpace(SiteNotes)
+                    ? null : Clamp(SiteNotes, WeatherAnalysisPrompts.MaxSiteNotesLength)
             };
         }
 

@@ -23,7 +23,7 @@ Optional primary-preferred failover lets a Replica take over locally only after 
 The plugin sends captured sky images to a vision-capable AI model that evaluates:
 
 - **Cloud coverage** as a percentage (0-100%)
-- **Weather condition** classification (Clear, Partly Cloudy, Mostly Cloudy, Overcast, Rainy, Foggy)
+- **Weather condition** classification (Clear, Partly Cloudy, Mostly Cloudy, Overcast, Rainy, Foggy, or Unknown when the sky cannot be read)
 - **Rain detection** including water droplets on the lens, streaks, and condensation
 - **Fog detection** based on uniform haze and low contrast
 - **Confidence score** indicating how certain the AI is about its assessment
@@ -54,10 +54,10 @@ late frames still feed ADVANCED's aggregated warning and preview-recovery watchd
 |----------|--------|--------------|
 | **Local** | Bundled site-trained MobileNetV3 ONNX model | None (works offline on CPU) |
 | **GitHub Models** | ⚠️ Retired by GitHub on July 30, 2026 — no longer works; analyses fall back to Local | — |
-| **OpenAI** | GPT-4o, GPT-4o Mini | API key |
+| **OpenAI** | Listed vision models or a custom vision-model ID | API key |
 | **Google Gemini** | One operator-selected model; no automatic switching, retry, rotation, downgrade or backoff | Billed-project API key |
 | **Google Gemini Free** | Reorderable Flash/Lite model pool with per-model quota circuits and configurable full-pool cycles | Free-tier API key |
-| **Anthropic Claude** | Claude 3.5 Sonnet, Claude 3.5 Haiku, Claude 3 Opus | API key |
+| **Anthropic Claude** | Claude models returned by the API; default Haiku 5.5 | API key |
 | **Ollama / Custom** | Any vision model served by Ollama, LM Studio, llama.cpp or LocalAI (e.g. LLaVA, Qwen2.5-VL) | Local server URL (no API key) |
 
 If a cloud AI provider fails or times out (60-second limit), the orchestration layer explicitly falls back to local analysis so that safety monitoring is never interrupted. A fallback remains machine-identifiable and can never be recorded as a successful online teacher label.
@@ -136,7 +136,10 @@ In the plugin options, choose the capture mode that matches your camera:
 - **Google Gemini Free** is the best-effort free-tier choice: enter a free-project key and tune the ordered model pool if needed. **Google Gemini** is the strict single-model choice for a billed project. Keys can be created in [Google AI Studio](https://aistudio.google.com/apikey).
 - **OpenAI** and **Anthropic** require their respective API keys from each provider's developer portal.
 - **GitHub Models** was retired by GitHub on July 30, 2026 and no longer works for anyone; if selected, analyses fall back to the bundled Local ONNX model.
+
 - **Ollama / Custom** runs fully local: point it to your server URL (default `http://localhost:11434/v1`) and pick a vision model (e.g. `llava`, `qwen2.5vl`). Works with Ollama, LM Studio, llama.cpp, and LocalAI — no API key needed. Thinking-capable models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering by default, which can multiply analysis times past the timeout: the "Disable model thinking" option (on by default) turns that off. Uncheck it only on fast hardware.
+
+**The model box is editable.** Select a model or type an ID and leave the field to save it. This does not change the separate Gemini Free ordered-pool policy.
 
 Each Gemini choice has its own **online request: once every N weather checks** setting and API key. `1` calls that policy on every eligible weather check. A larger value spends fewer requests without reducing camera capture or local safety freshness. For example, a 2-minute weather interval over an 8-hour night contains about 240 checks, so `N=12` schedules roughly 20 online pool/single-model runs. Only successful online calls can create teacher labels.
 
@@ -151,7 +154,37 @@ consolidates the digests into observing-site pages (fog patterns, typical
 seeing, seasonal transparency). Purely append-only and local — no data leaves
 your machine.
 
-### 3. Optional: Site notes
+### 3. Tell it about your camera and your sky
+
+Two things the analysis cannot guess from a single frame, and used to assume:
+
+- **Camera view** — *All-sky fisheye* (the default) tells the AI the sky is a
+  circle and the corners are housing. *Fixed camera* is for a security camera or
+  any lens that looks at part of the sky above a horizon: the sky is the region
+  above the treeline or the buildings, and coverage is judged on that region
+  alone.
+- **Site darkness** — *Light-polluted* (the default) is the classic picture:
+  clouds lit from below look bright and milky, a dark sky with stars is clear.
+  At a *Dark site* (roughly Bortle 1-4 with no moon) nothing lights the clouds:
+  they are black holes in the star field, and a fully overcast sky is simply
+  black. With this setting the AI judges by where the stars are missing in an
+  otherwise readable sky rather than by brightness alone. A frame with no
+  readable sky information follows the Unknown rule below.
+
+Whatever the settings, a frame whose sky carries no information at all — no
+stars, no cloud structure, no moon, no gradient — is reported as **Unknown**
+and treated as Unsafe rather than guessed. Isolated specks spread evenly over
+the whole frame, including over trees and ground, are read as sensor noise,
+not stars.
+
+The defaults retain the all-sky, light-polluted preset. The new noise and
+unreadable-sky rules apply to every preset, so results can differ from earlier
+versions. These options affect prompt-based providers, not the bundled ONNX
+student's inference. Replica takeover uses the encrypted, synchronized camera
+and site settings; upgrade both peers before enabling non-default presets or
+site notes. See the [integration notes](docs/UPSTREAM_MERGE_20261017.zh-CN.md).
+
+### 4. Optional: Site notes
 
 Every site has visual quirks a general-purpose prompt cannot anticipate. The
 optional **Site notes** field lets you describe them in your own words, and the
@@ -166,7 +199,7 @@ explain what a feature is without redefining what "safe" means. Keep it to a few
 sentences: the text is sent with every analysis, and long prompts degrade small
 local models. Leave it empty and nothing changes.
 
-### 4. Set Monitoring Parameters
+### 5. Set Monitoring Parameters
 
 - **Check Interval** (minutes): How often the plugin captures and analyzes an image. 5-10 minutes is recommended for active monitoring.
 - **Gemini / Gemini Free online request ratio**: each policy has independent pacing; local safety analysis still runs on each intervening check.
@@ -184,14 +217,14 @@ Keep Low below High; equal values remove the hysteresis, while an excessively
 wide band can leave the state stuck. A difference of 5 to 15 percentage points
 is a useful starting range.
 
-### 5. Fail-safe
+### 6. Fail-safe
 
 - **Maximum data age** (minutes, 0 = automatic): if no analysis succeeds within this time,
   the monitor reports **Unsafe** instead of holding the last known state. Automatic means
   three check intervals, never below 10 minutes. This is what makes a camera that dies at
   midnight stop the sequence instead of reporting the sky it saw before it died.
 
-### 6. Optional: External ASCOM Safety Monitor
+### 7. Optional: External ASCOM Safety Monitor
 
 - Enable **Combine with an external safety monitor** and pick a device with **Choose...**
   (or type its ProgID). The verdicts are combined with AND: imaging is **Safe** only when
@@ -203,7 +236,7 @@ is a useful starting range.
 - If the external device cannot be connected or read, the state is **Unsafe**. A driver
   that stops answering is exactly the situation its owner installed it for.
 
-### 7. Optional: Status File
+### 8. Optional: Status File
 
 - Enable **Write Safety Status File** to output the current status to a text file, useful for external scripts or the ASCOM Generic File SafetyMonitor driver. The file carries the same combined state NINA acts on.
 
@@ -237,8 +270,9 @@ Use the **Refresh** button to trigger an immediate capture and analysis outside 
 | Overcast | > 85% | No | No |
 | Rainy | Any | Rain detected | No |
 | Foggy | Any | Fog detected | No |
+| Unknown | reported as 100% | Sky cannot be read | No |
 
-Rain and fog always trigger an Unsafe status regardless of the cloud coverage threshold.
+Rain and fog always trigger an Unsafe status regardless of the cloud coverage threshold. So does a frame the AI cannot read: a black or featureless sky is never taken as evidence of clear weather.
 
 ### Sequencer Symbols (N.I.N.A. 3.3+)
 

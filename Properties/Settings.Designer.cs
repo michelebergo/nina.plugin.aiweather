@@ -336,6 +336,30 @@ namespace AIWeather.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int CameraView {
+            get {
+                return ((int)(this["CameraView"]));
+            }
+            set {
+                this["CameraView"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int SiteDarkness {
+            get {
+                return ((int)(this["SiteDarkness"]));
+            }
+            set {
+                this["SiteDarkness"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public int CaptureMode {
             get {
                 return ((int)(this["CaptureMode"]));

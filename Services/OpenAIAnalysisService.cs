@@ -79,7 +79,7 @@ namespace AIWeather.Services
                     max_tokens = 512,
                     messages = new object[]
                     {
-                        new { role = "system", content = PromptText.SystemPrompt },
+                        new { role = "system", content = WeatherAnalysisPrompts.BuildSystemPrompt() },
                         new {
                             role = "user",
                             content = new object[]
@@ -120,7 +120,7 @@ namespace AIWeather.Services
                 var content = ExtractOpenAIMessageContent(root);
 
                 var result = WeatherResponseParser.Parse(content);
-                if (!WeatherAnalysisValidator.IsValidTeacherResult(result, out var validationReason))
+                if (!WeatherAnalysisValidator.IsValidProviderResult(result, out var validationReason))
                 {
                     failureCategory = AnalysisFailureCategory.SchemaRejected;
                     throw new InvalidDataException($"OpenAI response rejected by weather schema: {validationReason}");

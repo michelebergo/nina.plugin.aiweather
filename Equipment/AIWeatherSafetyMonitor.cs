@@ -572,6 +572,7 @@ namespace AIWeather.Equipment
             if (Properties.Settings.Default.UseAscomSafetyMonitor && !IsExternalMonitorSafe()) return "external-monitor-unsafe";
             if (_lastResult?.RainDetected == true) return "rain";
             if (_lastResult?.FogDetected == true) return "fog";
+            if (_lastResult?.IsSkyUnreadable == true) return "sky-unreadable";
             if (!_isCurrentlySafe) return "cloud-threshold";
             return "safe";
         }
@@ -1239,6 +1240,10 @@ namespace AIWeather.Equipment
                     {
                         return UiLocalization.Text("Runtime.NoUsable");
                     }
+                    if (r.IsSkyUnreadable || r.Condition == WeatherCondition.Unknown)
+                    {
+                        return UiLocalization.Text("Runtime.SkyUnreadable");
+                    }
                     if (r.RainDetected)
                     {
                         return UiLocalization.Text("Runtime.Rain");
@@ -1773,6 +1778,8 @@ namespace AIWeather.Equipment
                 var analysisService = await EnsureAnalysisServiceInitializedAsync(cancellationToken);
                 Logger.Debug($"Starting AI analysis using {analysisService.GetType().Name}");
 
+                using var promptScope = WeatherAnalysisPrompts.UseConfiguration(
+                    ActiveFailoverConfiguration ?? AIWeatherFailoverConfiguration.FromSettings());
                 var analysis = await _analysisOrchestrator.AnalyzeAsync(
                     analysisService,
                     frame,
@@ -1780,7 +1787,7 @@ namespace AIWeather.Equipment
                     cancellationToken);
                 var result = analysis.EffectiveResult;
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!AnalysisThrottle.HasUsableMeasurement(result))
+                if (!AnalysisThrottle.CanApplyResult(result))
                 {
                     Logger.Warning("Weather analysis produced no valid measurement; previous verdict continues ageing toward the fail-safe limit");
                     RaisePropertyChanged(nameof(IsSafe));
@@ -1799,9 +1806,9 @@ namespace AIWeather.Equipment
                 RaisePropertyChanged(nameof(ProviderHealth));
                 _lastAstroContext = astroContext;
 
-                // Unknown/zero-confidence is a failure result, not fresh sky data. Preserve
-                // the previous timestamp so the fail-safe age limit can expire it.
-                if (result.Condition != WeatherCondition.Unknown && result.Confidence > 0)
+                // A successful unreadable-sky answer is a fresh UNSAFE observation, not a
+                // cloud measurement. API failure envelopes have already been excluded above.
+                if (AnalysisThrottle.CanApplyResult(result))
                 {
                     _lastAnalysisUtc = DateTime.UtcNow;
                     _lastSuccessfulAnalysisRevision = configurationRevision;
