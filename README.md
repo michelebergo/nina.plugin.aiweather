@@ -382,9 +382,17 @@ If it is useful for your astrophotography or automation workflow, you can suppor
 
 Your support helps cover development tools, testing hardware, hosting and future features.
 
-## License
+## License and names
 
-MIT License. See [LICENSE](LICENSE) for details.
+AI Weather is released under the Mozilla Public License 2.0 — see [LICENSE](LICENSE). Versions up to 1.15.10.0 were released under the MIT License and remain available under it.
+
+**Author: Michele Bergo.** Every copy and every derivative work must keep the copyright
+notice and credit Michele Bergo as the original author, as the license requires. The MPL
+grants no rights to names (section 2.3): "AI Weather", "AI Assistant" and "OpenCode" (for
+N.I.N.A.) are the names of Michele Bergo's plugins, and a fork or derivative work must be
+published under a different name — not one of these nor a confusable variant such as
+"AI Weather Advanced" — with its own plugin identifier (GUID), and must not present Michele
+Bergo as the author of the modified version. See [NOTICE](NOTICE).
 
 ## Contributing
 

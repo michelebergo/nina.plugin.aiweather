@@ -1,0 +1,13 @@
+Copyright (c) 2026 Michele Bergo
+
+This software is licensed under the Mozilla Public License, v. 2.0 (see LICENSE).
+Versions up to 1.15.10.0 were released under the MIT License and remain available under it.
+The license grants no rights to names or logos (MPL 2.0, section 2.3).
+
+Author: Michele Bergo. Every copy and every derivative work must keep this copyright
+notice and credit Michele Bergo as the original author, as the license requires.
+
+"AI Weather", "AI Assistant" and "OpenCode" (for N.I.N.A.) are the names of Michele Bergo's
+plugins. A fork or derivative work must be published under a different name - not one of
+these nor a confusable variant - with its own plugin identifier (GUID), and must not
+present Michele Bergo as the author of the modified version.

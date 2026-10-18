@@ -1,13 +1,13 @@
 {
   "Identifier": "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D",
   "Name": "AI Weather",
-  "Version": "1.15.10.0",
+  "Version": "1.15.11.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
   "Repository": "https://github.com/michelebergo/nina.plugin.aiweather",
-  "License": "MIT",
-  "LicenseURL": "https://opensource.org/licenses/MIT",
+  "License": "MPL-2.0",
+  "LicenseURL": "https://www.mozilla.org/en-US/MPL/2.0/",
   "Tags": [
     "Weather",
     "Safety Monitor",
@@ -24,6 +24,13 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.15.11.0",
+      "Date": "2026-10-18",
+      "Changes": [
+        "License: Mozilla Public License 2.0 from this version on (versions up to 1.15.10.0 remain MIT). Author: Michele Bergo - every copy and derivative work keeps the copyright notice and the original author's credit; the plugin's name and identifier are not granted to forks, which must carry a different name, their own GUID and their own author. See NOTICE"
+      ]
+    },
     {
       "Version": "1.15.10.0",
       "Date": "2026-10-17",

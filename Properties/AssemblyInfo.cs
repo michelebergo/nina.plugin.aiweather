@@ -34,14 +34,14 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.15.10.0")]
-[assembly: AssemblyFileVersion("1.15.10.0")]
+[assembly: AssemblyVersion("1.15.11.0")]
+[assembly: AssemblyFileVersion("1.15.11.0")]
 
 // The license your plugin code is using
-[assembly: AssemblyMetadata("License", "MIT")]
+[assembly: AssemblyMetadata("License", "MPL-2.0")]
 
 // The url to the license
-[assembly: AssemblyMetadata("LicenseURL", "https://opensource.org/licenses/MIT")]
+[assembly: AssemblyMetadata("LicenseURL", "https://www.mozilla.org/en-US/MPL/2.0/")]
 
 // Common tags that quickly describe your plugin
 [assembly: AssemblyMetadata("Tags", "Weather,Safety Monitor,All Sky Camera,AI,RTSP")]
