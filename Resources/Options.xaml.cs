@@ -321,6 +321,20 @@ namespace AIWeather
         /// picks the external monitor from a list instead of typing a ProgID. Falls back
         /// silently to manual entry when the ASCOM Platform is not installed.
         /// </summary>
+        private void OpenDecisionFolder_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var folder = Equipment.AIWeatherSafetyMonitor.DefaultDecisionFolder;
+                System.IO.Directory.CreateDirectory(folder);
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", folder) { UseShellExecute = true });
+            }
+            catch (System.Exception ex)
+            {
+                NINA.Core.Utility.Logger.Warning($"Could not open the decision folder: {ex.Message}");
+            }
+        }
+
         private void ChooseAscomSafetyMonitor_Click(object sender, RoutedEventArgs e)
         {
             try

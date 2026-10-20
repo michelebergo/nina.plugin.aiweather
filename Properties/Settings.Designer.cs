@@ -347,6 +347,30 @@ namespace AIWeather.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool KeepDecisionFrames {
+            get {
+                return ((bool)(this["KeepDecisionFrames"]));
+            }
+            set {
+                this["KeepDecisionFrames"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("7")]
+        public int DecisionRetentionDays {
+            get {
+                return ((int)(this["DecisionRetentionDays"]));
+            }
+            set {
+                this["DecisionRetentionDays"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string AscomSafetyMonitorProgId {
             get {

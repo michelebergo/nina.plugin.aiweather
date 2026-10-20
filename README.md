@@ -300,6 +300,36 @@ A band of 5 to 15 points is the useful range: the feature was requested with 70 
 
 - Enable **Write Safety Status File** to output the current status to a text file, useful for external scripts or the ASCOM Generic File SafetyMonitor driver. The file carries the same combined state NINA acts on.
 
+### 9. The frame behind every decision
+
+An Unsafe alert at one in the morning is hard to judge the morning after if the analysed
+frame is gone — the rolling capture folder keeps only the 25 newest images. With **Keep
+the frame behind every decision** (on by default, 7 days), every change of the combined
+state — Safe to Unsafe, or back — saves the exact frame that was analysed, with a text
+file next to it:
+
+```
+Decision: Safe -> Unsafe
+Time: 2026-10-20 01:16:42 local (2026-10-19 23:16:42 UTC)
+Provider: Gemini (gemini-flash-latest)
+Condition: MostlyCloudy
+Cloud coverage: 75%
+Confidence: 80%
+Rain: no, fog: no
+Description: Thick clouds over most of the sky
+Thresholds: unsafe at 50%, safe below 30%
+Sky: Unsafe
+External monitor: not configured
+Environment monitor: not configured
+Combined: Unsafe
+Reason: Sky cloud coverage 75% (safe below 30%)
+```
+
+Only changes are kept, so an overcast night is one decision, not a hundred copies of it.
+**Open folder** in the options shows them (`AllSkyCameraPlugin\decisions` under N.I.N.A.'s
+temp folder). Put the frame and the text side by side and you can say whether the AI was
+wrong — and send both with a report.
+
 ## Usage
 
 ### Connecting the Safety Monitor

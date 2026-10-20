@@ -208,6 +208,7 @@ namespace AIWeather.Equipment
                 _identicalFrameRun = 0;
                 _isCurrentlySafe = false;
                 _staleLogged = false;
+                _lastDecisionSafe = null;
 
                 if (Properties.Settings.Default.UseAscomSafetyMonitor)
                 {
@@ -290,6 +291,15 @@ namespace AIWeather.Equipment
 
         /// <summary>Why the last capture returned nothing, when the source could say; null after a capture.</summary>
         public string? LastCaptureFailure { get; private set; }
+
+        /// <summary>Where the frames behind the decisions go (#21).</summary>
+        public static string DefaultDecisionFolder => Path.Combine(CoreUtil.APPLICATIONTEMPPATH, "AllSkyCameraPlugin", "decisions");
+
+        /// <summary>The decision archive; the tests point it at a temporary folder.</summary>
+        internal DecisionArchive Decisions = new DecisionArchive(DefaultDecisionFolder);
+
+        // The combined state the last archived decision reported, so only a change is kept.
+        private bool? _lastDecisionSafe;
 
         /// <summary>
         /// One line for the panel when the chosen provider is not the one answering; empty
@@ -510,6 +520,8 @@ namespace AIWeather.Equipment
             // Update Safety State (Hysteresis)
             UpdateSafetyState(result);
 
+            KeepDecisionIfChanged(result);
+
             // Expose the reading to the Advanced Sequencer's Symbols sidebar (N.I.N.A. 3.3+).
             // The published Safe symbol is the composite state, so an expression in the
             // sequencer sees the same verdict NINA's safety monitor sees.
@@ -540,6 +552,57 @@ namespace AIWeather.Equipment
 
             // Write safety status to file if enabled
             WriteSafetyStatusFile();
+        }
+
+        /// <summary>
+        /// The frame behind a change of the combined state, kept with the decision written
+        /// next to it. A change caused by a device between two analyses is caught at the
+        /// next analysis, with that frame.
+        /// </summary>
+        private void KeepDecisionIfChanged(WeatherAnalysisResult result)
+        {
+            if (!Properties.Settings.Default.KeepDecisionFrames)
+            {
+                return;
+            }
+
+            var combined = IsSafe;
+            if (_lastDecisionSafe == combined)
+            {
+                return;
+            }
+            var transition = $"{(_lastDecisionSafe is bool prev ? (prev ? "Safe" : "Unsafe") : "Start")} -> {(combined ? "Safe" : "Unsafe")}";
+            _lastDecisionSafe = combined;
+
+            string Device(bool enabled, bool safe, ExternalSafetyDevice device) =>
+                !enabled ? "not configured" : safe ? "Safe" : device.Connected ? "Unsafe" : "cannot be connected or read";
+
+            var record = new DecisionRecord
+            {
+                Transition = transition,
+                Utc = UtcNow(),
+                Provider = result.Provider,
+                Model = Properties.Settings.Default.SelectedModel ?? string.Empty,
+                Condition = result.Condition,
+                CloudCoverage = result.CloudCoverage,
+                Confidence = result.Confidence,
+                RainDetected = result.RainDetected,
+                FogDetected = result.FogDetected,
+                Description = result.Description,
+                HighThreshold = Properties.Settings.Default.CloudCoverageThreshold,
+                LowThreshold = Properties.Settings.Default.CloudCoverageSafeThreshold,
+                SkySafe = _isCurrentlySafe,
+                ExternalMonitor = Properties.Settings.Default.UseAscomSafetyMonitor
+                    ? $"{Device(true, IsExternalMonitorSafe(), _externalDevice)} ({ExternalMode})"
+                    : "not configured",
+                EnvironmentMonitor = Device(Properties.Settings.Default.UseEnvironmentSafetyMonitor, IsEnvironmentMonitorSafe(), _environmentDevice),
+                CombinedSafe = combined,
+                Reason = SafetyStateReason,
+            };
+
+            var path = Decisions.Save(_lastImage, record, UtcNow().ToLocalTime());
+            Logger.Info($"Decision kept ({transition}): {path ?? "no frame"}, {Decisions.Folder}");
+            Decisions.Prune(TimeSpan.FromDays(Math.Max(1, Properties.Settings.Default.DecisionRetentionDays)), UtcNow().ToLocalTime());
         }
 
         private void UpdateSafetyState(WeatherAnalysisResult result)

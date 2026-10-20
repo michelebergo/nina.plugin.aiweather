@@ -129,6 +129,26 @@
                     <TextBlock Text="Writes a single line: Safe or Unsafe" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,4"/>
                     <TextBlock Text="Point your ASCOM Generic File SafetyMonitor to this file" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,8"/>
 
+                    <!-- Decision archive (#21): the frame behind every change of state, with the decision next to it -->
+                    <TextBlock Text="Keep the frame behind every decision:" Margin="0,6,0,6"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4" HorizontalAlignment="Left">
+                        <CheckBox IsChecked="{Binding Options.KeepDecisionFrames, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  VerticalAlignment="Center"
+                                  Width="64"
+                                  Margin="0,0,8,0"/>
+                        <TextBlock Text="keep for" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox Text="{Binding Options.DecisionRetentionDays, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                 IsEnabled="{Binding Options.KeepDecisionFrames}"
+                                 Width="50"
+                                 VerticalContentAlignment="Center"/>
+                        <TextBlock Text="days" VerticalAlignment="Center" Margin="6,0,12,0"/>
+                        <Button Content="Open folder"
+                                Padding="10,2"
+                                Click="OpenDecisionFolder_Click"/>
+                    </StackPanel>
+                    <TextBlock Text="Whenever the combined state changes (Safe to Unsafe, or back), the exact frame that was analysed is saved with a text file next to it: time, provider and model, condition, cloud coverage, confidence, thresholds, what each monitor said, and the reason shown in the panel. Only changes are kept, so an overcast night is one decision, not a hundred copies of it. Use it the morning after an alert to see what the AI saw."
+                               Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+
             <!-- Maximum data age: the sky verdict expires instead of being trusted forever -->
             <TextBlock Text="Fail-safe" Margin="0,20,0,2" FontWeight="Bold"/>
             <TextBlock Text="Maximum data age (minutes, 0 = automatic):" Margin="0,0,0,2"/>

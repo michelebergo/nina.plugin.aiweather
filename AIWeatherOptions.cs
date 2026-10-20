@@ -277,6 +277,32 @@ namespace AIWeather
             }
         }
 
+        /// <summary>Keep the frame behind every change of state, with the decision next to it (#21).</summary>
+        public bool KeepDecisionFrames
+        {
+            get => Properties.Settings.Default.KeepDecisionFrames;
+            set
+            {
+                Properties.Settings.Default.KeepDecisionFrames = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        public int DecisionRetentionDays
+        {
+            get => Properties.Settings.Default.DecisionRetentionDays;
+            set
+            {
+                Properties.Settings.Default.DecisionRetentionDays = value < 1 ? 1 : value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>Where the decisions go; the options page offers to open it.</summary>
+        public string DecisionFolder => Equipment.AIWeatherSafetyMonitor.DefaultDecisionFolder;
+
         public string SafetyStatusFilePath
         {
             get => Services.SafetyStatusFile.Resolve(Properties.Settings.Default.SafetyStatusFilePath);

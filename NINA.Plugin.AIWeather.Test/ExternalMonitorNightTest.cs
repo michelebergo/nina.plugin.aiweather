@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using AIWeather.Equipment;
 using AIWeather.Models;
 using AIWeather.Services;
@@ -36,6 +37,7 @@ namespace NINA.Plugin.AIWeather.Test
         private DateTime _clock;
         private string _statusFile = null!;
         private string _wikiRoot = null!;
+        private string _decisionFolder = null!;
         private (bool use, int mode, string progId, double high, double low, int maxAge, int interval, bool writeFile, string path, bool useEnv, string envProgId) _before;
 
         [SetUp]
@@ -64,6 +66,9 @@ namespace NINA.Plugin.AIWeather.Test
             _clock = new DateTime(2026, 10, 16, 22, 0, 0, DateTimeKind.Utc);
             _monitor = new AIWeatherSafetyMonitor(_device, _environment) { Connected = true };
             _monitor.UtcNow = () => _clock;
+            // Decisions go to a folder of their own: the tests must not write into the real archive.
+            _decisionFolder = Path.Combine(Path.GetTempPath(), "aiweather-decisions-" + Guid.NewGuid().ToString("N"));
+            _monitor.Decisions = new DecisionArchive(_decisionFolder);
         }
 
         [TearDown]
@@ -75,6 +80,7 @@ namespace NINA.Plugin.AIWeather.Test
             LlmWikiRawWriter.RootOverride = null;
             try { File.Delete(_statusFile); } catch { }
             try { Directory.Delete(_wikiRoot, true); } catch { }
+            try { Directory.Delete(_decisionFolder, true); } catch { }
         }
 
         private static void Mode(ExternalMonitorMode mode) => global::AIWeather.Properties.Settings.Default.ExternalMonitorMode = (int)mode;
@@ -216,6 +222,29 @@ namespace NINA.Plugin.AIWeather.Test
             _monitor.IsSafe.Should().BeTrue();
             _monitor.SafetyStateReason.Should().Be("Safe on the external monitor alone — sky cloud coverage 90% (safe below 30%)");
             StatusFile.Should().Be("Safe");
+        }
+
+        [Test]
+        public void AChangeOfStateLeavesADecisionBehind() {
+            // #21: the frame behind an alert, kept with its explanation. Only changes are
+            // kept: an overcast night is one decision, not a hundred copies of it.
+            var folder = Path.Combine(Path.GetTempPath(), "aiweather-night-decisions-" + Guid.NewGuid().ToString("N"));
+            _monitor.Decisions = new DecisionArchive(folder);
+            global::AIWeather.Properties.Settings.Default.UseAscomSafetyMonitor = false;
+            try
+            {
+                Analysis(10);                   // first verdict after connecting
+                Analysis(90);                   // Safe -> Unsafe
+                Analysis(92);                   // still unsafe: nothing new to explain
+                Analysis(20);                   // Unsafe -> Safe
+
+                var texts = Directory.GetFiles(folder, "decision_*.txt").OrderBy(f => f).Select(File.ReadAllText).ToList();
+                texts.Should().HaveCount(3);
+                texts[0].Should().Contain("Decision: Start -> Safe");
+                texts[1].Should().Contain("Decision: Safe -> Unsafe").And.Contain("Cloud coverage: 90%").And.Contain("Provider: Test");
+                texts[2].Should().Contain("Decision: Unsafe -> Safe").And.Contain("Cloud coverage: 20%");
+            }
+            finally { try { Directory.Delete(folder, true); } catch { } }
         }
 
         [Test]
