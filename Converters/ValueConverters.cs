@@ -23,6 +23,29 @@ namespace AIWeather.Converters
         }
     }
 
+    /// <summary>
+    /// The colour of a key or test status line: the theme's error brush for a failure, the
+    /// normal text brush for a success, the dimmed brush while nothing has been tried.
+    /// Brushes come from N.I.N.A.'s own theme so light and dark both read correctly.
+    /// </summary>
+    public class StatusToBrushConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var text = value as string ?? string.Empty;
+            string key;
+            if (text.StartsWith("Key OK", StringComparison.OrdinalIgnoreCase)) key = "PrimaryBrush";
+            else if (text.Contains("failed", StringComparison.OrdinalIgnoreCase) || text.Contains("retired", StringComparison.OrdinalIgnoreCase)) key = "NotificationErrorBrush";
+            else key = "ButtonForegroundDisabledBrush";
+            return Application.Current?.TryFindResource(key) as Brush ?? new SolidColorBrush(Colors.Gray);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     public class BoolToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)

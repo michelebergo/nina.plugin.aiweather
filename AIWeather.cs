@@ -61,7 +61,6 @@ namespace AIWeather
         public ObservableCollection<ProviderOption> ProviderOptions { get; } = new ObservableCollection<ProviderOption>
         {
             new ProviderOption("Local", "Local (offline heuristic)"),
-            new ProviderOption("GitHubModels", "GitHub Models (RETIRED)"),
             new ProviderOption("OpenAI", "OpenAI"),
             new ProviderOption("Gemini", "Google Gemini"),
             new ProviderOption("Anthropic", "Anthropic Claude"),
@@ -303,6 +302,14 @@ namespace AIWeather
             if (string.IsNullOrWhiteSpace(Properties.Settings.Default.AnalysisProvider))
             {
                 Properties.Settings.Default.AnalysisProvider = Properties.Settings.Default.UseGitHubModels ? "GitHubModels" : "Local";
+                changed = true;
+            }
+
+            // GitHub retired the service on 2026-07-30 and it is no longer offered; a saved
+            // selection falls back to Local rather than to an empty provider box.
+            if (string.Equals(Properties.Settings.Default.AnalysisProvider?.Trim(), "GitHubModels", StringComparison.OrdinalIgnoreCase))
+            {
+                Properties.Settings.Default.AnalysisProvider = "Local";
                 changed = true;
             }
 

@@ -6,13 +6,18 @@
 
     <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
     <conv:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter"/>
+    <conv:StatusToBrushConverter x:Key="StatusToBrush"/>
     
     <!-- Options View Template - must use key pattern: <PluginName>_Options -->
     <DataTemplate x:Key="AI Weather_Options">
         <StackPanel Orientation="Vertical" Margin="10" DataContext="{Binding}">
 
+            <!-- ===== Camera source ===== -->
+            <TextBlock Text="Camera source" FontWeight="Bold" FontSize="14" Margin="0,0,0,2"/>
+            <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
+
             <!-- Capture Mode -->
-            <TextBlock Text="Capture Mode:" Margin="0,0,0,2" FontWeight="Bold"/>
+            <TextBlock Text="Capture Mode:" Margin="0,0,0,2"/>
             <ComboBox SelectedIndex="{Binding Options.CaptureModeIndex, Mode=TwoWay}"
                       Width="300" HorizontalAlignment="Left"
                       Margin="0,0,0,10">
@@ -73,23 +78,133 @@
                 <TextBlock Text="Folder containing latest all-sky images" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
             </StackPanel>
 
+
+            <!-- ===== AI analysis ===== -->
+            <TextBlock Text="AI analysis" FontWeight="Bold" FontSize="14" Margin="0,24,0,2"/>
+            <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
+            <TextBlock Text="Pick a provider, give it the key, choose the model, then run one real analysis to see what comes back." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
             <!-- Analysis Provider -->
-            <TextBlock Text="Analysis Provider:" Margin="0,10,0,2" FontWeight="Bold"/>
+            <TextBlock Text="Analysis Provider:" Margin="0,0,0,2"/>
             <ComboBox ItemsSource="{Binding ProviderOptions}"
                       DisplayMemberPath="Name"
                       SelectedValuePath="Id"
                       SelectedValue="{Binding AnalysisProvider, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                       Width="300" HorizontalAlignment="Left"/>
+            <!-- OpenAI Key -->
+            <StackPanel Margin="0,10,0,0"
+                        Visibility="{Binding IsOpenAIProvider, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="OpenAI API Key:" Margin="0,0,0,2"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <PasswordBox Width="360"
+                                 HorizontalAlignment="Left"
+                                 Loaded="OpenAIKeyBox_Loaded"
+                                 PasswordChanged="OpenAIKeyBox_PasswordChanged"/>
+                    <Button Content="Test key"
+                            Margin="8,0,0,0"
+                            Padding="10,2"
+                            Click="TryOpenAIKey_Click"/>
+                </StackPanel>
+                <TextBlock Text="{Binding OpenAIKeyStatus}" Margin="0,4,0,0" Foreground="{Binding OpenAIKeyStatus, Converter={StaticResource StatusToBrush}}"/>
+                <TextBlock Text="Used with https://api.openai.com" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+            </StackPanel>
+
+            <!-- Gemini Key -->
+            <StackPanel Margin="0,10,0,0"
+                        Visibility="{Binding IsGeminiProvider, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="Google Gemini API Key:" Margin="0,0,0,2"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <PasswordBox Width="360"
+                                 HorizontalAlignment="Left"
+                                 Loaded="GeminiKeyBox_Loaded"
+                                 PasswordChanged="GeminiKeyBox_PasswordChanged"/>
+                    <Button Content="Test key"
+                            Margin="8,0,0,0"
+                            Padding="10,2"
+                            Click="TryGeminiKey_Click"/>
+                </StackPanel>
+                <TextBlock Text="{Binding GeminiKeyStatus}" Margin="0,4,0,0" Foreground="{Binding GeminiKeyStatus, Converter={StaticResource StatusToBrush}}"/>
+                <TextBlock Text="Used with Generative Language API" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+            </StackPanel>
+
+            <!-- Anthropic Key -->
+            <StackPanel Margin="0,10,0,0"
+                        Visibility="{Binding IsAnthropicProvider, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="Anthropic API Key:" Margin="0,0,0,2"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <PasswordBox Width="360"
+                                 HorizontalAlignment="Left"
+                                 Loaded="AnthropicKeyBox_Loaded"
+                                 PasswordChanged="AnthropicKeyBox_PasswordChanged"/>
+                    <Button Content="Test key"
+                            Margin="8,0,0,0"
+                            Padding="10,2"
+                            Click="TryAnthropicKey_Click"/>
+                </StackPanel>
+                <TextBlock Text="{Binding AnthropicKeyStatus}" Margin="0,4,0,0" Foreground="{Binding AnthropicKeyStatus, Converter={StaticResource StatusToBrush}}"/>
+                <TextBlock Text="Used with https://api.anthropic.com" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+            </StackPanel>
+
+            <!-- Ollama Base URL -->
+            <StackPanel Margin="0,10,0,0"
+                        Visibility="{Binding IsOllamaProvider, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="Ollama Base URL:" Margin="0,0,0,2"/>
+                <TextBox Text="{Binding OllamaBaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Width="360"
+                         HorizontalAlignment="Left"/>
+                <TextBlock Text="Default: http://localhost:11434/v1" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="Also works with LM Studio, llama.cpp, and LocalAI endpoints" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="No API key required. Use a vision-capable model (e.g. llava, qwen2.5vl)" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="Disable model thinking (recommended):" Margin="0,10,0,2"/>
+                <CheckBox IsChecked="{Binding OllamaDisableThinking, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          Width="64"
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Center"/>
+                <TextBlock Text="Thinking-capable models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering, which can multiply response times. Turn off only on fast hardware." Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+            </StackPanel>
+            
+                <!-- Model Selection (non-local providers) -->
+                <StackPanel Margin="0,10,0,0"
+                    Visibility="{Binding IsNonLocalProvider, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="AI Model:" Margin="0,0,0,2"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <!-- Text, not SelectedItem: the box is editable so a model missing from the
+                         list (the list is a day old, or the provider shipped a new one) can be
+                         typed in; a SelectedItem binding dropped anything typed (#18). Saved when
+                         focus leaves, so a check starting mid-typing does not see half a name. -->
+                    <ComboBox x:Name="ModelComboBox"
+                          ItemsSource="{Binding AvailableModels}"
+                          Text="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                          IsEditable="True"
+                          Width="360"
+                          HorizontalAlignment="Left"
+                          Loaded="ModelComboBox_Loaded"/>
+                    <Button Content="Refresh"
+                        Margin="8,0,0,0"
+                        Padding="10,2"
+                        Click="RefreshModels_Click"/>
+                </StackPanel>
+
+                <TextBlock Text="{Binding ModelsStatus}"
+                       Margin="0,4,0,0"
+                       Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                <TextBlock Text="The list comes from the provider and is cached for an hour. The box is editable: type a model ID the list does not show yet."
+                       Margin="0,2,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                </StackPanel>
+
             <!-- One real analysis with the selected provider and model, through the same
                  request the safety monitor sends at night. A key test proves the key; this
                  proves the model answers. -->
-            <StackPanel Orientation="Horizontal" Margin="0,6,0,0" HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0" HorizontalAlignment="Left">
                 <Button Content="Test analysis with this provider" Padding="10,2" HorizontalAlignment="Left"
                         Click="TestAnalysis_Click"/>
             </StackPanel>
             <TextBlock Text="{Binding ProviderTestStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left"/>
             <TextBlock Text="Sends a small synthetic sky image to the selected model and shows what comes back" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
             
+
+            <!-- ===== Checks and thresholds ===== -->
+            <TextBlock Text="Checks and thresholds" FontWeight="Bold" FontSize="14" Margin="0,24,0,2"/>
+            <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
             <!-- Check Interval -->
             <TextBlock Text="Check Interval (minutes):" Margin="0,0,0,2"/>
             <TextBox Text="{Binding CheckIntervalMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
@@ -108,58 +223,60 @@
             <TextBlock Text="While Unsafe: coverage must drop below this value before Safe returns" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
             <TextBlock Text="Between the two values the status stays as it is, so a sky at the limit cannot flap" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
 
-                    <!-- Generic File SafetyMonitor output file -->
-                    <TextBlock Text="Generic File SafetyMonitor" Margin="0,20,0,2" FontWeight="Bold"/>
-                    <TextBlock Text="Write Safe/Unsafe status file:" Margin="0,0,0,6"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
-                    <CheckBox IsChecked="{Binding Options.WriteSafetyStatusFile, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                          VerticalAlignment="Center"
-                          Width="64"
-                          Margin="0,0,8,0"/>
-                    <TextBox Text="{Binding Options.SafetyStatusFilePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         IsEnabled="{Binding Options.WriteSafetyStatusFile}"
-                         Width="360"
-                         VerticalContentAlignment="Center"/>
-                    <Button Content="Browse..."
-                        Margin="8,0,0,0"
-                        Padding="10,2"
-                        IsEnabled="{Binding Options.WriteSafetyStatusFile}"
-                        Click="BrowseSafetyStatusFile_Click"/>
-                    </StackPanel>
-                    <TextBlock Text="Writes a single line: Safe or Unsafe" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,4"/>
-                    <TextBlock Text="Point your ASCOM Generic File SafetyMonitor to this file" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,8"/>
-
-                    <!-- Decision archive (#21): the frame behind every change of state, with the decision next to it -->
-                    <TextBlock Text="Keep the frame behind every decision:" Margin="0,6,0,6"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4" HorizontalAlignment="Left">
-                        <CheckBox IsChecked="{Binding Options.KeepDecisionFrames, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                  VerticalAlignment="Center"
-                                  Width="64"
-                                  Margin="0,0,8,0"/>
-                        <TextBlock Text="keep for" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Text="{Binding Options.DecisionRetentionDays, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                 IsEnabled="{Binding Options.KeepDecisionFrames}"
-                                 Width="50"
-                                 VerticalContentAlignment="Center"/>
-                        <TextBlock Text="days" VerticalAlignment="Center" Margin="6,0,12,0"/>
-                        <Button Content="Open folder"
-                                Padding="10,2"
-                                Click="OpenDecisionFolder_Click"/>
-                    </StackPanel>
-                    <TextBlock Text="Whenever the combined state changes (Safe to Unsafe, or back), the exact frame that was analysed is saved with a text file next to it: time, provider and model, condition, cloud coverage, confidence, thresholds, what each monitor said, and the reason shown in the panel. Only changes are kept, so an overcast night is one decision, not a hundred copies of it. Use it the morning after an alert to see what the AI saw."
-                               Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left" Margin="0,0,0,8"/>
-
             <!-- Maximum data age: the sky verdict expires instead of being trusted forever -->
-            <TextBlock Text="Fail-safe" Margin="0,20,0,2" FontWeight="Bold"/>
+            <TextBlock Text="Fail-safe" Margin="0,10,0,2"/>
             <TextBlock Text="Maximum data age (minutes, 0 = automatic):" Margin="0,0,0,2"/>
             <TextBox Text="{Binding Options.MaxDataAgeMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      Width="100" HorizontalAlignment="Left"/>
             <TextBlock Text="If no sky analysis succeeds within this time — a dead camera, an unreachable stream — the monitor reports Unsafe instead of holding the last known state. Automatic means three check intervals, never less than 10 minutes."
                        Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
+
+            <!-- ===== What the AI sees ===== -->
+            <TextBlock Text="What the AI sees" FontWeight="Bold" FontSize="14" Margin="0,24,0,2"/>
+            <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
+            <TextBlock Text="Two facts the AI cannot guess from a frame, and a place for everything else about your site." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+            <!-- Camera view and site darkness: the two facts the prompt cannot guess and used to
+                 assume. A fixed security camera has no fisheye circle to look for, and at a dark
+                 site clouds are black holes in the star field rather than bright milky patches.
+                 Defaults are the previous behaviour. -->
+            <TextBlock Text="Camera view:" Margin="0,0,0,2"/>
+            <ComboBox SelectedIndex="{Binding CameraView, Mode=TwoWay}" Width="360" HorizontalAlignment="Left">
+                <ComboBoxItem Content="All-sky fisheye (the whole sky as a circle)"/>
+                <ComboBoxItem Content="Fixed camera (part of the sky above a horizon, trees or buildings)"/>
+            </ComboBox>
+            <TextBlock Text="Tells the AI which part of the image is sky. Pick the second one for a security camera or any camera that is not a fisheye pointing straight up."
+                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+
+            <TextBlock Text="Site darkness:" Margin="0,10,0,2"/>
+            <ComboBox SelectedIndex="{Binding SiteDarkness, Mode=TwoWay}" Width="360" HorizontalAlignment="Left">
+                <ComboBoxItem Content="Light-polluted (clouds are lit from below and look bright)"/>
+                <ComboBoxItem Content="Dark site (clouds are darker than the sky; only the stars tell)"/>
+            </ComboBox>
+            <TextBlock Text="At a Bortle 1-4 site with no moon, a cloudy sky is simply black. The dark-site setting makes the AI judge by where the stars are missing instead of by brightness, and treats a frame with no readable sky as unsafe rather than clear. Many Unknown results at night usually mean a dark site."
+                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+
+            <!-- Site notes: local knowledge appended to the analysis prompt of every provider.
+                 Saved on focus loss rather than per keystroke, so typing does not rewrite the
+                 settings file on every character. -->
+            <TextBlock Text="Site notes (optional):" Margin="0,10,0,2"/>
+            <TextBox Text="{Binding SiteNotes, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                     Width="360"
+                     Height="80"
+                     HorizontalAlignment="Left"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     VerticalScrollBarVisibility="Auto"/>
+            <TextBlock Text="Anything about your site or camera the AI cannot guess, in your own words. Example: &quot;Clouds toward the south are lit orange by the city and can look like overcast&quot; or &quot;In daylight the sun reflects off the dome and creates a hazy halo&quot;. Sent with every analysis, for all providers. Keep it short — a few sentences."
+                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+
+
+            <!-- ===== External safety devices ===== -->
+            <TextBlock Text="External safety devices" FontWeight="Bold" FontSize="14" Margin="0,24,0,2"/>
+            <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
+            <TextBlock Text="ASCOM safety monitors combined with the sky verdict." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
             <!-- External ASCOM safety monitor, combined with the sky verdict with AND or OR (#19) -->
-            <TextBlock Text="External ASCOM Safety Monitor" Margin="0,20,0,2" FontWeight="Bold"/>
-            <TextBlock Text="Combine with an external safety monitor:" Margin="0,0,0,6"/>
+                        <TextBlock Text="Combine with an external safety monitor:" Margin="0,0,0,6"/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
                 <CheckBox IsChecked="{Binding Options.UseAscomSafetyMonitor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                           VerticalAlignment="Center"
@@ -208,158 +325,50 @@
                        Margin="0,0,0,8" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
 
-            <!-- GitHub Models Token -->
-            <StackPanel Margin="0,10,0,0"
-                        Visibility="{Binding IsGitHubModelsProvider, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="GitHub retired this service on July 30, 2026 — it no longer works for anyone. Analyses fall back to the Local heuristic; switch to Ollama/Custom (local, free), Google Gemini or OpenAI."
-                           Foreground="Salmon" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                <TextBlock Text="GitHub Personal Access Token:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <PasswordBox Width="360"
-                                 HorizontalAlignment="Left"
-                                 Loaded="GitHubTokenBox_Loaded"
-                                 PasswordChanged="GitHubTokenBox_PasswordChanged"/>
-                    <Button Content="Try"
-                            Margin="8,0,0,0"
-                            Padding="10,2"
-                            Click="TryToken_Click"/>
-                </StackPanel>
-                <TextBlock Text="{Binding GitHubTokenStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-            </StackPanel>
 
-            <!-- OpenAI Key -->
-            <StackPanel Margin="0,10,0,0"
-                        Visibility="{Binding IsOpenAIProvider, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="OpenAI API Key:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <PasswordBox Width="360"
-                                 HorizontalAlignment="Left"
-                                 Loaded="OpenAIKeyBox_Loaded"
-                                 PasswordChanged="OpenAIKeyBox_PasswordChanged"/>
-                    <Button Content="Try"
-                            Margin="8,0,0,0"
-                            Padding="10,2"
-                            Click="TryOpenAIKey_Click"/>
-                </StackPanel>
-                <TextBlock Text="{Binding OpenAIKeyStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-                <TextBlock Text="Used with https://api.openai.com" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-            </StackPanel>
-
-            <!-- Gemini Key -->
-            <StackPanel Margin="0,10,0,0"
-                        Visibility="{Binding IsGeminiProvider, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="Google Gemini API Key:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <PasswordBox Width="360"
-                                 HorizontalAlignment="Left"
-                                 Loaded="GeminiKeyBox_Loaded"
-                                 PasswordChanged="GeminiKeyBox_PasswordChanged"/>
-                    <Button Content="Try"
-                            Margin="8,0,0,0"
-                            Padding="10,2"
-                            Click="TryGeminiKey_Click"/>
-                </StackPanel>
-                <TextBlock Text="{Binding GeminiKeyStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-                <TextBlock Text="Used with Generative Language API" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-            </StackPanel>
-
-            <!-- Anthropic Key -->
-            <StackPanel Margin="0,10,0,0"
-                        Visibility="{Binding IsAnthropicProvider, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="Anthropic API Key:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <PasswordBox Width="360"
-                                 HorizontalAlignment="Left"
-                                 Loaded="AnthropicKeyBox_Loaded"
-                                 PasswordChanged="AnthropicKeyBox_PasswordChanged"/>
-                    <Button Content="Try"
-                            Margin="8,0,0,0"
-                            Padding="10,2"
-                            Click="TryAnthropicKey_Click"/>
-                </StackPanel>
-                <TextBlock Text="{Binding AnthropicKeyStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-                <TextBlock Text="Used with https://api.anthropic.com" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-            </StackPanel>
-
-            <!-- Ollama Base URL -->
-            <StackPanel Margin="0,10,0,0"
-                        Visibility="{Binding IsOllamaProvider, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="Ollama Base URL:" Margin="0,0,0,2"/>
-                <TextBox Text="{Binding OllamaBaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         Width="360"
-                         HorizontalAlignment="Left"/>
-                <TextBlock Text="Default: http://localhost:11434/v1" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-                <TextBlock Text="Also works with LM Studio, llama.cpp, and LocalAI endpoints" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-                <TextBlock Text="No API key required. Use a vision-capable model (e.g. llava, qwen2.5vl)" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-                <TextBlock Text="Disable model thinking (recommended):" Margin="0,10,0,2"/>
-                <CheckBox IsChecked="{Binding OllamaDisableThinking, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+            <!-- ===== Outputs ===== -->
+            <TextBlock Text="Outputs" FontWeight="Bold" FontSize="14" Margin="0,24,0,2"/>
+            <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
+            <TextBlock Text="What the plugin writes for other software and for you." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <!-- Generic File SafetyMonitor output file -->
+                    <TextBlock Text="Write Safe/Unsafe status file:" Margin="0,0,0,6"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
+                    <CheckBox IsChecked="{Binding Options.WriteSafetyStatusFile, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          VerticalAlignment="Center"
                           Width="64"
-                          HorizontalAlignment="Left"
-                          VerticalAlignment="Center"/>
-                <TextBlock Text="Thinking-capable models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering, which can multiply response times. Turn off only on fast hardware." Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
-            </StackPanel>
-            
-                <!-- Model Selection (non-local providers) -->
-                <StackPanel Margin="0,10,0,0"
-                    Visibility="{Binding IsNonLocalProvider, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="AI Model:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <!-- Text, not SelectedItem: the box is editable so a model missing from the
-                         list (the list is a day old, or the provider shipped a new one) can be
-                         typed in; a SelectedItem binding dropped anything typed (#18). Saved when
-                         focus leaves, so a check starting mid-typing does not see half a name. -->
-                    <ComboBox x:Name="ModelComboBox"
-                          ItemsSource="{Binding AvailableModels}"
-                          Text="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                          IsEditable="True"
-                          Width="300"
-                          HorizontalAlignment="Left"
-                          Loaded="ModelComboBox_Loaded"/>
-                    <Button Content="Refresh"
+                          Margin="0,0,8,0"/>
+                    <TextBox Text="{Binding Options.SafetyStatusFilePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="{Binding Options.WriteSafetyStatusFile}"
+                         Width="360"
+                         VerticalContentAlignment="Center"/>
+                    <Button Content="Browse..."
                         Margin="8,0,0,0"
                         Padding="10,2"
-                        Click="RefreshModels_Click"/>
-                </StackPanel>
+                        IsEnabled="{Binding Options.WriteSafetyStatusFile}"
+                        Click="BrowseSafetyStatusFile_Click"/>
+                    </StackPanel>
+                    <TextBlock Text="Writes a single line: Safe or Unsafe" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,4"/>
+                    <TextBlock Text="Point your ASCOM Generic File SafetyMonitor to this file" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,8"/>
 
-                <TextBlock Text="{Binding ModelsStatus}"
-                       Margin="0,4,0,0"
-                      
-                       Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-                </StackPanel>
-
-            <!-- Camera view and site darkness: the two facts the prompt cannot guess and used to
-                 assume. A fixed security camera has no fisheye circle to look for, and at a dark
-                 site clouds are black holes in the star field rather than bright milky patches.
-                 Defaults are the previous behaviour. -->
-            <TextBlock Text="Camera view:" Margin="0,15,0,2" FontWeight="Bold"/>
-            <ComboBox SelectedIndex="{Binding CameraView, Mode=TwoWay}" Width="360" HorizontalAlignment="Left">
-                <ComboBoxItem Content="All-sky fisheye (the whole sky as a circle)"/>
-                <ComboBoxItem Content="Fixed camera (part of the sky above a horizon, trees or buildings)"/>
-            </ComboBox>
-            <TextBlock Text="Tells the AI which part of the image is sky. Pick the second one for a security camera or any camera that is not a fisheye pointing straight up."
-                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
-
-            <TextBlock Text="Site darkness:" Margin="0,10,0,2" FontWeight="Bold"/>
-            <ComboBox SelectedIndex="{Binding SiteDarkness, Mode=TwoWay}" Width="360" HorizontalAlignment="Left">
-                <ComboBoxItem Content="Light-polluted (clouds are lit from below and look bright)"/>
-                <ComboBoxItem Content="Dark site (clouds are darker than the sky; only the stars tell)"/>
-            </ComboBox>
-            <TextBlock Text="At a Bortle 1-4 site with no moon, a cloudy sky is simply black. The dark-site setting makes the AI judge by where the stars are missing instead of by brightness, and treats a frame with no readable sky as unsafe rather than clear. Many Unknown results at night usually mean a dark site."
-                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
-
-            <!-- Site notes: local knowledge appended to the analysis prompt of every provider.
-                 Saved on focus loss rather than per keystroke, so typing does not rewrite the
-                 settings file on every character. -->
-            <TextBlock Text="Site notes (optional):" Margin="0,15,0,2" FontWeight="Bold"/>
-            <TextBox Text="{Binding SiteNotes, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                     Width="360"
-                     Height="80"
-                     HorizontalAlignment="Left"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto"/>
-            <TextBlock Text="Anything about your site or camera the AI cannot guess, in your own words. Example: &quot;Clouds toward the south are lit orange by the city and can look like overcast&quot; or &quot;In daylight the sun reflects off the dome and creates a hazy halo&quot;. Sent with every analysis, for all providers. Keep it short — a few sentences."
-                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+                    <!-- Decision archive (#21): the frame behind every change of state, with the decision next to it -->
+                    <TextBlock Text="Keep the frame behind every decision:" Margin="0,6,0,6"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4" HorizontalAlignment="Left">
+                        <CheckBox IsChecked="{Binding Options.KeepDecisionFrames, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  VerticalAlignment="Center"
+                                  Width="64"
+                                  Margin="0,0,8,0"/>
+                        <TextBlock Text="keep for" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox Text="{Binding Options.DecisionRetentionDays, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                 IsEnabled="{Binding Options.KeepDecisionFrames}"
+                                 Width="50"
+                                 VerticalContentAlignment="Center"/>
+                        <TextBlock Text="days" VerticalAlignment="Center" Margin="6,0,12,0"/>
+                        <Button Content="Open folder"
+                                Padding="10,2"
+                                Click="OpenDecisionFolder_Click"/>
+                    </StackPanel>
+                    <TextBlock Text="Whenever the combined state changes (Safe to Unsafe, or back), the exact frame that was analysed is saved with a text file next to it: time, provider and model, condition, cloud coverage, confidence, thresholds, what each monitor said, and the reason shown in the panel. Only changes are kept, so an overcast night is one decision, not a hundred copies of it. Use it the morning after an alert to see what the AI saw."
+                               Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left" Margin="0,0,0,8"/>
 
             <!-- Description Section -->
             <TextBlock Text="About AI Weather" FontWeight="Bold" Margin="0,20,0,10"/>
@@ -380,10 +389,9 @@
             <TextBlock Text="AI Providers" FontWeight="Bold" Margin="0,5,0,5"/>
             <StackPanel Margin="15,0,0,10">
                 <TextBlock Text="○   Local - offline heuristic analysis using brightness, color, and pattern detection" Margin="0,3"/>
-                <TextBlock Text="○   GitHub Models - RETIRED by GitHub on July 30, 2026; analyses fall back to Local" Margin="0,3"/>
-                <TextBlock Text="○   OpenAI - GPT-4o, GPT-4.1, o1, o3, o4-mini (models fetched live)" Margin="0,3"/>
+                <TextBlock Text="○   OpenAI - any vision model the key can list (GPT-4o, GPT-4.1, o-series; fetched live)" Margin="0,3"/>
                 <TextBlock Text="○   Google Gemini - free API tier, Flash/Pro vision models (fetched live)" Margin="0,3"/>
-                <TextBlock Text="○   Anthropic Claude - Claude Sonnet 4.5, Sonnet 4, Haiku 4.5, 3.5 series (models fetched live)" Margin="0,3"/>
+                <TextBlock Text="○   Anthropic Claude - any Claude model the key can list (Haiku 5.5 is the cheapest; fetched live)" Margin="0,3"/>
                 <TextBlock Text="○   Ollama - local OpenAI-compatible server, no API key (LM Studio, llama.cpp, LocalAI also work)" Margin="0,3"/>
             </StackPanel>
 

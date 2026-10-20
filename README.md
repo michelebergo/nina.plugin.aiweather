@@ -46,7 +46,6 @@ network events: a session drop, no data from the camera, a stream that cannot be
 | Provider | Models | Requirements |
 |----------|--------|--------------|
 | **Local** | Built-in heuristic analysis | None (works offline) |
-| **GitHub Models** | ⚠️ Retired by GitHub on July 30, 2026 — no longer works; analyses fall back to Local | — |
 | **OpenAI** | Any vision model the key can list (GPT-4o, GPT-4o Mini, GPT-4.1, ...) | API key |
 | **Google Gemini** | Any vision model the key can list (Gemini Flash, Pro, ...) | API key |
 | **Anthropic Claude** | Any Claude model the key can list (Haiku 5.5 is the cheapest; Sonnet, Opus) | API key |
@@ -148,7 +147,10 @@ text size, so they follow the light and dark themes like the rest of the applica
 
 ## Configuration
 
-### 1. Select a Capture Mode
+The options page is laid out in the same order: camera source, AI analysis, checks and
+thresholds, what the AI sees, external safety devices, outputs.
+
+### 1. Camera source
 
 In the plugin options, choose the capture mode that matches your camera:
 
@@ -156,14 +158,13 @@ In the plugin options, choose the capture mode that matches your camera:
 - **HTTP Image**: Enter the image URL and optional credentials.
 - **Folder Watch**: Browse to the folder where your camera software saves images.
 
-### 2. Choose an AI Provider
+### 2. AI analysis: provider, key, model
 
 - **Local** requires no setup and works offline. It uses image processing heuristics (brightness, color distribution, pattern detection) to estimate cloud coverage.
 - **Google Gemini** is recommended for getting started: it has a free API tier with strong vision models — get a key at [Google AI Studio](https://aistudio.google.com/apikey).
 - **OpenAI** and **Anthropic** require their respective API keys from each provider's developer portal. For Anthropic the default is Claude Haiku 5.5, the cheapest model with vision: one analysis every few minutes is a yes/no about clouds.
 
 **The model box is editable.** The list is fetched from the provider when the options open and cached for an hour; if the provider ships a model the list does not show yet, type its ID into the box and click elsewhere — the typed ID is saved and used as-is.
-- **GitHub Models** was retired by GitHub on July 30, 2026 and no longer works for anyone; if selected, analyses fall back to the Local heuristic.
 - **Ollama / Custom** runs fully local: point it to your server URL (default `http://localhost:11434/v1`) and pick a vision model (e.g. `llava`, `qwen2.5vl`). Works with Ollama, LM Studio, llama.cpp, and LocalAI — no API key needed. Thinking-capable models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering by default, which can multiply analysis times past the timeout: the "Disable model thinking" option (on by default) turns that off. Uncheck it only on fast hardware.
 
 **Check the model before the night.** The **Test analysis with this provider** button in
@@ -180,63 +181,7 @@ model update costs one extra call instead of a night. The output budget is read 
 model's own metadata and capped at 8192 tokens — on 3.x the reasoning phase cannot be
 switched off and has to fit in the budget together with the answer.
 
-### Shared knowledge wiki
-
-While monitoring, the plugin appends a compact daily sky digest (condition and
-safety changes only) to the shared NINA LLM wiki at `%LOCALAPPDATA%\NINA\llmwiki\raw\`.
-The [AI Assistant](https://github.com/michelebergo/nina.plugin.aiassistant) plugin
-reads that wiki to answer questions about your site, and the
-[nina.autopilot](https://github.com/michelebergo/nina.autopilot) ingest agent
-consolidates the digests into observing-site pages (fog patterns, typical
-seeing, seasonal transparency). Purely append-only and local — no data leaves
-your machine.
-
-### 3. Tell it about your camera and your sky
-
-Two things the analysis cannot guess from a single frame, and used to assume:
-
-- **Camera view** — *All-sky fisheye* (the default) tells the AI the sky is a
-  circle and the corners are housing. *Fixed camera* is for a security camera or
-  any lens that looks at part of the sky above a horizon: the sky is the region
-  above the treeline or the buildings, and coverage is judged on that region
-  alone.
-- **Site darkness** — *Light-polluted* (the default) is the classic picture:
-  clouds lit from below look bright and milky, a dark sky with stars is clear.
-  At a *Dark site* (roughly Bortle 1-4 with no moon) nothing lights the clouds:
-  they are black holes in the star field, and a fully overcast sky is simply
-  black. With this setting the AI judges by where the stars are missing rather
-  than by brightness, so a black frame reads as Overcast, not Clear. **Many Unknown
-  results at night usually mean a dark site**: one mountain observatory went from 33–37
-  Unknown per night to 6 by setting this.
-
-Whatever the settings, a frame whose sky carries no information at all — no
-stars, no cloud structure, no moon, no gradient — is reported as **Unknown**
-and treated as Unsafe rather than guessed. Isolated specks spread evenly over
-the whole frame, including over trees and ground, are read as sensor noise,
-not stars.
-
-Leave both at their defaults and nothing changes from earlier versions.
-
-### 4. Optional: Site notes
-
-Every site has visual quirks a general-purpose prompt cannot anticipate. The
-optional **Site notes** field lets you describe them in your own words, and the
-text is appended to the analysis prompt for every provider:
-
-> Clouds toward the south are lit orange by the city and can look like overcast.
-> In daylight the sun reflects off the dome and creates a hazy halo.
-> Water drops on the dome show as soft rings or discs; a frame full of them means rain.
-
-Describing what drops look like on *your* dome or lens is worth the two lines: with such
-a note one site saw Rainy reported 35 minutes before its rain sensor tripped.
-
-The notes steer interpretation only — the classification thresholds, the safety
-rules and the response format stay with the built-in prompt, so a note can
-explain what a feature is without redefining what "safe" means. Keep it to a few
-sentences: the text is sent with every analysis, and long prompts degrade small
-local models. Leave it empty and nothing changes.
-
-### 5. Set Monitoring Parameters
+### 3. Checks and thresholds
 
 - **Check Interval** (minutes): How often the plugin captures and analyzes an image. 5-10 minutes is recommended for active monitoring.
 - **Cloud Coverage High Threshold** (%): while the status is **Safe**, cloud coverage at or above this value turns it **Unsafe**. Default is 70%.
@@ -263,14 +208,59 @@ Keep Low below High. Setting them equal removes the hysteresis and brings the fl
 setting them far apart has the opposite failure — the status goes Unsafe once and stays there.
 A band of 5 to 15 points is the useful range: the feature was requested with 70 / 65.
 
-### 6. Fail-safe
+### 4. Fail-safe
 
 - **Maximum data age** (minutes, 0 = automatic): if no analysis succeeds within this time,
   the monitor reports **Unsafe** instead of holding the last known state. Automatic means
   three check intervals, never below 10 minutes. This is what makes a camera that dies at
   midnight stop the sequence instead of reporting the sky it saw before it died.
 
-### 7. Optional: External ASCOM Safety Monitor
+### 5. What the AI sees: camera view and site darkness
+
+Two things the analysis cannot guess from a single frame, and used to assume:
+
+- **Camera view** — *All-sky fisheye* (the default) tells the AI the sky is a
+  circle and the corners are housing. *Fixed camera* is for a security camera or
+  any lens that looks at part of the sky above a horizon: the sky is the region
+  above the treeline or the buildings, and coverage is judged on that region
+  alone.
+- **Site darkness** — *Light-polluted* (the default) is the classic picture:
+  clouds lit from below look bright and milky, a dark sky with stars is clear.
+  At a *Dark site* (roughly Bortle 1-4 with no moon) nothing lights the clouds:
+  they are black holes in the star field, and a fully overcast sky is simply
+  black. With this setting the AI judges by where the stars are missing rather
+  than by brightness, so a black frame reads as Overcast, not Clear. **Many Unknown
+  results at night usually mean a dark site**: one mountain observatory went from 33–37
+  Unknown per night to 6 by setting this.
+
+Whatever the settings, a frame whose sky carries no information at all — no
+stars, no cloud structure, no moon, no gradient — is reported as **Unknown**
+and treated as Unsafe rather than guessed. Isolated specks spread evenly over
+the whole frame, including over trees and ground, are read as sensor noise,
+not stars.
+
+Leave both at their defaults and nothing changes from earlier versions.
+
+### 6. Site notes
+
+Every site has visual quirks a general-purpose prompt cannot anticipate. The
+optional **Site notes** field lets you describe them in your own words, and the
+text is appended to the analysis prompt for every provider:
+
+> Clouds toward the south are lit orange by the city and can look like overcast.
+> In daylight the sun reflects off the dome and creates a hazy halo.
+> Water drops on the dome show as soft rings or discs; a frame full of them means rain.
+
+Describing what drops look like on *your* dome or lens is worth the two lines: with such
+a note one site saw Rainy reported 35 minutes before its rain sensor tripped.
+
+The notes steer interpretation only — the classification thresholds, the safety
+rules and the response format stay with the built-in prompt, so a note can
+explain what a feature is without redefining what "safe" means. Keep it to a few
+sentences: the text is sent with every analysis, and long prompts degrade small
+local models. Leave it empty and nothing changes.
+
+### 7. External safety devices
 
 - Enable **Combine with an external safety monitor** and pick a device with **Choose...**
   (or type its ProgID), then choose how the two verdicts combine:
@@ -296,11 +286,11 @@ A band of 5 to 15 points is the useful range: the feature was requested with 70 
   whatever the combination: `(sky OR cloud sensor) AND environment`. Unreadable counts as
   Unsafe, and the panel names it ("Environment safety monitor reports unsafe").
 
-### 8. Optional: Status File
+### 8. Outputs: status file
 
 - Enable **Write Safety Status File** to output the current status to a text file, useful for external scripts or the ASCOM Generic File SafetyMonitor driver. The file carries the same combined state NINA acts on.
 
-### 9. The frame behind every decision
+### 9. Outputs: the frame behind every decision
 
 An Unsafe alert at one in the morning is hard to judge the morning after if the analysed
 frame is gone — the rolling capture folder keeps only the 25 newest images. With **Keep
@@ -326,9 +316,20 @@ Reason: Sky cloud coverage 75% (safe below 30%)
 ```
 
 Only changes are kept, so an overcast night is one decision, not a hundred copies of it.
-**Open folder** in the options shows them (`AllSkyCameraPlugin\decisions` under N.I.N.A.'s
-temp folder). Put the frame and the text side by side and you can say whether the AI was
+**Open folder** in the options shows them (`%LOCALAPPDATA%\NINA\AIWeather\decisions`; the rolling
+captures are next door in `AIWeather\captures`). Put the frame and the text side by side and you can say whether the AI was
 wrong — and send both with a report.
+
+### Shared knowledge wiki
+
+While monitoring, the plugin appends a compact daily sky digest (condition and
+safety changes only) to the shared NINA LLM wiki at `%LOCALAPPDATA%\NINA\llmwiki\raw\`.
+The [AI Assistant](https://github.com/michelebergo/nina.plugin.aiassistant) plugin
+reads that wiki to answer questions about your site, and the
+[nina.autopilot](https://github.com/michelebergo/nina.autopilot) ingest agent
+consolidates the digests into observing-site pages (fog patterns, typical
+seeing, seasonal transparency). Purely append-only and local — no data leaves
+your machine.
 
 ## Usage
 
