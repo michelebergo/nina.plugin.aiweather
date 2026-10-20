@@ -1,7 +1,7 @@
 {
   "Identifier": "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D",
   "Name": "AI Weather",
-  "Version": "1.15.11.0",
+  "Version": "1.15.12.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,17 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.15.12.0",
+      "Date": "2026-10-20",
+      "Changes": [
+        "FIX: in OR mode, when the external monitor alone keeps the state Safe over a cloudy sky, the panel's reason line now says so (\"Safe on the external monitor alone - sky cloud coverage 90%\") instead of describing the sky as if the state were Unsafe (#19 field report)",
+        "FIX: Folder Watch reports \"No image in folder\" or \"Folder does not exist\" instead of \"Failed to capture frame\" - an empty folder is a normal state for a crop script that removes the image when the telescope points outside the all-sky field (#19)",
+        "FIX: the default status-file path was the author's own Documents folder, baked into the settings; it is now the current user's Documents (N.I.N.A\\sky_conditions.txt), and the folder is created on first write. A saved path is kept (#19)",
+        "At monitoring start the first check and the panel's immediate check analysed the same image twice, three seconds apart; the second now waits for the first (#19)",
+        "README and options: many Unknown results at night usually mean a dark site; describe what drops look like on your dome in the Site notes - one site saw Rainy 35 minutes before its rain sensor"
+      ]
+    },
     {
       "Version": "1.15.11.0",
       "Date": "2026-10-18",
