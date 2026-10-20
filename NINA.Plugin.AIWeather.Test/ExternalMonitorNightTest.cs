@@ -248,6 +248,31 @@ namespace NINA.Plugin.AIWeather.Test
         }
 
         [Test]
+        public void AFallbackVerdictIsFiledAsTheOfflineAnalyzers() {
+            // Seen live on 20 Oct: Anthropic refused (credit too low), the offline analyzer
+            // answered, and the decision file said "Provider: Anthropic (claude-haiku-5-5)".
+            // A file kept as evidence must name who actually looked at the frame.
+            var folder = Path.Combine(Path.GetTempPath(), "aiweather-fallback-decisions-" + Guid.NewGuid().ToString("N"));
+            _monitor.Decisions = new DecisionArchive(folder);
+            global::AIWeather.Properties.Settings.Default.UseAscomSafetyMonitor = false;
+            try
+            {
+                _clock = _clock.AddMinutes(5);
+                _monitor.ApplyAnalysisResult(new WeatherAnalysisResult
+                {
+                    Timestamp = _clock, CloudCoverage = 22, Condition = WeatherCondition.PartlyCloudy,
+                    IsSafeForImaging = true, Confidence = 73, Provider = "Anthropic",
+                    FellBackToLocal = true, ProviderError = "Anthropic error: HTTP 400: credit balance is too low",
+                });
+
+                var text = File.ReadAllText(Directory.GetFiles(folder, "decision_*.txt").Single());
+                text.Should().Contain("Provider: Local (offline fallback - Anthropic failed: Anthropic error: HTTP 400: credit balance is too low)");
+                text.Should().NotContain("claude-");
+            }
+            finally { try { Directory.Delete(folder, true); } catch { } }
+        }
+
+        [Test]
         public void Or_RealOvercast_BothAgree_ImagingStops() {
             Mode(ExternalMonitorMode.Or);
             DeviceSays(false);

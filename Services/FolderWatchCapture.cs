@@ -33,6 +33,9 @@ namespace AIWeather.Services
         /// <summary>Why the last capture returned nothing, in the owner's words; null after a success.</summary>
         public string? LastFailure { get; private set; }
 
+        /// <summary>Which file the last capture loaded, with its modification time; for the panel.</summary>
+        public string? LastSourceDescription { get; private set; }
+
         /// <summary>
         /// Gets the latest image from the monitored folder
         /// </summary>
@@ -58,6 +61,7 @@ namespace AIWeather.Services
                     return null;
                 }
                 LastFailure = null;
+                LastSourceDescription = $"{Path.GetFileName(latestFile)} (modified {File.GetLastWriteTime(latestFile):yyyy-MM-dd HH:mm:ss})";
 
                 Logger.Info($"Folder watch: loading latest image: {Path.GetFileName(latestFile)}");
 

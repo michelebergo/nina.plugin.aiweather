@@ -68,6 +68,12 @@ namespace NINA.Plugin.AIWeather.Test
         }
 
         [Test]
+        public void TheArchiveLivesUnderThePluginsOwnFolder() {
+            global::AIWeather.Equipment.AIWeatherSafetyMonitor.DefaultDecisionFolder.Should().EndWith(Path.Combine("AIWeather", "decisions"));
+            global::AIWeather.Equipment.AIWeatherSafetyMonitor.CaptureFolder.Should().EndWith(Path.Combine("AIWeather", "captures"));
+        }
+
+        [Test]
         public void WithoutAFrameTheExplanationIsStillKept() {
             var archive = new DecisionArchive(_folder);
             var imagePath = archive.Save(null, Record(DateTime.UtcNow), localTimestamp: new DateTime(2026, 10, 20, 1, 16, 42));

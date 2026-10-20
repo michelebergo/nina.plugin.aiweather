@@ -74,6 +74,15 @@ namespace AIWeather.Services
         /// <summary>Why the last capture returned nothing, when the source can say; null otherwise.</summary>
         public string? LastFailure => _currentMode == CaptureMode.FolderWatch ? _folderService.LastFailure : null;
 
+        /// <summary>Where the last frame came from, for the panel: the file for Folder Watch, the source kind otherwise.</summary>
+        public string? LastSourceDescription => _currentMode switch
+        {
+            CaptureMode.FolderWatch => _folderService.LastSourceDescription,
+            CaptureMode.RTSPStream => "RTSP frame",
+            CaptureMode.INDICamera => "downloaded image",
+            _ => null,
+        };
+
         /// <summary>
         /// Captures an image using the currently configured mode
         /// </summary>

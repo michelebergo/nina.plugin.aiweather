@@ -199,6 +199,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Text="{Binding SafetyStatus, Mode=OneWay}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,5"/>
@@ -224,6 +225,9 @@
                             </TextBlock>
 
                             <TextBlock Grid.Row="5" Text="{Binding AiSettingsSummary, Mode=OneWay}" Foreground="{DynamicResource PrimaryBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+
+                            <!-- Which frame the verdict is about: the file and its time in Folder Watch mode -->
+                            <TextBlock Grid.Row="7" Text="{Binding AnalysedFrame, Mode=OneWay}" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,4,0,0"/>
 
                             <!-- The provider is not the one answering. The offline fallback keeps
                                  the night safe; this line keeps the owner from paying a whole

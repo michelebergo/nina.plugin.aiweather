@@ -590,6 +590,9 @@ namespace AIWeather
         /// <summary>Empty while the chosen provider answers; the offline-fallback notice otherwise.</summary>
         public string ProviderHealth => _safetyMonitor?.ProviderHealth ?? string.Empty;
         public string WeatherCondition => _currentAnalysis?.Condition.ToString() ?? "Unknown";
+
+        /// <summary>Which frame the verdict is about - the file name and time in Folder Watch mode - so nobody has to guess from the log.</summary>
+        public string AnalysedFrame => _safetyMonitor?.LastFrameSource is string s ? $"Frame: {s}" : string.Empty;
         public double CloudCoverage => _currentAnalysis?.CloudCoverage ?? 0;
         public double Confidence => _currentAnalysis?.Confidence ?? 0;
         public double HighThreshold => Properties.Settings.Default.CloudCoverageThreshold;
@@ -989,7 +992,7 @@ namespace AIWeather
         {
             try
             {
-                var captureDir = Path.Combine(CoreUtil.APPLICATIONTEMPPATH, "AllSkyCameraPlugin");
+                var captureDir = AIWeatherSafetyMonitor.CaptureFolder;
                 Logger.Info($"Looking for images in: {captureDir}");
                 
                 if (!Directory.Exists(captureDir))
@@ -1057,6 +1060,7 @@ namespace AIWeather
             RaisePropertyChanged(nameof(SafetyReason));
             RaisePropertyChanged(nameof(ProviderHealth));
             RaisePropertyChanged(nameof(WeatherCondition));
+            RaisePropertyChanged(nameof(AnalysedFrame));
             RaisePropertyChanged(nameof(CloudCoverage));
             RaisePropertyChanged(nameof(HighThreshold));
             RaisePropertyChanged(nameof(LowThreshold));

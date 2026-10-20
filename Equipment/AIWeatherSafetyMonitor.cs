@@ -292,8 +292,20 @@ namespace AIWeather.Equipment
         /// <summary>Why the last capture returned nothing, when the source could say; null after a capture.</summary>
         public string? LastCaptureFailure { get; private set; }
 
+        /// <summary>Which frame the last analysis looked at (file and time for Folder Watch), for the panel.</summary>
+        public string? LastFrameSource { get; private set; }
+
+        /// <summary>
+        /// The plugin's own folder under N.I.N.A.'s local data: rolling captures and the
+        /// decision archive. It was "AllSkyCameraPlugin", the plugin's name at birth.
+        /// </summary>
+        public static string PluginDataFolder => Path.Combine(CoreUtil.APPLICATIONTEMPPATH, "AIWeather");
+
+        /// <summary>The rolling debug captures, pruned to the newest few.</summary>
+        public static string CaptureFolder => Path.Combine(PluginDataFolder, "captures");
+
         /// <summary>Where the frames behind the decisions go (#21).</summary>
-        public static string DefaultDecisionFolder => Path.Combine(CoreUtil.APPLICATIONTEMPPATH, "AllSkyCameraPlugin", "decisions");
+        public static string DefaultDecisionFolder => Path.Combine(PluginDataFolder, "decisions");
 
         /// <summary>The decision archive; the tests point it at a temporary folder.</summary>
         internal DecisionArchive Decisions = new DecisionArchive(DefaultDecisionFolder);
@@ -531,7 +543,8 @@ namespace AIWeather.Equipment
             Logger.Info($"Weather Analysis - Condition: {result.Condition}, " +
                       $"Cloud Coverage: {result.CloudCoverage:F1}%, " +
                       $"Safe: {result.IsSafeForImaging}, " +
-                      $"Confidence: {result.Confidence:F1}%");
+                      $"Confidence: {result.Confidence:F1}%" +
+                      (LastFrameSource != null ? $", Frame: {LastFrameSource}" : string.Empty));
 
             if (Properties.Settings.Default.UseAscomSafetyMonitor || Properties.Settings.Default.UseEnvironmentSafetyMonitor)
             {
@@ -581,8 +594,12 @@ namespace AIWeather.Equipment
             {
                 Transition = transition,
                 Utc = UtcNow(),
-                Provider = result.Provider,
-                Model = Properties.Settings.Default.SelectedModel ?? string.Empty,
+                // Evidence names who actually looked at the frame: a verdict from the offline
+                // analyzer after the provider failed is filed as the analyzer's, with the failure.
+                Provider = result.FellBackToLocal
+                    ? $"Local (offline fallback - {result.Provider} failed: {result.ProviderError ?? "no answer"})"
+                    : result.Provider,
+                Model = result.FellBackToLocal ? string.Empty : Properties.Settings.Default.SelectedModel ?? string.Empty,
                 Condition = result.Condition,
                 CloudCoverage = result.CloudCoverage,
                 Confidence = result.Confidence,
@@ -800,6 +817,7 @@ namespace AIWeather.Equipment
                 var result = await _analysisService.AnalyzeImageAsync(frame, astroContext, cancellationToken);
                 Logger.Debug("AI analysis completed");
                 LastCaptureFailure = null;
+                LastFrameSource = _captureService.LastSourceDescription;
 
                 // Store a copy of the image for UI restoration
                 _lastImage?.Dispose();
@@ -808,7 +826,8 @@ namespace AIWeather.Equipment
                 ApplyAnalysisResult(result);
 
                 // Save frame for debugging/logging (optional)
-                var captureFolder = Path.Combine(CoreUtil.APPLICATIONTEMPPATH, "AllSkyCameraPlugin");
+                var captureFolder = CaptureFolder;
+                Directory.CreateDirectory(captureFolder);
                 var imagePath = Path.Combine(
                     captureFolder,
                     $"capture_{DateTime.Now:yyyyMMdd_HHmmss}.jpg");
