@@ -34,8 +34,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.15.13.0")]
-[assembly: AssemblyFileVersion("1.15.13.0")]
+[assembly: AssemblyVersion("1.15.14.0")]
+[assembly: AssemblyFileVersion("1.15.14.0")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MPL-2.0")]
@@ -80,7 +80,6 @@ using System.Runtime.InteropServices;
 • Ollama / Custom (FREE, Local): Any vision model on a local OpenAI-compatible server (Ollama, LM Studio, llama.cpp, LocalAI) — no API key, full privacy
 • OpenAI: GPT-4o and GPT-4o Mini for high-accuracy cloud and weather analysis
 • Anthropic Claude: excellent at detailed image understanding
-(GitHub Models was retired by GitHub on July 30, 2026 and no longer works.)
 
 🛡️ SAFETY FEATURES:
 • Two Cloud Thresholds: a high one that turns the state Unsafe and a low one that lets it return to Safe, so a sky hovering around a single number does not flip the sequence back and forth
