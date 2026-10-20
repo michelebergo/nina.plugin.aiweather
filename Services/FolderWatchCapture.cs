@@ -30,6 +30,9 @@ namespace AIWeather.Services
         /// </summary>
         public IImageDataFactory ImageDataFactory { get; set; }
 
+        /// <summary>Why the last capture returned nothing, in the owner's words; null after a success.</summary>
+        public string? LastFailure { get; private set; }
+
         /// <summary>
         /// Gets the latest image from the monitored folder
         /// </summary>
@@ -39,17 +42,22 @@ namespace AIWeather.Services
             {
                 if (string.IsNullOrEmpty(_folderPath) || !Directory.Exists(_folderPath))
                 {
-                    Logger.Warning($"Folder watch: path does not exist: {_folderPath}");
+                    LastFailure = $"Folder does not exist: {_folderPath}";
+                    Logger.Warning($"Folder watch: {LastFailure}");
                     return null;
                 }
 
-                // Find the most recently modified image file
+                // Find the most recently modified image file. An empty folder is a normal
+                // state for a crop script that removes the image when the telescope points
+                // outside the all-sky field, not a failure of anything.
                 var latestFile = GetLatestImageFile();
                 if (latestFile == null)
                 {
-                    Logger.Warning($"Folder watch: no image files found in {_folderPath}");
+                    LastFailure = $"No image in folder {_folderPath}";
+                    Logger.Warning($"Folder watch: {LastFailure}");
                     return null;
                 }
+                LastFailure = null;
 
                 Logger.Info($"Folder watch: loading latest image: {Path.GetFileName(latestFile)}");
 
@@ -74,6 +82,7 @@ namespace AIWeather.Services
             }
             catch (Exception ex)
             {
+                LastFailure = $"Could not read the latest image: {ex.Message}";
                 Logger.Error($"Folder watch error: {ex.Message}");
                 return null;
             }

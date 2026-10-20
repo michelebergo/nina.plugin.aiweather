@@ -371,7 +371,7 @@ namespace AIWeather.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("C:\\Users\\miche\\Documents\\N.I.N.A\\sky_conditions.txt")]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string SafetyStatusFilePath {
             get {
                 return ((string)(this["SafetyStatusFilePath"]));

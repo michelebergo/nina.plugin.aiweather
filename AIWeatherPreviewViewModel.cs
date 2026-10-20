@@ -802,12 +802,13 @@ namespace AIWeather
                 
                 if (result == null)
                 {
-                    AddLog("ERROR: Failed to capture frame");
+                    var why = _safetyMonitor.LastCaptureFailure ?? "Failed to capture frame";
+                    AddLog($"ERROR: {why}");
                     if (CurrentCaptureMode == Models.CaptureMode.RTSPStream)
                     {
                         AddLog("Tip: RTSP AI capture uses OpenCV/FFmpeg (not VLC). If your URL is just rtsp://IP it may show video but still return empty frames. Use the camera's full RTSP stream URL including the path (e.g. /stream, /live, /h264) and port if needed.");
                     }
-                    StatusMessage = "Failed to capture frame";
+                    StatusMessage = why;
                     return false;
                 }
 

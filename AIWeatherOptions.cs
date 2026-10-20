@@ -279,7 +279,7 @@ namespace AIWeather
 
         public string SafetyStatusFilePath
         {
-            get => Properties.Settings.Default.SafetyStatusFilePath ?? string.Empty;
+            get => Services.SafetyStatusFile.Resolve(Properties.Settings.Default.SafetyStatusFilePath);
             set
             {
                 Properties.Settings.Default.SafetyStatusFilePath = value;

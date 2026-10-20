@@ -288,6 +288,9 @@ namespace AIWeather.Equipment
         /// <summary>The sky verdict alone, without freshness or the external monitor.</summary>
         public bool IsSkyConditionSafe => _isCurrentlySafe;
 
+        /// <summary>Why the last capture returned nothing, when the source could say; null after a capture.</summary>
+        public string? LastCaptureFailure { get; private set; }
+
         /// <summary>
         /// One line for the panel when the chosen provider is not the one answering; empty
         /// while it is. The offline fallback keeps the night safe, this keeps it honest.
@@ -362,6 +365,7 @@ namespace AIWeather.Equipment
                     // unreadable or a camera that stopped is not hidden behind a green state.
                     if (!IsAnalysisFresh()) return "Safe on the external monitor alone — sky data is stale";
                     if (!IsExternalMonitorSafe()) return "Safe on the sky analysis alone — external monitor unsafe or unreadable";
+                    if (!_isCurrentlySafe) return "Safe on the external monitor alone — sky " + SkyUnsafeReason();
                 }
 
                 if (!IsAnalysisFresh() && !orMode)
@@ -698,7 +702,8 @@ namespace AIWeather.Equipment
                     // miss - a dropped frame on an RTSP stream would make the monitor flap
                     // and abort sequences - but it is not silently kept either: the analysis
                     // ages, and IsSafe turns unsafe once it passes the maximum data age.
-                    Logger.Warning($"Failed to capture image from {captureMode} source; " +
+                    LastCaptureFailure = _captureService.LastFailure;
+                    Logger.Warning($"{LastCaptureFailure ?? $"Failed to capture image from {captureMode} source"}; " +
                                    $"last successful analysis is {LastAnalysisAgeDescription()} old");
                     RaisePropertyChanged(nameof(IsSafe));
                 RaisePropertyChanged(nameof(SafetyStateReason));
@@ -731,6 +736,7 @@ namespace AIWeather.Equipment
 
                 var result = await _analysisService.AnalyzeImageAsync(frame, astroContext, cancellationToken);
                 Logger.Debug("AI analysis completed");
+                LastCaptureFailure = null;
 
                 // Store a copy of the image for UI restoration
                 _lastImage?.Dispose();
@@ -847,6 +853,17 @@ namespace AIWeather.Equipment
                 return _lastResult;
             }
 
+            // Connecting runs a first check at once and the panel asks for one two seconds
+            // later: the same image was analysed twice, three seconds apart, and the log
+            // warned about an identical frame. A check in progress is the answer.
+            if (_checkGate.CurrentCount == 0)
+            {
+                Logger.Info("Immediate check skipped: a check is already running; waiting for its result");
+                await _checkGate.WaitAsync(cancellationToken);
+                _checkGate.Release();
+                return _lastResult;
+            }
+
             await PerformWeatherCheckAsync(cancellationToken);
             return _lastResult;
         }
@@ -863,12 +880,8 @@ namespace AIWeather.Equipment
                     return;
                 }
 
-                var filePath = Properties.Settings.Default.SafetyStatusFilePath;
-                if (string.IsNullOrWhiteSpace(filePath))
-                {
-                    Logger.Warning("Safety status file writing is enabled but no file path is configured");
-                    return;
-                }
+                var filePath = SafetyStatusFile.Resolve(Properties.Settings.Default.SafetyStatusFilePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
                 // The exported status is the same composite state NINA acts on - hysteresis,
                 // data freshness and the external monitor included. It used to be recomputed

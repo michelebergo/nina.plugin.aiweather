@@ -71,6 +71,9 @@ namespace AIWeather.Services
             _folderService.ImageDataFactory = imageDataFactory;
         }
 
+        /// <summary>Why the last capture returned nothing, when the source can say; null otherwise.</summary>
+        public string? LastFailure => _currentMode == CaptureMode.FolderWatch ? _folderService.LastFailure : null;
+
         /// <summary>
         /// Captures an image using the currently configured mode
         /// </summary>
@@ -201,12 +204,7 @@ namespace AIWeather.Services
         {
             try
             {
-                if (!_folderService.IsValid())
-                {
-                    Logger.Warning($"Folder watch path is invalid or doesn't exist: {_folderService.FolderPath}");
-                    return null;
-                }
-
+                // The folder service reports a missing folder itself, with the reason kept for the panel.
                 return await _folderService.CaptureImageAsync();
             }
             catch (Exception ex)

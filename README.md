@@ -205,7 +205,9 @@ Two things the analysis cannot guess from a single frame, and used to assume:
   At a *Dark site* (roughly Bortle 1-4 with no moon) nothing lights the clouds:
   they are black holes in the star field, and a fully overcast sky is simply
   black. With this setting the AI judges by where the stars are missing rather
-  than by brightness, so a black frame reads as Overcast, not Clear.
+  than by brightness, so a black frame reads as Overcast, not Clear. **Many Unknown
+  results at night usually mean a dark site**: one mountain observatory went from 33–37
+  Unknown per night to 6 by setting this.
 
 Whatever the settings, a frame whose sky carries no information at all — no
 stars, no cloud structure, no moon, no gradient — is reported as **Unknown**
@@ -223,6 +225,10 @@ text is appended to the analysis prompt for every provider:
 
 > Clouds toward the south are lit orange by the city and can look like overcast.
 > In daylight the sun reflects off the dome and creates a hazy halo.
+> Water drops on the dome show as soft rings or discs; a frame full of them means rain.
+
+Describing what drops look like on *your* dome or lens is worth the two lines: with such
+a note one site saw Rainy reported 35 minutes before its rain sensor tripped.
 
 The notes steer interpretation only — the classification thresholds, the safety
 rules and the response format stay with the built-in prompt, so a note can

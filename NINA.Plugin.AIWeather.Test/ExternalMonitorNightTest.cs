@@ -206,6 +206,19 @@ namespace NINA.Plugin.AIWeather.Test
         }
 
         [Test]
+        public void Or_IrSensorClearOverACloudyTarget_TheReasonNamesTheSensor() {
+            // Field report #19: combined SAFE on the sensor alone, and the panel said
+            // "Sky cloud coverage 90%" as if the state were unsafe. That case was missing.
+            Mode(ExternalMonitorMode.Or);
+            DeviceSays(true);
+            Analysis(90);
+
+            _monitor.IsSafe.Should().BeTrue();
+            _monitor.SafetyStateReason.Should().Be("Safe on the external monitor alone — sky cloud coverage 90% (safe below 30%)");
+            StatusFile.Should().Be("Safe");
+        }
+
+        [Test]
         public void Or_RealOvercast_BothAgree_ImagingStops() {
             Mode(ExternalMonitorMode.Or);
             DeviceSays(false);

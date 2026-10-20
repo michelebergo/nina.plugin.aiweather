@@ -324,7 +324,7 @@
                 <ComboBoxItem Content="Light-polluted (clouds are lit from below and look bright)"/>
                 <ComboBoxItem Content="Dark site (clouds are darker than the sky; only the stars tell)"/>
             </ComboBox>
-            <TextBlock Text="At a Bortle 1-4 site with no moon, a cloudy sky is simply black. The dark-site setting makes the AI judge by where the stars are missing instead of by brightness, and treats a frame with no readable sky as unsafe rather than clear."
+            <TextBlock Text="At a Bortle 1-4 site with no moon, a cloudy sky is simply black. The dark-site setting makes the AI judge by where the stars are missing instead of by brightness, and treats a frame with no readable sky as unsafe rather than clear. Many Unknown results at night usually mean a dark site."
                        Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
 
             <!-- Site notes: local knowledge appended to the analysis prompt of every provider.
