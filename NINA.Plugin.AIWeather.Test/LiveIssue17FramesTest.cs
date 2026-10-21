@@ -122,6 +122,13 @@ namespace NINA.Plugin.AIWeather.Test
         }
 
         [Test]
+        public async Task AnthropicOnTheIssue17Frames() {
+            var key = Require("AIWEATHER_ANTHROPIC_KEY");
+            var model = Environment.GetEnvironmentVariable("AIWEATHER_ANTHROPIC_MODEL") ?? AnthropicAnalysisService.DefaultModel;
+            await RunBothPrompts(() => new AnthropicAnalysisService(key, model), "Anthropic");
+        }
+
+        [Test]
         public async Task GeminiOnTheIssue17Frames() {
             var key = Require("AIWEATHER_GEMINI_KEY");
             var model = Environment.GetEnvironmentVariable("AIWEATHER_GEMINI_MODEL") ?? "gemini-flash-latest";
