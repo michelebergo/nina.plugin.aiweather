@@ -371,6 +371,30 @@ namespace AIWeather.Properties {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool ConfirmTransitions {
+            get {
+                return ((bool)(this["ConfirmTransitions"]));
+            }
+            set {
+                this["ConfirmTransitions"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string FallbackModel {
+            get {
+                return ((string)(this["FallbackModel"]));
+            }
+            set {
+                this["FallbackModel"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string AscomSafetyMonitorProgId {
             get {

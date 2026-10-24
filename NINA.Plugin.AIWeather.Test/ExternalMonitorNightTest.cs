@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using AIWeather.Equipment;
 using AIWeather.Models;
 using AIWeather.Services;
@@ -38,14 +39,14 @@ namespace NINA.Plugin.AIWeather.Test
         private string _statusFile = null!;
         private string _wikiRoot = null!;
         private string _decisionFolder = null!;
-        private (bool use, int mode, string progId, double high, double low, int maxAge, int interval, bool writeFile, string path, bool useEnv, string envProgId) _before;
+        private (bool use, int mode, string progId, double high, double low, int maxAge, int interval, bool writeFile, string path, bool useEnv, string envProgId, bool confirm, string model) _before;
 
         [SetUp]
         public void SetUp() {
             var s = global::AIWeather.Properties.Settings.Default;
             _before = (s.UseAscomSafetyMonitor, s.ExternalMonitorMode, s.AscomSafetyMonitorProgId, s.CloudCoverageThreshold, s.CloudCoverageSafeThreshold,
                        s.MaxDataAgeMinutes, s.CheckIntervalMinutes, s.WriteSafetyStatusFile, s.SafetyStatusFilePath,
-                       s.UseEnvironmentSafetyMonitor, s.EnvironmentSafetyMonitorProgId);
+                       s.UseEnvironmentSafetyMonitor, s.EnvironmentSafetyMonitorProgId, s.ConfirmTransitions, s.SelectedModel);
             _statusFile = Path.Combine(Path.GetTempPath(), "aiweather-test-" + Guid.NewGuid().ToString("N") + ".txt");
             _wikiRoot = Path.Combine(Path.GetTempPath(), "aiweather-wiki-" + Guid.NewGuid().ToString("N"));
             LlmWikiRawWriter.RootOverride = _wikiRoot;
@@ -76,7 +77,7 @@ namespace NINA.Plugin.AIWeather.Test
             var s = global::AIWeather.Properties.Settings.Default;
             (s.UseAscomSafetyMonitor, s.ExternalMonitorMode, s.AscomSafetyMonitorProgId, s.CloudCoverageThreshold, s.CloudCoverageSafeThreshold,
              s.MaxDataAgeMinutes, s.CheckIntervalMinutes, s.WriteSafetyStatusFile, s.SafetyStatusFilePath,
-             s.UseEnvironmentSafetyMonitor, s.EnvironmentSafetyMonitorProgId) = _before;
+             s.UseEnvironmentSafetyMonitor, s.EnvironmentSafetyMonitorProgId, s.ConfirmTransitions, s.SelectedModel) = _before;
             LlmWikiRawWriter.RootOverride = null;
             try { File.Delete(_statusFile); } catch { }
             try { Directory.Delete(_wikiRoot, true); } catch { }
@@ -157,7 +158,7 @@ namespace NINA.Plugin.AIWeather.Test
 
             EnvironmentSays(true);
             _monitor.IsSafe.Should().BeTrue();
-            _monitor.SafetyStateReason.Should().Be("Sky clear and data current");
+            _monitor.SafetyStateReason.Should().Be("Sky safe: cloud coverage 10% (unsafe at 50%)");
         }
 
         [Test]
@@ -268,6 +269,95 @@ namespace NINA.Plugin.AIWeather.Test
                 var text = File.ReadAllText(Directory.GetFiles(folder, "decision_*.txt").Single());
                 text.Should().Contain("Provider: Local (offline fallback - Anthropic failed: Anthropic error: HTTP 400: credit balance is too low)");
                 text.Should().NotContain("claude-");
+            }
+            finally { try { Directory.Delete(folder, true); } catch { } }
+        }
+
+        // ---- #21, night 23-24 Oct: three Safe -> Unsafe -> Safe cycles from single readings ----
+
+        private static WeatherAnalysisResult Reading(double coverage) => new WeatherAnalysisResult
+        {
+            CloudCoverage = coverage, Condition = coverage < 50 ? WeatherCondition.Clear : WeatherCondition.MostlyCloudy,
+            IsSafeForImaging = coverage < 50, Confidence = 80, Provider = "Test",
+        };
+
+        [Test]
+        public async Task AChangeOfStateWantsASecondFrame() {
+            global::AIWeather.Properties.Settings.Default.UseAscomSafetyMonitor = false;
+            global::AIWeather.Properties.Settings.Default.ConfirmTransitions = true;
+            Analysis(10);
+            _monitor.IsSafe.Should().BeTrue();
+
+            var asked = 0;
+            // The first frame says 75%: a change. The second frame says 5%: the change is off.
+            var chosen = await _monitor.ResolveTransitionAsync(Reading(75), () => { asked++; return Task.FromResult<WeatherAnalysisResult?>(Reading(5)); });
+            asked.Should().Be(1);
+            chosen.CloudCoverage.Should().Be(5, "the second frame decides");
+
+            // Both frames say cloudy: the change goes through, with the second frame's numbers.
+            chosen = await _monitor.ResolveTransitionAsync(Reading(75), () => { asked++; return Task.FromResult<WeatherAnalysisResult?>(Reading(80)); });
+            asked.Should().Be(2);
+            chosen.CloudCoverage.Should().Be(80);
+
+            // No change proposed: no second frame.
+            chosen = await _monitor.ResolveTransitionAsync(Reading(12), () => { asked++; return Task.FromResult<WeatherAnalysisResult?>(Reading(5)); });
+            asked.Should().Be(2);
+            chosen.CloudCoverage.Should().Be(12);
+        }
+
+        [Test]
+        public async Task TheFirstVerdictAfterConnectingNeedsNoConfirmation() {
+            // Seen live: the state starts Unsafe with no verdict, so the first "Clear" looked
+            // like a change and waited twenty seconds for a second frame. Nothing to protect yet.
+            global::AIWeather.Properties.Settings.Default.UseAscomSafetyMonitor = false;
+            global::AIWeather.Properties.Settings.Default.ConfirmTransitions = true;
+            var asked = 0;
+            var chosen = await _monitor.ResolveTransitionAsync(Reading(5), () => { asked++; return Task.FromResult<WeatherAnalysisResult?>(Reading(5)); });
+            asked.Should().Be(0);
+            chosen.CloudCoverage.Should().Be(5);
+        }
+
+        [Test]
+        public async Task WithoutASecondFrameTheFirstReadingStands() {
+            global::AIWeather.Properties.Settings.Default.UseAscomSafetyMonitor = false;
+            global::AIWeather.Properties.Settings.Default.ConfirmTransitions = true;
+            Analysis(10);
+            var chosen = await _monitor.ResolveTransitionAsync(Reading(75), () => Task.FromResult<WeatherAnalysisResult?>(null));
+            chosen.CloudCoverage.Should().Be(75, "a camera that cannot deliver a second frame does not veto an Unsafe");
+        }
+
+        [Test]
+        public async Task ConfirmationCanBeSwitchedOff() {
+            global::AIWeather.Properties.Settings.Default.UseAscomSafetyMonitor = false;
+            global::AIWeather.Properties.Settings.Default.ConfirmTransitions = false;
+            Analysis(10);
+            var asked = 0;
+            var chosen = await _monitor.ResolveTransitionAsync(Reading(75), () => { asked++; return Task.FromResult<WeatherAnalysisResult?>(Reading(5)); });
+            asked.Should().Be(0);
+            chosen.CloudCoverage.Should().Be(75);
+        }
+
+        [Test]
+        public void ASafeSkyWithCloudsSaysHowMany() {
+            // "Sky clear and data current" at 53% was a lie (#21). Safe is not clear.
+            global::AIWeather.Properties.Settings.Default.UseAscomSafetyMonitor = false;
+            Analysis(10);
+            _monitor.SafetyStateReason.Should().Be("Sky safe: cloud coverage 10% (unsafe at 50%)");
+        }
+
+        [Test]
+        public void TheOfflineAnalyzerIsFiledWithoutACloudModelName() {
+            // Provider "Local (gemini-flash-lite-latest)" named a model that never saw the frame (#21).
+            var folder = Path.Combine(Path.GetTempPath(), "aiweather-local-decisions-" + Guid.NewGuid().ToString("N"));
+            _monitor.Decisions = new DecisionArchive(folder);
+            global::AIWeather.Properties.Settings.Default.UseAscomSafetyMonitor = false;
+            global::AIWeather.Properties.Settings.Default.SelectedModel = "gemini-flash-lite-latest";
+            try
+            {
+                _clock = _clock.AddMinutes(5);
+                _monitor.ApplyAnalysisResult(new WeatherAnalysisResult { CloudCoverage = 53, Condition = WeatherCondition.MostlyCloudy, IsSafeForImaging = true, Confidence = 60, Provider = "Local" });
+                var text = File.ReadAllText(Directory.GetFiles(folder, "decision_*.txt").Single());
+                text.Should().Contain("Provider: Local" + Environment.NewLine).And.NotContain("gemini");
             }
             finally { try { Directory.Delete(folder, true); } catch { } }
         }
@@ -433,7 +523,7 @@ namespace NINA.Plugin.AIWeather.Test
 
             Analysis(10);
             _monitor.IsSafe.Should().BeTrue();
-            _monitor.SafetyStateReason.Should().Be("Sky clear and data current");
+            _monitor.SafetyStateReason.Should().Be("Sky safe: cloud coverage 10% (unsafe at 50%)");
         }
 
         [Test]

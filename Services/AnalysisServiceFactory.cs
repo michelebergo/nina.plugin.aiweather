@@ -22,10 +22,13 @@ namespace AIWeather.Services
             return provider.Trim();
         }
 
-        public static IWeatherAnalysisService CreateFromSettings()
+        public static IWeatherAnalysisService CreateFromSettings() => CreateFromSettings(null);
+
+        /// <param name="modelOverride">Another model of the same provider - the reserve one - instead of the selected model.</param>
+        public static IWeatherAnalysisService CreateFromSettings(string? modelOverride)
         {
             var provider = SelectedProvider();
-            var model = Properties.Settings.Default.SelectedModel;
+            var model = string.IsNullOrWhiteSpace(modelOverride) ? Properties.Settings.Default.SelectedModel : modelOverride;
 
             if (string.Equals(provider, "GitHubModels", StringComparison.OrdinalIgnoreCase))
             {

@@ -165,6 +165,11 @@ In the plugin options, choose the capture mode that matches your camera:
 - **OpenAI** and **Anthropic** require their respective API keys from each provider's developer portal. For Anthropic the default is Claude Haiku 5.5, the cheapest model with vision: one analysis every few minutes is a yes/no about clouds.
 
 **The model box is editable.** The list is fetched from the provider when the options open and cached for an hour; if the provider ships a model the list does not show yet, type its ID into the box and click elsewhere — the typed ID is saved and used as-is.
+
+**A busy provider is not a broken one.** When the model answers "busy" (HTTP 429 or 503)
+or times out, the plugin waits ten seconds and asks once more; if you named a **Reserve
+model** (same provider) it asks that one next; only then does the offline analyzer stand
+in. A request the provider rejected (400, 401) is not retried — it would be rejected again.
 - **Ollama / Custom** runs fully local: point it to your server URL (default `http://localhost:11434/v1`) and pick a vision model (e.g. `llava`, `qwen2.5vl`). Works with Ollama, LM Studio, llama.cpp, and LocalAI — no API key needed. Thinking-capable models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering by default, which can multiply analysis times past the timeout: the "Disable model thinking" option (on by default) turns that off. Uncheck it only on fast hardware.
 
 **Check the model before the night.** The **Test analysis with this provider** button in
@@ -209,6 +214,23 @@ setting them far apart has the opposite failure — the status goes Unsafe once 
 A band of 5 to 15 points is the useful range: the feature was requested with 70 / 65.
 
 ### 4. Fail-safe
+
+**A change of state wants two frames.** When an analysis would turn the state from Safe
+to Unsafe or back, the plugin takes a second frame about twenty seconds later and analyses
+it; the second frame decides. One site logged three Safe → Unsafe → Safe cycles in a
+night, each from a single odd reading on frames that looked the same, each parking the
+rig. Costs one extra analysis per change of state; **Confirm a change of state with a
+second frame** in the options turns it off.
+
+**A smeared frame is not a frame.** A stream reconnect can hand back a picture whose lower
+half is the last good row repeated; such a frame used to be analysed and could score
+"Clear". A frame whose longest run of identical rows covers a quarter of its height is
+rejected like a failed capture, and the panel says why.
+
+**The offline analyzer's confidence is nominal.** It measures brightness and texture, not
+clouds, and never claims more than 50%: it is the stand-in for a night the provider is
+down, not a second opinion.
+
 
 - **Maximum data age** (minutes, 0 = automatic): if no analysis succeeds within this time,
   the monitor reports **Unsafe** instead of holding the last known state. Automatic means

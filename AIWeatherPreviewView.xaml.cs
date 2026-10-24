@@ -220,6 +220,8 @@ namespace AIWeather
                         || message.Contains("pts_delay", StringComparison.OrdinalIgnoreCase)
                         || message.Contains("reference clock", StringComparison.OrdinalIgnoreCase)
                         || message.Contains("convert timestamp", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("Timestamp conversion failed", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("early picture", StringComparison.OrdinalIgnoreCase)
                         || message.Contains("buffer deadlock", StringComparison.OrdinalIgnoreCase)
                         || message.Contains("MatchingDeviceId", StringComparison.OrdinalIgnoreCase)
                         || message.Contains("Password in a URI", StringComparison.OrdinalIgnoreCase))

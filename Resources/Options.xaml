@@ -189,6 +189,16 @@
                        Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
                 <TextBlock Text="The list comes from the provider and is cached for an hour. The box is editable: type a model ID the list does not show yet."
                        Margin="0,2,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+
+                <!-- Reserve model (#21): the same provider's other model, asked when the first is busy -->
+                <TextBlock Text="Reserve model (optional):" Margin="0,10,0,2"/>
+                <ComboBox ItemsSource="{Binding AvailableModels}"
+                          Text="{Binding FallbackModel, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                          IsEditable="True"
+                          Width="360"
+                          HorizontalAlignment="Left"/>
+                <TextBlock Text="When the model above answers 'busy' (HTTP 429 or 503) or times out, the plugin waits ten seconds and asks it once more; if it is still busy it asks this model, and only then the offline analyzer. Leave empty to skip the reserve."
+                       Margin="0,2,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
                 </StackPanel>
 
             <!-- One real analysis with the selected provider and model, through the same
@@ -222,6 +232,15 @@
                      Width="100" HorizontalAlignment="Left"/>
             <TextBlock Text="While Unsafe: coverage must drop below this value before Safe returns" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
             <TextBlock Text="Between the two values the status stays as it is, so a sky at the limit cannot flap" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
+
+            <!-- Confirm transitions (#21): a change of state wants two frames -->
+            <TextBlock Text="Confirm a change of state with a second frame:" Margin="0,10,0,6"/>
+            <CheckBox IsChecked="{Binding Options.ConfirmTransitions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      Width="64"
+                      HorizontalAlignment="Left"
+                      VerticalAlignment="Center"/>
+            <TextBlock Text="When an analysis would turn the state from Safe to Unsafe or back, the plugin takes a second frame about twenty seconds later and analyses it; the second frame decides. A single odd reading - three in one night at one site, each parking the rig - no longer acts alone. Costs one extra analysis per change of state."
+                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
             <!-- Maximum data age: the sky verdict expires instead of being trusted forever -->
             <TextBlock Text="Fail-safe" Margin="0,10,0,2"/>

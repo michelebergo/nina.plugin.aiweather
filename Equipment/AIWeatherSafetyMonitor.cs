@@ -420,7 +420,8 @@ namespace AIWeather.Equipment
                     return "Sky " + SkyUnsafeReason();
                 }
 
-                return "Sky clear and data current";
+                var coverage = _lastResult?.CloudCoverage ?? 0;
+                return $"Sky safe: cloud coverage {coverage:F0}% (unsafe at {Properties.Settings.Default.CloudCoverageThreshold:F0}%)";
             }
         }
 
@@ -599,7 +600,9 @@ namespace AIWeather.Equipment
                 Provider = result.FellBackToLocal
                     ? $"Local (offline fallback - {result.Provider} failed: {result.ProviderError ?? "no answer"})"
                     : result.Provider,
-                Model = result.FellBackToLocal ? string.Empty : Properties.Settings.Default.SelectedModel ?? string.Empty,
+                Model = result.FellBackToLocal || string.Equals(result.Provider, "Local", StringComparison.OrdinalIgnoreCase)
+                    ? string.Empty
+                    : result.Model ?? Properties.Settings.Default.SelectedModel ?? string.Empty,
                 Condition = result.Condition,
                 CloudCoverage = result.CloudCoverage,
                 Confidence = result.Confidence,
@@ -622,43 +625,81 @@ namespace AIWeather.Equipment
             Decisions.Prune(TimeSpan.FromDays(Math.Max(1, Properties.Settings.Default.DecisionRetentionDays)), UtcNow().ToLocalTime());
         }
 
+        /// <summary>
+        /// The sky side of the verdict after one analysis: rain or fog is unsafe, otherwise
+        /// hysteresis - a safe sky stays safe until coverage reaches the high threshold, an
+        /// unsafe one stays unsafe until coverage drops below the low one. Pure, so a change
+        /// can be evaluated before it is committed.
+        /// </summary>
+        internal static bool NextSkyState(bool currentlySafe, WeatherAnalysisResult result, double unsafeThreshold, double safeThreshold)
+        {
+            if (result == null) return false;
+            if (!result.IsSafeForImaging || result.RainDetected || result.FogDetected) return false;
+            return currentlySafe ? result.CloudCoverage < unsafeThreshold : result.CloudCoverage < safeThreshold;
+        }
+
+        /// <summary>The pause before the second frame of a transition; the tests pass one that does not wait.</summary>
+        internal Func<TimeSpan, CancellationToken, Task> Delay = Task.Delay;
+        private static readonly TimeSpan ConfirmPause = TimeSpan.FromSeconds(20);
+
+        /// <summary>
+        /// A change of the combined state wants two frames. Three Safe -> Unsafe -> Safe cycles
+        /// in one night, each from a single reading on frames that looked the same, parked a
+        /// rig and cancelled an autofocus (#21). When an analysis would change the state, a
+        /// second frame is taken and analysed, and the second frame decides: the change goes
+        /// through only if it agrees. No change proposed, no second frame. Without a second
+        /// frame the first reading stands - a camera that cannot deliver does not veto.
+        /// </summary>
+        internal async Task<WeatherAnalysisResult> ResolveTransitionAsync(WeatherAnalysisResult first, Func<Task<WeatherAnalysisResult?>> secondOpinion)
+        {
+            if (!Properties.Settings.Default.ConfirmTransitions) return first;
+            if (_lastResult == null) return first;   // the first verdict after connecting: nothing to protect yet
+
+            var high = Properties.Settings.Default.CloudCoverageThreshold;
+            var low = Properties.Settings.Default.CloudCoverageSafeThreshold;
+            var prospectiveSky = NextSkyState(_isCurrentlySafe, first, high, low);
+            var prospective = SafetyVerdict.Combine(ExternalMode, prospectiveSky, true,
+                first.RainDetected || first.FogDetected,
+                Properties.Settings.Default.UseAscomSafetyMonitor, IsExternalMonitorSafe(),
+                Properties.Settings.Default.UseEnvironmentSafetyMonitor, IsEnvironmentMonitorSafe());
+            if (prospective == IsSafe) return first;
+
+            Logger.Info($"Analysis proposes {(IsSafe ? "Safe" : "Unsafe")} -> {(prospective ? "Safe" : "Unsafe")} ({first.Condition}, {first.CloudCoverage:F0}%); asking a second frame before acting on it");
+            var second = await secondOpinion();
+            if (second == null)
+            {
+                Logger.Warning("No second frame; the first reading stands");
+                return first;
+            }
+
+            var confirmedSky = NextSkyState(_isCurrentlySafe, second, high, low);
+            var confirmed = SafetyVerdict.Combine(ExternalMode, confirmedSky, true,
+                second.RainDetected || second.FogDetected,
+                Properties.Settings.Default.UseAscomSafetyMonitor, IsExternalMonitorSafe(),
+                Properties.Settings.Default.UseEnvironmentSafetyMonitor, IsEnvironmentMonitorSafe());
+            Logger.Info(confirmed == prospective
+                ? $"Second frame agrees ({second.Condition}, {second.CloudCoverage:F0}%): the change goes through"
+                : $"Second frame disagrees ({second.Condition}, {second.CloudCoverage:F0}%): the state stays {(IsSafe ? "Safe" : "Unsafe")}");
+            return second;
+        }
+
+        /// <summary>One analysis with the retry, the reserve model and the offline analyzer behind it.</summary>
+        private Task<WeatherAnalysisResult> AnalyzeWithRetryAsync(Bitmap frame, AstroContext? astroContext, CancellationToken cancellationToken)
+        {
+            var reserveModel = Properties.Settings.Default.FallbackModel?.Trim();
+            Func<IWeatherAnalysisService?>? reserve = string.IsNullOrWhiteSpace(reserveModel) || AnalysisServiceFactory.SelectedProvider() == "Local"
+                ? null
+                : () => AnalysisServiceFactory.CreateFromSettings(reserveModel);
+            return AnalysisRetry.AnalyzeAsync(_analysisService, Properties.Settings.Default.SelectedModel ?? string.Empty,
+                reserve, reserveModel, frame, astroContext, Delay, cancellationToken);
+        }
+
         private void UpdateSafetyState(WeatherAnalysisResult result)
         {
-            if (result == null)
-            {
-                _isCurrentlySafe = false;
-                return;
-            }
-
             var unsafeThreshold = Properties.Settings.Default.CloudCoverageThreshold;
             var safeThreshold = Properties.Settings.Default.CloudCoverageSafeThreshold;
-
-            bool baseConditionsSafe = result.IsSafeForImaging && !result.RainDetected && !result.FogDetected;
-
-            if (!baseConditionsSafe)
-            {
-                _isCurrentlySafe = false;
-            }
-            else
-            {
-                // Hysteresis logic
-                if (_isCurrentlySafe)
-                {
-                    // Stay safe until coverage exceeds the high/unsafe threshold
-                    if (result.CloudCoverage >= unsafeThreshold)
-                    {
-                        _isCurrentlySafe = false;
-                    }
-                }
-                else
-                {
-                    // Stay unsafe until coverage drops below the low/safe threshold
-                    if (result.CloudCoverage < safeThreshold)
-                    {
-                        _isCurrentlySafe = true;
-                    }
-                }
-            }
+            _isCurrentlySafe = NextSkyState(_isCurrentlySafe, result, unsafeThreshold, safeThreshold);
+            if (result == null) return;
 
             Logger.Debug($"Safety check: {(_isCurrentlySafe ? "SAFE" : "UNSAFE")} - " +
                        $"Cloud coverage: {result.CloudCoverage:F1}%, " +
@@ -791,6 +832,15 @@ namespace AIWeather.Equipment
                 }
 
                 Logger.Debug($"Image captured from {captureMode}, size: {frame.Width}x{frame.Height}");
+                if (FrameSanity.LooksCorrupt(frame, out var corruptReason))
+                {
+                    LastCaptureFailure = corruptReason;
+                    Logger.Warning($"{corruptReason}; not analysed. Last successful analysis is {LastAnalysisAgeDescription()} old");
+                    frame.Dispose();
+                    RaisePropertyChanged(nameof(IsSafe));
+                    RaisePropertyChanged(nameof(SafetyStateReason));
+                    return;
+                }
                 NoteFrameIdentity(frame);
 
                 // Analyze the frame
@@ -814,10 +864,34 @@ namespace AIWeather.Equipment
                     Logger.Warning($"Failed to compute astronomical context: {ex.Message}");
                 }
 
-                var result = await _analysisService.AnalyzeImageAsync(frame, astroContext, cancellationToken);
+                var result = await AnalyzeWithRetryAsync(frame, astroContext, cancellationToken);
                 Logger.Debug("AI analysis completed");
                 LastCaptureFailure = null;
                 LastFrameSource = _captureService.LastSourceDescription;
+
+                // A proposed change of state is checked against a second frame, which then
+                // becomes the frame behind the verdict.
+                Bitmap? secondFrame = null;
+                result = await ResolveTransitionAsync(result, async () =>
+                {
+                    await Delay(ConfirmPause, cancellationToken);
+                    var again = await _captureService.CaptureImageAsync(cancellationToken);
+                    if (again == null) return null;
+                    if (FrameSanity.LooksCorrupt(again, out var why))
+                    {
+                        Logger.Warning($"Second frame: {why}");
+                        again.Dispose();
+                        return null;
+                    }
+                    secondFrame = again;
+                    LastFrameSource = _captureService.LastSourceDescription;
+                    return await AnalyzeWithRetryAsync(again, astroContext, cancellationToken);
+                });
+                if (secondFrame != null)
+                {
+                    frame.Dispose();
+                    frame = secondFrame;
+                }
 
                 // Store a copy of the image for UI restoration
                 _lastImage?.Dispose();

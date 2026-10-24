@@ -275,12 +275,16 @@ namespace AIWeather.Services
             return cloudCoverage < 70; // Default: safe if less than 70% clouds
         }
 
+        /// <summary>
+        /// The most this analyzer will claim. It measures brightness and texture, not
+        /// clouds; under a full moon it reported 47% at confidence 100 (#21). Its number
+        /// is a placeholder for the night the provider is down, and its confidence says so.
+        /// </summary>
+        public const double NominalConfidence = 50;
+
         private double CalculateConfidence(double cloudScore)
         {
-            // Confidence based on image quality metrics
-            // Higher variance in the image = more confident analysis
-            
-            return Math.Min(100, 50 + cloudScore);
+            return Math.Min(NominalConfidence, 30 + cloudScore / 4);
         }
 
         private string GenerateDescription(WeatherCondition condition, double cloudCoverage, bool rain, bool fog)

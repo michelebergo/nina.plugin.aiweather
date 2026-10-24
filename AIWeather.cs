@@ -1308,6 +1308,18 @@ namespace AIWeather
         /// <summary>
         /// Selected AI model for analysis
         /// </summary>
+        /// <summary>A second model of the same provider, asked when the first is busy (429/503) or slow after one retry (#21).</summary>
+        public string FallbackModel
+        {
+            get => Properties.Settings.Default.FallbackModel ?? string.Empty;
+            set
+            {
+                Properties.Settings.Default.FallbackModel = value?.Trim() ?? string.Empty;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
         public string SelectedModel
         {
             get => Properties.Settings.Default.SelectedModel;

@@ -34,6 +34,9 @@ namespace AIWeather.Models
 
         /// <summary>Why the provider did not answer, when it did not. One line, for the panel.</summary>
         public string? ProviderError { get; set; }
+
+        /// <summary>The model that answered, when a cloud provider did: the selected one, or the reserve one after a retry.</summary>
+        public string? Model { get; set; }
     }
 
     public enum WeatherCondition

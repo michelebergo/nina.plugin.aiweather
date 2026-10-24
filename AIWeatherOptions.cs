@@ -277,6 +277,18 @@ namespace AIWeather
             }
         }
 
+        /// <summary>A change of the combined state is confirmed with a second frame before it is acted on (#21).</summary>
+        public bool ConfirmTransitions
+        {
+            get => Properties.Settings.Default.ConfirmTransitions;
+            set
+            {
+                Properties.Settings.Default.ConfirmTransitions = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
         /// <summary>Keep the frame behind every change of state, with the decision next to it (#21).</summary>
         public bool KeepDecisionFrames
         {
