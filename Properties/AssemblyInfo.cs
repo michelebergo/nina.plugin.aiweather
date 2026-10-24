@@ -34,8 +34,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.15.14.0")]
-[assembly: AssemblyFileVersion("1.15.14.0")]
+[assembly: AssemblyVersion("1.15.15.0")]
+[assembly: AssemblyFileVersion("1.15.15.0")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MPL-2.0")]
@@ -85,6 +85,9 @@ using System.Runtime.InteropServices;
 • Two Cloud Thresholds: a high one that turns the state Unsafe and a low one that lets it return to Safe, so a sky hovering around a single number does not flip the sequence back and forth
 • Rain Detection: Rain (including lens droplets) immediately triggers Unsafe — regardless of cloud threshold
 • Fog Detection: Fog conditions immediately trigger Unsafe — protects optics and prevents wasted exposures
+• Busy is not broken: a provider that answers 429/503 or times out is asked once more after ten seconds, then the reserve model you named, and only then does the offline analyzer stand in
+• A change of state wants two frames: when an analysis would flip Safe/Unsafe, a second frame twenty seconds later decides, so one odd reading cannot park the rig
+• A smeared frame is not a frame: a picture a stream reconnect left half repeated is rejected like a failed capture instead of being scored
 • Automatic Fallback: If the cloud AI provider fails, times out, loses connectivity, or sends back an answer that cannot be read, the plugin falls back to local offline analysis. An unreadable answer is a failed reading, never a placeholder value: the verdict comes from measuring the image that was actually captured, and the panel says from the first failed check that the provider is not answering, so a whole night on the fallback is never a surprise the next morning
 • 60-Second Timeout: All AI providers have a 60-second timeout to prevent indefinite hangs during analysis
 • ASCOM SafetyMonitor Integration: Outputs a status file compatible with the ASCOM Generic File SafetyMonitor for third-party software integration
