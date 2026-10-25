@@ -595,7 +595,12 @@ namespace AIWeather.Services
                         encoderParams.Param[0] = new System.Drawing.Imaging.EncoderParameter(
                             System.Drawing.Imaging.Encoder.Quality, 90L);
                         
-                        clonedBitmap.Save(filePath, jpegEncoder, encoderParams);
+                        // Encode under a temporary name and rename when complete: the preview
+                        // reloads the newest capture_*.jpg every few seconds and must never open
+                        // a file that is still being written (#21).
+                        var partPath = filePath + ".part";
+                        clonedBitmap.Save(partPath, jpegEncoder, encoderParams);
+                        File.Move(partPath, filePath, overwrite: true);
                     }
                 }, cancellationToken);
 

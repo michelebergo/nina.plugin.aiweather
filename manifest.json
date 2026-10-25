@@ -1,7 +1,7 @@
 {
   "Identifier": "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D",
   "Name": "AI Weather",
-  "Version": "1.15.15.0",
+  "Version": "1.15.16.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,13 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.15.16.0",
+      "Date": "2026-10-25",
+      "Changes": [
+        "FIX: the panel reloads the newest capture every few seconds and could open one while it was still being written ('cannot access the file capture_*.jpg', six times in one night). A capture is now encoded under a temporary name and renamed when complete, so it appears under its name only once it is readable (#21)"
+      ]
+    },
     {
       "Version": "1.15.15.0",
       "Date": "2026-10-24",
