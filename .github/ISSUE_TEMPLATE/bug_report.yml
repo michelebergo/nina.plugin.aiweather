@@ -1,0 +1,50 @@
+name: Bug report
+description: Something the plugin did wrong on your rig
+labels: [bug]
+body:
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Plugin version and N.I.N.A. version (both are in Options > Plugins).
+      placeholder: AI Weather 1.15.17.0, N.I.N.A. 3.2.1
+    validations:
+      required: true
+  - type: input
+    id: setup
+    attributes:
+      label: Setup
+      description: Provider and model, camera source (RTSP, folder, N.I.N.A. camera), external monitors and how they are combined.
+      placeholder: Gemini gemini-flash-latest, RTSP fixed camera, AND with an ASCOM rain sensor
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What the plugin did, when, and what the sky really was. Log lines and the decision files from the AIWeather\decisions folder are the most useful thing you can attach.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+  - type: dropdown
+    id: ai
+    attributes:
+      label: AI assistance
+      description: Did an AI tool (ChatGPT, Claude, Gemini, Copilot or similar) help you write this report or analyse the logs and frames behind it? There is nothing wrong with that; knowing it tells me how to read the report.
+      options:
+        - "No"
+        - "Yes, it helped write the report"
+        - "Yes, it analysed the logs or frames"
+        - "Yes, both"
+    validations:
+      required: true
+  - type: input
+    id: ai_detail
+    attributes:
+      label: If yes, which tool and what did it do?
+      placeholder: Claude read the N.I.N.A. log and the decision files and drafted the timeline; I checked the times against PHD2

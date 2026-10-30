@@ -457,6 +457,8 @@ Bergo as the author of the modified version. See [NOTICE](NOTICE).
 
 Contributions are welcome. Please fork the repository, create a feature branch, and submit a pull request.
 
+Issues and pull requests ask whether an AI tool helped write them or analyse the data behind them. Please answer honestly; it is not a judgement, it tells me how to read what you send.
+
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/michelebergo/nina.plugin.aiweather/issues)

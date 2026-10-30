@@ -1,0 +1,41 @@
+name: Feature request
+description: Something you would like the plugin to do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What you would like
+      description: The behaviour, in plain words. An example from a real night helps more than a design.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What went wrong, or what you cannot do today, and how you work around it.
+    validations:
+      required: true
+  - type: input
+    id: setup
+    attributes:
+      label: Setup
+      description: Plugin and N.I.N.A. versions, provider and model, camera source, external monitors.
+    validations:
+      required: true
+  - type: dropdown
+    id: ai
+    attributes:
+      label: AI assistance
+      description: Did an AI tool (ChatGPT, Claude, Gemini, Copilot or similar) help you write this request or analyse the data behind it? There is nothing wrong with that; knowing it tells me how to read it.
+      options:
+        - "No"
+        - "Yes, it helped write the request"
+        - "Yes, it analysed the logs or frames"
+        - "Yes, both"
+    validations:
+      required: true
+  - type: input
+    id: ai_detail
+    attributes:
+      label: If yes, which tool and what did it do?
