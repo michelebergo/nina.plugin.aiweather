@@ -34,8 +34,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.15.16.0")]
-[assembly: AssemblyFileVersion("1.15.16.0")]
+[assembly: AssemblyVersion("1.15.17.0")]
+[assembly: AssemblyFileVersion("1.15.17.0")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MPL-2.0")]
@@ -76,7 +76,7 @@ using System.Runtime.InteropServices;
 
 🤖 5 AI PROVIDERS (Free to Advanced):
 • Local (FREE, Offline): Built-in heuristic analysis using brightness, color distribution, and edge detection — no internet needed, no API costs
-• Google Gemini (free API tier): fast and capable Flash/Pro vision models
+• Google Gemini: fast and capable Flash/Pro vision models (the free tier covers trying it out; a night needs billing on the key)
 • Ollama / Custom (FREE, Local): Any vision model on a local OpenAI-compatible server (Ollama, LM Studio, llama.cpp, LocalAI) — no API key, full privacy
 • OpenAI: GPT-4o and GPT-4o Mini for high-accuracy cloud and weather analysis
 • Anthropic Claude: excellent at detailed image understanding
@@ -111,7 +111,7 @@ using System.Runtime.InteropServices;
 
 💡 BEGINNER-FRIENDLY:
 • Start with Local (offline) mode — no API keys needed, works out of the box
-• Upgrade to Google Gemini (free API tier) or a local Ollama vision model for AI-powered analysis
+• Upgrade to a local Ollama vision model or a cloud provider for AI-powered analysis
 • Detailed activity log shows every analysis result for easy troubleshooting
 • Works with any all-sky camera that provides RTSP, HTTP, or file-based output
 
@@ -124,6 +124,7 @@ using System.Runtime.InteropServices;
 • Test analysis button: one real analysis with the selected provider and model, through the same request the safety monitor sends at night, so a model that does not answer is found at setup rather than from the log
 • Looks like N.I.N.A.: the panel and the options page use the application's own theme colours and text sizes, light or dark
 • One RTSP session per check: the safety monitor opens the stream, grabs a fresh frame and closes it, so a camera that drops idle sessions cannot starve the analysis and no RTSP slot is held between checks
+• A capture that gets nothing gives up within half a minute (ten seconds to open the stream, twenty to read a frame), so a camera that stalls costs one missed check and never the following ones
 • Seamless NINA Integration: Works directly with NINA's safety monitor system to pause or abort sequences when conditions deteriorate
 
 Transform your all-sky camera into an intelligent weather guardian. Focus on imaging while AI Weather keeps watch over your equipment and data.")]

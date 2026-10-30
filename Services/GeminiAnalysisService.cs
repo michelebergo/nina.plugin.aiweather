@@ -76,6 +76,9 @@ namespace AIWeather.Services
         /// <summary>The request shape currently in use for this model. For the panel and the logs.</summary>
         public GeminiRequestProfile CurrentProfile => _profile;
 
+        /// <summary>Whether <see cref="InitializeAsync"/> accepted the configuration; without it every frame goes to the offline analyzer.</summary>
+        internal bool IsInitialized => _isInitialized;
+
         public Task<bool> InitializeAsync(CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(_apiKey))

@@ -115,7 +115,9 @@ The preview panel in NINA shows:
 
 The preview is a convenience and is kept **separate from the safety path**: the safety
 monitor captures its own frames through FFmpeg, so a preview that stops changes nothing
-about the verdict. What the preview does on its own:
+about the verdict. A capture that gets no frame gives up within about half a minute (ten
+seconds to open the stream, twenty to read a frame): a camera that stalls costs one missed
+check and never holds the following ones. What the preview does on its own:
 
 - It starts **once** per opening of the panel, and only when the panel is actually on
   screen. N.I.N.A. 3.3 rebuilds views off-screen on every equipment refresh; a start
@@ -161,10 +163,10 @@ In the plugin options, choose the capture mode that matches your camera:
 ### 2. AI analysis: provider, key, model
 
 - **Local** requires no setup and works offline. It uses image processing heuristics (brightness, color distribution, pattern detection) to estimate cloud coverage.
-- **Google Gemini** is recommended for getting started: it has a free API tier with strong vision models — get a key at [Google AI Studio](https://aistudio.google.com/apikey).
+- **Google Gemini** has a free API tier with strong vision models — get a key at [Google AI Studio](https://aistudio.google.com/apikey). The free tier is for trying it out, not for a night: in October 2026 it allowed about twenty requests a day on `gemini-flash-latest`, and a night at a five-minute interval needs over a hundred, so overnight use needs billing enabled on the key. `gemini-flash-lite-latest` has a larger free allowance but reads a moonlit clear sky as cloudy often enough to park a rig. A model Google no longer offers to new accounts answers HTTP 404 (`gemini-2.5-flash` did in October 2026): pick the model, and the reserve model, from the list the plugin fetches for your key.
 - **OpenAI** and **Anthropic** require their respective API keys from each provider's developer portal. For Anthropic the default is Claude Haiku 5.5, the cheapest model with vision: one analysis every few minutes is a yes/no about clouds.
 
-**The model box is editable.** The list is fetched from the provider when the options open and cached for an hour; if the provider ships a model the list does not show yet, type its ID into the box and click elsewhere — the typed ID is saved and used as-is.
+**The model box is editable.** The list is fetched from the provider when the options open and cached for an hour; if the provider ships a model the list does not show yet, type its ID into the box and click elsewhere — the typed ID is saved and used as-is. A model or key changed while the monitor is connected is used from the next check on; no reconnect needed.
 
 **A busy provider is not a broken one.** When the model answers "busy" (HTTP 429 or 503)
 or times out, the plugin waits ten seconds and asks once more; if you named a **Reserve

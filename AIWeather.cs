@@ -149,11 +149,12 @@ namespace AIWeather
                 ["Gemini"] = new[]
                 {
                     // The -latest alias always points at Google's newest stable Flash and
-                    // cannot expire; Gemini 1.x/2.0 were shut down by Google in 2026.
+                    // cannot expire; Gemini 1.x/2.0 were shut down by Google in 2026 and
+                    // 2.5 Flash is no longer offered to new accounts (404). This list is
+                    // only the stand-in when the provider's own list cannot be fetched.
                     "gemini-flash-latest",
                     "gemini-3.6-flash",
                     "gemini-3.5-flash",
-                    "gemini-2.5-flash",
                     "gemini-2.5-pro",
                 },
                 ["Anthropic"] = Services.AnthropicAnalysisService.FallbackModels,

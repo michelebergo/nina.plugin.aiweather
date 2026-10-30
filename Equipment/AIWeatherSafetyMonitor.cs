@@ -81,7 +81,7 @@ namespace AIWeather.Equipment
             _analysisService = new LocalWeatherAnalysisService();
             
             // Subscribe to settings changes
-            Properties.Settings.Default.PropertyChanged += (s, e) =>
+            Properties.Settings.Default.PropertyChanged += async (s, e) =>
             {
                 if (e.PropertyName == nameof(Properties.Settings.Default.UseGitHubModels)
                     || e.PropertyName == nameof(Properties.Settings.Default.AnalysisProvider)
@@ -91,7 +91,11 @@ namespace AIWeather.Equipment
                     || e.PropertyName == nameof(Properties.Settings.Default.GeminiKey)
                     || e.PropertyName == nameof(Properties.Settings.Default.AnthropicKey))
                 {
-                    UpdateAnalysisService();
+                    // Initialised here and now, not at the next connect: a model or key changed
+                    // while the monitor was running must reach the next check. A service that
+                    // is only constructed declines every frame and hands the night to the
+                    // offline analyzer without the panel saying so (#21).
+                    await RefreshAnalysisServiceAsync(CancellationToken.None);
                 }
             };
         }
@@ -114,9 +118,38 @@ namespace AIWeather.Equipment
             _profileService = profileService;
         }
 
-        private void UpdateAnalysisService()
+        /// <summary>The analysis service the next check will use.</summary>
+        internal IWeatherAnalysisService AnalysisService => _analysisService;
+
+        /// <summary>
+        /// Builds the analysis service the options describe and initialises it; when that fails
+        /// (no key, for instance) the offline analyzer takes over outright and the log says so.
+        /// One path for the connect and for a settings change while connected.
+        /// </summary>
+        private async Task RefreshAnalysisServiceAsync(CancellationToken token)
         {
-            _analysisService = AnalysisServiceFactory.CreateFromSettings();
+            IWeatherAnalysisService service;
+            bool ready;
+            try
+            {
+                service = AnalysisServiceFactory.CreateFromSettings();
+                ready = await service.InitializeAsync(token);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Analysis service could not be prepared: {ex.Message}", ex);
+                service = new LocalWeatherAnalysisService();
+                ready = false;
+            }
+
+            if (!ready)
+            {
+                Logger.Warning("Selected analysis provider failed to initialize; falling back to local analysis");
+                service = new LocalWeatherAnalysisService();
+                await service.InitializeAsync(token);
+            }
+
+            _analysisService = service;
         }
 
         #region ISafetyMonitor Implementation
@@ -190,15 +223,7 @@ namespace AIWeather.Equipment
                     return false;
                 }
 
-                // Initialize analysis service
-                UpdateAnalysisService();
-                var analysisReady = await _analysisService.InitializeAsync(token);
-                if (!analysisReady)
-                {
-                    Logger.Warning("Selected analysis provider failed to initialize; falling back to local analysis");
-                    _analysisService = new LocalWeatherAnalysisService();
-                    await _analysisService.InitializeAsync(token);
-                }
+                await RefreshAnalysisServiceAsync(token);
 
                 // A fresh connection starts with no verdict at all: unsafe until the first
                 // analysis succeeds, never inheriting the state of a previous session.

@@ -97,10 +97,16 @@ namespace AIWeather.Services
                     {
                         _capture?.Dispose();
                         Logger.Debug($"RtspCaptureService - Creating VideoCapture with URL: {RedactRtspUrl(rtspUrl)}");
-                        // Prefer FFmpeg backend for RTSP stability.
+                        // Prefer FFmpeg backend for RTSP stability. FFmpeg's own limits are
+                        // 30 s per open and 30 s per read; a camera that stalls would keep a
+                        // check busy for many minutes before the data-age fail-safe parked the
+                        // rig on a clear sky (#21). Both limits are set to a fraction of the
+                        // shortest check interval.
                         try
                         {
-                            _capture = new VideoCapture(rtspUrl, VideoCapture.API.Ffmpeg);
+                            _capture = new VideoCapture(rtspUrl, VideoCapture.API.Ffmpeg,
+                                new Tuple<CapProp, int>(CapProp.OpenTimeoutMsec, OpenTimeoutSeconds * 1000),
+                                new Tuple<CapProp, int>(CapProp.ReadTimeoutMsec, ReadTimeoutSeconds * 1000));
                         }
                         catch
                         {
@@ -178,50 +184,29 @@ namespace AIWeather.Services
                 {
                     lock (_captureLock)
                     {
-                        // RTSP sources can return a few empty frames initially.
-                        // Retry briefly to avoid reporting capture failure while video is actually playing.
-                        for (var attempt = 0; attempt < 25; attempt++)
+                        Bitmap? bitmap;
+                        try
                         {
-                            using var frame = new Mat();
+                            bitmap = ReadFrameWithinBudget(m => _capture.Read(m), CaptureBudget, cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error($"Error converting RTSP frame to bitmap: {ex.Message}");
+                            CloseSession("frame captured");
+                            return null;
+                        }
 
-                            bool ok;
-                            try
-                            {
-                                ok = _capture.Read(frame);
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Warning($"RTSP read failed (attempt {attempt + 1}/25): {ex.Message}");
-                                ok = false;
-                            }
-
-                            if (!ok || frame.IsEmpty)
-                            {
-                                Thread.Sleep(40);
-                                continue;
-                            }
-
-                            try
-                            {
-                                var bitmap = ConvertMatToBgr24Bitmap(frame);
-                                FrameCaptured?.Invoke(this, bitmap);
-                                return bitmap;
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Error($"Error converting RTSP frame to bitmap: {ex.Message}");
-                                return null;
-                            }
-                            finally
-                            {
-                                // One session per check. A session kept open between checks
-                                // minutes apart went stale on the camera (every read came back
-                                // empty on a Tapo) and, when it did not, handed back the oldest
-                                // frame in FFmpeg's buffer rather than the sky of now. Opening,
-                                // grabbing and closing gives a fresh frame every time and holds
-                                // no RTSP slot on the camera in between.
-                                CloseSession("frame captured");
-                            }
+                        if (bitmap != null)
+                        {
+                            FrameCaptured?.Invoke(this, bitmap);
+                            // One session per check. A session kept open between checks
+                            // minutes apart went stale on the camera (every read came back
+                            // empty on a Tapo) and, when it did not, handed back the oldest
+                            // frame in FFmpeg's buffer rather than the sky of now. Opening,
+                            // grabbing and closing gives a fresh frame every time and holds
+                            // no RTSP slot on the camera in between.
+                            CloseSession("frame captured");
+                            return bitmap;
                         }
 
                         Logger.Warning("RTSP capture returned empty frames after retries");
@@ -252,6 +237,56 @@ namespace AIWeather.Services
                 ErrorOccurred?.Invoke(this, ex.Message);
                 return null;
             }
+        }
+
+        /// <summary>Seconds FFmpeg may spend opening the stream (OPTIONS/DESCRIBE/SETUP/PLAY) before the open is abandoned.</summary>
+        public const int OpenTimeoutSeconds = 10;
+
+        /// <summary>Seconds one read may wait for data before FFmpeg gives it up as empty.</summary>
+        public const int ReadTimeoutSeconds = 10;
+
+        /// <summary>
+        /// How long one check may keep reading for a frame once the stream is open. With the
+        /// open timeout and one last read on top, a check that gets nothing is over in well
+        /// under the shortest check interval (one minute).
+        /// </summary>
+        internal static readonly TimeSpan CaptureBudget = TimeSpan.FromSeconds(20);
+
+        /// <summary>
+        /// Reads until a frame arrives, the attempts run out or the budget is spent. RTSP
+        /// sources can return a few empty frames initially, so a handful of quick retries
+        /// avoids reporting a failure while video is actually playing; slow empty reads are
+        /// bounded by the budget instead of the count. A conversion failure propagates; an
+        /// empty run returns null. Caller holds the lock.
+        /// </summary>
+        internal static Bitmap? ReadFrameWithinBudget(Func<Mat, bool> read, TimeSpan budget, CancellationToken cancellationToken)
+        {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            for (var attempt = 0; attempt < 25 && watch.Elapsed < budget && !cancellationToken.IsCancellationRequested; attempt++)
+            {
+                using var frame = new Mat();
+
+                bool ok;
+                try
+                {
+                    ok = read(frame);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"RTSP read failed (attempt {attempt + 1}/25): {ex.Message}");
+                    ok = false;
+                }
+
+                if (!ok || frame.IsEmpty)
+                {
+                    Thread.Sleep(40);
+                    continue;
+                }
+
+                return ConvertMatToBgr24Bitmap(frame);
+            }
+
+            return null;
         }
 
         /// <summary>Release the FFmpeg session; the next check opens a fresh one. Caller holds the lock.</summary>
