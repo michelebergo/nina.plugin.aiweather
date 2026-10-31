@@ -428,5 +428,64 @@ namespace AIWeather.Properties {
                 this["SafetyStatusFilePath"] = value;
             }
         }
+            [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool GuideStarVetoEnabled {
+            get {
+                return ((bool)(this["GuideStarVetoEnabled"]));
+            }
+            set {
+                this["GuideStarVetoEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("70")]
+        public double GuideStarVetoPercent {
+            get {
+                return ((double)(this["GuideStarVetoPercent"]));
+            }
+            set {
+                this["GuideStarVetoPercent"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool WeatherVoteEnabled {
+            get {
+                return ((bool)(this["WeatherVoteEnabled"]));
+            }
+            set {
+                this["WeatherVoteEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("SkyQuality")]
+        public string WeatherVoteProperty {
+            get {
+                return ((string)(this["WeatherVoteProperty"]));
+            }
+            set {
+                this["WeatherVoteProperty"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0.2")]
+        public double WeatherVoteLimit {
+            get {
+                return ((double)(this["WeatherVoteLimit"]));
+            }
+            set {
+                this["WeatherVoteLimit"] = value;
+            }
+        }
     }
 }

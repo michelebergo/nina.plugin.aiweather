@@ -10,422 +10,471 @@
     
     <!-- Options View Template - must use key pattern: <PluginName>_Options -->
     <DataTemplate x:Key="AI Weather_Options">
-        <StackPanel Orientation="Vertical" Margin="10" DataContext="{Binding}">
+        <!-- One tab per step of the setup, in the order a new user goes through them:
+             the camera, the AI that looks at its frames, the rules that turn a verdict
+             into Safe or Unsafe, what the plugin writes out, and the summary. Same
+             layout as the Three Point Polar Alignment options. -->
+        <TabControl Margin="10" DataContext="{Binding}">
 
-            <!-- ===== Camera source ===== -->
-            <TextBlock Text="Camera source" FontWeight="Bold" FontSize="14" Margin="0,0,0,2"/>
-            <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
+            <!-- ===== Camera ===== -->
+            <TabItem Header="Camera">
+                <StackPanel Orientation="Vertical" Margin="10">
+                <TextBlock Text="Where the all-sky frames come from." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
 
-            <!-- Capture Mode -->
-            <TextBlock Text="Capture Mode:" Margin="0,0,0,2"/>
-            <ComboBox SelectedIndex="{Binding Options.CaptureModeIndex, Mode=TwoWay}"
-                      Width="300" HorizontalAlignment="Left"
-                      Margin="0,0,0,10">
-                <ComboBoxItem Content="RTSP Stream (continuous video)"/>
-                <ComboBoxItem Content="HTTP Image Download (from URL)"/>
-                <ComboBoxItem Content="Folder Watch (monitor latest image)"/>
-            </ComboBox>
+                <!-- Capture Mode -->
+                <TextBlock Text="Capture Mode:" Margin="0,0,0,2"/>
+                <ComboBox SelectedIndex="{Binding Options.CaptureModeIndex, Mode=TwoWay}"
+                          Width="300" HorizontalAlignment="Left"
+                          Margin="0,0,0,10">
+                    <ComboBoxItem Content="RTSP Stream (continuous video)"/>
+                    <ComboBoxItem Content="HTTP Image Download (from URL)"/>
+                    <ComboBoxItem Content="Folder Watch (monitor latest image)"/>
+                </ComboBox>
 
-            <!-- RTSP URL (visible when mode = 0) -->
-            <StackPanel Margin="0,0,0,10">
-                <StackPanel.Visibility>
-                    <Binding Path="Options.CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="0"/>
-                </StackPanel.Visibility>
-                <TextBlock Text="RTSP Stream URL:" Margin="0,0,0,2"/>
-                <TextBox Text="{Binding Options.RtspUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                         Width="300" HorizontalAlignment="Left"/>
-                <TextBlock Text="Configure username/password in the AI Weather Monitor imaging tab" 
-                           Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
-            </StackPanel>
-
-            <!-- HTTP Image Download (visible when mode = 1) -->
-            <StackPanel Margin="0,0,0,10">
-                <StackPanel.Visibility>
-                    <Binding Path="Options.CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="1"/>
-                </StackPanel.Visibility>
-                <TextBlock Text="Image URL:" Margin="0,0,0,2"/>
-                <TextBox Text="{Binding Options.INDIDeviceName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                         Width="300" HorizontalAlignment="Left"/>
-                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0" Width="300" HorizontalAlignment="Left">
-                    <Run Text="Enter full URL to latest image"/>
-                    <LineBreak/>
-                    <Run Text="Example: http://192.168.1.100/image.jpg"/>
-                    <LineBreak/>
-                    <Run Text="Perfect for indi-allsky, AllSky, or any web-hosted all-sky camera"/>
-                </TextBlock>
-                <TextBlock Text="Username (optional):" Margin="0,10,0,2"/>
-                <TextBox Text="{Binding Options.RtspUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                         Width="300" HorizontalAlignment="Left"/>
-                <TextBlock Text="Password (optional):" Margin="0,5,0,2"/>
-                <PasswordBox Width="300" HorizontalAlignment="Left"
-                             Loaded="HttpPasswordBox_Loaded"
-                             PasswordChanged="HttpPasswordBox_PasswordChanged"/>
-            </StackPanel>
-
-            <!-- Folder Path (visible when mode = 2) -->
-            <StackPanel Margin="0,0,0,10">
-                <StackPanel.Visibility>
-                    <Binding Path="Options.CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="2"/>
-                </StackPanel.Visibility>
-                <TextBlock Text="Folder Path:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <TextBox Text="{Binding Options.FolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Width="360"
-                             VerticalContentAlignment="Center"/>
-                    <Button Content="Browse..." Margin="8,0,0,0" Padding="10,2"
-                            Click="BrowseFolder_Click"/>
+                <!-- RTSP URL (visible when mode = 0) -->
+                <StackPanel Margin="0,0,0,10">
+                    <StackPanel.Visibility>
+                        <Binding Path="Options.CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="0"/>
+                    </StackPanel.Visibility>
+                    <TextBlock Text="RTSP Stream URL:" Margin="0,0,0,2"/>
+                    <TextBox Text="{Binding Options.RtspUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                             Width="300" HorizontalAlignment="Left"/>
+                    <TextBlock Text="Configure username/password in the AI Weather Monitor imaging tab" 
+                               Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
                 </StackPanel>
-                <TextBlock Text="Folder containing latest all-sky images" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
-            </StackPanel>
 
+                <!-- HTTP Image Download (visible when mode = 1) -->
+                <StackPanel Margin="0,0,0,10">
+                    <StackPanel.Visibility>
+                        <Binding Path="Options.CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="1"/>
+                    </StackPanel.Visibility>
+                    <TextBlock Text="Image URL:" Margin="0,0,0,2"/>
+                    <TextBox Text="{Binding Options.INDIDeviceName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                             Width="300" HorizontalAlignment="Left"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0" Width="300" HorizontalAlignment="Left">
+                        <Run Text="Enter full URL to latest image"/>
+                        <LineBreak/>
+                        <Run Text="Example: http://192.168.1.100/image.jpg"/>
+                        <LineBreak/>
+                        <Run Text="Perfect for indi-allsky, AllSky, or any web-hosted all-sky camera"/>
+                    </TextBlock>
+                    <TextBlock Text="Username (optional):" Margin="0,10,0,2"/>
+                    <TextBox Text="{Binding Options.RtspUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                             Width="300" HorizontalAlignment="Left"/>
+                    <TextBlock Text="Password (optional):" Margin="0,5,0,2"/>
+                    <PasswordBox Width="300" HorizontalAlignment="Left"
+                                 Loaded="HttpPasswordBox_Loaded"
+                                 PasswordChanged="HttpPasswordBox_PasswordChanged"/>
+                </StackPanel>
+
+                <!-- Folder Path (visible when mode = 2) -->
+                <StackPanel Margin="0,0,0,10">
+                    <StackPanel.Visibility>
+                        <Binding Path="Options.CaptureMode" Converter="{StaticResource EnumToVisibilityConverter}" ConverterParameter="2"/>
+                    </StackPanel.Visibility>
+                    <TextBlock Text="Folder Path:" Margin="0,0,0,2"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <TextBox Text="{Binding Options.FolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Width="360"
+                                 VerticalContentAlignment="Center"/>
+                        <Button Content="Browse..." Margin="8,0,0,0" Padding="10,2"
+                                Click="BrowseFolder_Click"/>
+                    </StackPanel>
+                    <TextBlock Text="Folder containing latest all-sky images" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
+                </StackPanel>
+                </StackPanel>
+            </TabItem>
 
             <!-- ===== AI analysis ===== -->
-            <TextBlock Text="AI analysis" FontWeight="Bold" FontSize="14" Margin="0,24,0,2"/>
-            <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
-            <TextBlock Text="Pick a provider, give it the key, choose the model, then run one real analysis to see what comes back." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
-            <!-- Analysis Provider -->
-            <TextBlock Text="Analysis Provider:" Margin="0,0,0,2"/>
-            <ComboBox ItemsSource="{Binding ProviderOptions}"
-                      DisplayMemberPath="Name"
-                      SelectedValuePath="Id"
-                      SelectedValue="{Binding AnalysisProvider, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                      Width="300" HorizontalAlignment="Left"/>
-            <!-- OpenAI Key -->
-            <StackPanel Margin="0,10,0,0"
-                        Visibility="{Binding IsOpenAIProvider, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="OpenAI API Key:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <PasswordBox Width="360"
-                                 HorizontalAlignment="Left"
-                                 Loaded="OpenAIKeyBox_Loaded"
-                                 PasswordChanged="OpenAIKeyBox_PasswordChanged"/>
-                    <Button Content="Test key"
+            <TabItem Header="AI analysis">
+                <StackPanel Orientation="Vertical" Margin="10">
+                <TextBlock Text="Provider and model" FontWeight="Bold" FontSize="14" Margin="0,0,0,2"/>
+                <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
+                <TextBlock Text="Pick a provider, give it the key, choose the model, then run one real analysis to see what comes back." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                <!-- Analysis Provider -->
+                <TextBlock Text="Analysis Provider:" Margin="0,0,0,2"/>
+                <ComboBox ItemsSource="{Binding ProviderOptions}"
+                          DisplayMemberPath="Name"
+                          SelectedValuePath="Id"
+                          SelectedValue="{Binding AnalysisProvider, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          Width="300" HorizontalAlignment="Left"/>
+                <!-- OpenAI Key -->
+                <StackPanel Margin="0,10,0,0"
+                            Visibility="{Binding IsOpenAIProvider, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="OpenAI API Key:" Margin="0,0,0,2"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <PasswordBox Width="360"
+                                     HorizontalAlignment="Left"
+                                     Loaded="OpenAIKeyBox_Loaded"
+                                     PasswordChanged="OpenAIKeyBox_PasswordChanged"/>
+                        <Button Content="Test key"
+                                Margin="8,0,0,0"
+                                Padding="10,2"
+                                Click="TryOpenAIKey_Click"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding OpenAIKeyStatus}" Margin="0,4,0,0" Foreground="{Binding OpenAIKeyStatus, Converter={StaticResource StatusToBrush}}"/>
+                    <TextBlock Text="Used with https://api.openai.com" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                </StackPanel>
+
+                <!-- Gemini Key -->
+                <StackPanel Margin="0,10,0,0"
+                            Visibility="{Binding IsGeminiProvider, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Google Gemini API Key:" Margin="0,0,0,2"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <PasswordBox Width="360"
+                                     HorizontalAlignment="Left"
+                                     Loaded="GeminiKeyBox_Loaded"
+                                     PasswordChanged="GeminiKeyBox_PasswordChanged"/>
+                        <Button Content="Test key"
+                                Margin="8,0,0,0"
+                                Padding="10,2"
+                                Click="TryGeminiKey_Click"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding GeminiKeyStatus}" Margin="0,4,0,0" Foreground="{Binding GeminiKeyStatus, Converter={StaticResource StatusToBrush}}"/>
+                    <TextBlock Text="Used with Generative Language API" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                </StackPanel>
+
+                <!-- Anthropic Key -->
+                <StackPanel Margin="0,10,0,0"
+                            Visibility="{Binding IsAnthropicProvider, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Anthropic API Key:" Margin="0,0,0,2"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <PasswordBox Width="360"
+                                     HorizontalAlignment="Left"
+                                     Loaded="AnthropicKeyBox_Loaded"
+                                     PasswordChanged="AnthropicKeyBox_PasswordChanged"/>
+                        <Button Content="Test key"
+                                Margin="8,0,0,0"
+                                Padding="10,2"
+                                Click="TryAnthropicKey_Click"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding AnthropicKeyStatus}" Margin="0,4,0,0" Foreground="{Binding AnthropicKeyStatus, Converter={StaticResource StatusToBrush}}"/>
+                    <TextBlock Text="Used with https://api.anthropic.com" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                </StackPanel>
+
+                <!-- Ollama Base URL -->
+                <StackPanel Margin="0,10,0,0"
+                            Visibility="{Binding IsOllamaProvider, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Ollama Base URL:" Margin="0,0,0,2"/>
+                    <TextBox Text="{Binding OllamaBaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             Width="360"
+                             HorizontalAlignment="Left"/>
+                    <TextBlock Text="Default: http://localhost:11434/v1" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                    <TextBlock Text="Also works with LM Studio, llama.cpp, and LocalAI endpoints" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                    <TextBlock Text="No API key required. Use a vision-capable model (e.g. llava, qwen2.5vl)" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                    <TextBlock Text="Disable model thinking (recommended):" Margin="0,10,0,2"/>
+                    <CheckBox IsChecked="{Binding OllamaDisableThinking, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              Width="64"
+                              HorizontalAlignment="Left"
+                              VerticalAlignment="Center"/>
+                    <TextBlock Text="Thinking-capable models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering, which can multiply response times. Turn off only on fast hardware." Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+                </StackPanel>
+            
+                    <!-- Model Selection (non-local providers) -->
+                    <StackPanel Margin="0,10,0,0"
+                        Visibility="{Binding IsNonLocalProvider, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="AI Model:" Margin="0,0,0,2"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <!-- Text, not SelectedItem: the box is editable so a model missing from the
+                             list (the list is a day old, or the provider shipped a new one) can be
+                             typed in; a SelectedItem binding dropped anything typed (#18). Saved when
+                             focus leaves, so a check starting mid-typing does not see half a name. -->
+                        <ComboBox x:Name="ModelComboBox"
+                              ItemsSource="{Binding AvailableModels}"
+                              Text="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                              IsEditable="True"
+                              Width="360"
+                              HorizontalAlignment="Left"
+                              Loaded="ModelComboBox_Loaded"/>
+                        <Button Content="Refresh"
                             Margin="8,0,0,0"
                             Padding="10,2"
-                            Click="TryOpenAIKey_Click"/>
-                </StackPanel>
-                <TextBlock Text="{Binding OpenAIKeyStatus}" Margin="0,4,0,0" Foreground="{Binding OpenAIKeyStatus, Converter={StaticResource StatusToBrush}}"/>
-                <TextBlock Text="Used with https://api.openai.com" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-            </StackPanel>
+                            Click="RefreshModels_Click"/>
+                    </StackPanel>
 
-            <!-- Gemini Key -->
-            <StackPanel Margin="0,10,0,0"
-                        Visibility="{Binding IsGeminiProvider, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="Google Gemini API Key:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <PasswordBox Width="360"
-                                 HorizontalAlignment="Left"
-                                 Loaded="GeminiKeyBox_Loaded"
-                                 PasswordChanged="GeminiKeyBox_PasswordChanged"/>
-                    <Button Content="Test key"
-                            Margin="8,0,0,0"
-                            Padding="10,2"
-                            Click="TryGeminiKey_Click"/>
-                </StackPanel>
-                <TextBlock Text="{Binding GeminiKeyStatus}" Margin="0,4,0,0" Foreground="{Binding GeminiKeyStatus, Converter={StaticResource StatusToBrush}}"/>
-                <TextBlock Text="Used with Generative Language API" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-            </StackPanel>
+                    <TextBlock Text="{Binding ModelsStatus}"
+                           Margin="0,4,0,0"
+                           Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                    <TextBlock Text="The list comes from the provider and is cached for an hour. The box is editable: type a model ID the list does not show yet."
+                           Margin="0,2,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
-            <!-- Anthropic Key -->
-            <StackPanel Margin="0,10,0,0"
-                        Visibility="{Binding IsAnthropicProvider, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="Anthropic API Key:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <PasswordBox Width="360"
-                                 HorizontalAlignment="Left"
-                                 Loaded="AnthropicKeyBox_Loaded"
-                                 PasswordChanged="AnthropicKeyBox_PasswordChanged"/>
-                    <Button Content="Test key"
-                            Margin="8,0,0,0"
-                            Padding="10,2"
-                            Click="TryAnthropicKey_Click"/>
-                </StackPanel>
-                <TextBlock Text="{Binding AnthropicKeyStatus}" Margin="0,4,0,0" Foreground="{Binding AnthropicKeyStatus, Converter={StaticResource StatusToBrush}}"/>
-                <TextBlock Text="Used with https://api.anthropic.com" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-            </StackPanel>
+                    <!-- Reserve model (#21): the same provider's other model, asked when the first is busy -->
+                    <TextBlock Text="Reserve model (optional):" Margin="0,10,0,2"/>
+                    <ComboBox ItemsSource="{Binding AvailableModels}"
+                              Text="{Binding FallbackModel, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                              IsEditable="True"
+                              Width="360"
+                              HorizontalAlignment="Left"/>
+                    <TextBlock Text="When the model above answers 'busy' (HTTP 429 or 503) or times out, the plugin waits ten seconds and asks it once more; if it is still busy it asks this model, and only then the offline analyzer. Leave empty to skip the reserve."
+                           Margin="0,2,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                    </StackPanel>
 
-            <!-- Ollama Base URL -->
-            <StackPanel Margin="0,10,0,0"
-                        Visibility="{Binding IsOllamaProvider, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="Ollama Base URL:" Margin="0,0,0,2"/>
-                <TextBox Text="{Binding OllamaBaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                <!-- One real analysis with the selected provider and model, through the same
+                     request the safety monitor sends at night. A key test proves the key; this
+                     proves the model answers. -->
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0" HorizontalAlignment="Left">
+                    <Button Content="Test analysis with this provider" Padding="10,2" HorizontalAlignment="Left"
+                            Click="TestAnalysis_Click"/>
+                </StackPanel>
+                <TextBlock Text="{Binding ProviderTestStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left"/>
+                <TextBlock Text="Sends a small synthetic sky image to the selected model and shows what comes back" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
+
+                <!-- ===== What the AI sees ===== -->
+                <TextBlock Text="What the AI sees" FontWeight="Bold" FontSize="14" Margin="0,24,0,2"/>
+                <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
+                <TextBlock Text="Two facts the AI cannot guess from a frame, and a place for everything else about your site." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                <!-- Camera view and site darkness: the two facts the prompt cannot guess and used to
+                     assume. A fixed security camera has no fisheye circle to look for, and at a dark
+                     site clouds are black holes in the star field rather than bright milky patches.
+                     Defaults are the previous behaviour. -->
+                <TextBlock Text="Camera view:" Margin="0,0,0,2"/>
+                <ComboBox SelectedIndex="{Binding CameraView, Mode=TwoWay}" Width="360" HorizontalAlignment="Left">
+                    <ComboBoxItem Content="All-sky fisheye (the whole sky as a circle)"/>
+                    <ComboBoxItem Content="Fixed camera (part of the sky above a horizon, trees or buildings)"/>
+                </ComboBox>
+                <TextBlock Text="Tells the AI which part of the image is sky. Pick the second one for a security camera or any camera that is not a fisheye pointing straight up."
+                           Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+
+                <TextBlock Text="Site darkness:" Margin="0,10,0,2"/>
+                <ComboBox SelectedIndex="{Binding SiteDarkness, Mode=TwoWay}" Width="360" HorizontalAlignment="Left">
+                    <ComboBoxItem Content="Light-polluted (clouds are lit from below and look bright)"/>
+                    <ComboBoxItem Content="Dark site (clouds are darker than the sky; only the stars tell)"/>
+                </ComboBox>
+                <TextBlock Text="At a Bortle 1-4 site with no moon, a cloudy sky is simply black. The dark-site setting makes the AI judge by where the stars are missing instead of by brightness, and treats a frame with no readable sky as unsafe rather than clear. Many Unknown results at night usually mean a dark site."
+                           Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+
+                <!-- Site notes: local knowledge appended to the analysis prompt of every provider.
+                     Saved on focus loss rather than per keystroke, so typing does not rewrite the
+                     settings file on every character. -->
+                <TextBlock Text="Site notes (optional):" Margin="0,10,0,2"/>
+                <TextBox Text="{Binding SiteNotes, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                          Width="360"
-                         HorizontalAlignment="Left"/>
-                <TextBlock Text="Default: http://localhost:11434/v1" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-                <TextBlock Text="Also works with LM Studio, llama.cpp, and LocalAI endpoints" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-                <TextBlock Text="No API key required. Use a vision-capable model (e.g. llava, qwen2.5vl)" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-                <TextBlock Text="Disable model thinking (recommended):" Margin="0,10,0,2"/>
-                <CheckBox IsChecked="{Binding OllamaDisableThinking, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Height="80"
+                         HorizontalAlignment="Left"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"/>
+                <TextBlock Text="Anything about your site or camera the AI cannot guess, in your own words. Example: &quot;Clouds toward the south are lit orange by the city and can look like overcast&quot; or &quot;In daylight the sun reflects off the dome and creates a hazy halo&quot;. Sent with every analysis, for all providers. Keep it short — a few sentences."
+                           Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ===== Safety ===== -->
+            <TabItem Header="Safety">
+                <StackPanel Orientation="Vertical" Margin="10">
+                <TextBlock Text="Checks and thresholds" FontWeight="Bold" FontSize="14" Margin="0,0,0,2"/>
+                <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
+                <TextBlock Text="How often the sky is checked and what turns a verdict into Safe or Unsafe." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                <!-- Check Interval -->
+                <TextBlock Text="Check Interval (minutes):" Margin="0,0,0,2"/>
+                <TextBox Text="{Binding CheckIntervalMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                         Width="100" HorizontalAlignment="Left"/>
+            
+                <!-- Cloud Coverage Threshold -->
+                <TextBlock Text="Cloud Coverage High Threshold (%):" Margin="0,10,0,2"/>
+                <TextBox Text="{Binding CloudCoverageThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                         Width="100" HorizontalAlignment="Left"/>
+                <TextBlock Text="While Safe: coverage at or above this value turns the status Unsafe" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
+
+                <!-- Cloud Coverage Safe Threshold -->
+                <TextBlock Text="Cloud Coverage Low Threshold (%):" Margin="0,10,0,2"/>
+                <TextBox Text="{Binding CloudCoverageSafeThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                         Width="100" HorizontalAlignment="Left"/>
+                <TextBlock Text="While Unsafe: coverage must drop below this value before Safe returns" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
+                <TextBlock Text="Between the two values the status stays as it is, so a sky at the limit cannot flap" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
+
+                <!-- Confirm transitions (#21): a change of state wants two frames -->
+                <TextBlock Text="Confirm a change of state with a second frame:" Margin="0,10,0,6"/>
+                <CheckBox IsChecked="{Binding Options.ConfirmTransitions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                           Width="64"
                           HorizontalAlignment="Left"
                           VerticalAlignment="Center"/>
-                <TextBlock Text="Thinking-capable models (Gemma 4, Qwen 3.x, DeepSeek) reason at length before answering, which can multiply response times. Turn off only on fast hardware." Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
-            </StackPanel>
-            
-                <!-- Model Selection (non-local providers) -->
-                <StackPanel Margin="0,10,0,0"
-                    Visibility="{Binding IsNonLocalProvider, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="AI Model:" Margin="0,0,0,2"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <!-- Text, not SelectedItem: the box is editable so a model missing from the
-                         list (the list is a day old, or the provider shipped a new one) can be
-                         typed in; a SelectedItem binding dropped anything typed (#18). Saved when
-                         focus leaves, so a check starting mid-typing does not see half a name. -->
-                    <ComboBox x:Name="ModelComboBox"
-                          ItemsSource="{Binding AvailableModels}"
-                          Text="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                          IsEditable="True"
-                          Width="360"
+                <TextBlock Text="When an analysis would turn the state from Safe to Unsafe or back, the plugin takes a second frame about twenty seconds later and analyses it; the second frame decides. A single odd reading - three in one night at one site, each parking the rig - no longer acts alone. Costs one extra analysis per change of state."
+                           Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+
+                <!-- Guide-star veto (#24): the target's own guide star gets a say before a cloud-only Unsafe -->
+                <TextBlock Text="Let the PHD2 guide star veto a cloud-only Unsafe:" Margin="0,10,0,6"/>
+                <CheckBox IsChecked="{Binding Options.GuideStarVetoEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          Width="64"
                           HorizontalAlignment="Left"
-                          Loaded="ModelComboBox_Loaded"/>
-                    <Button Content="Refresh"
-                        Margin="8,0,0,0"
-                        Padding="10,2"
-                        Click="RefreshModels_Click"/>
-                </StackPanel>
+                          VerticalAlignment="Center"/>
+                <TextBlock Text="Under a full moon a model can read a clear sky as 60-75% cloud and park the rig while the guide star is unchanged. With this on, a Safe to Unsafe change that rests on clouds alone is held when the star mass of the last minute is still at the level of the ten minutes before; the call is logged and kept in the decision folder with the numbers. Rain and fog are never vetoed, Unsafe to Safe is never vetoed, and without guiding (no PHD2 steps in the last minute, or less than ten minutes of them) the plugin behaves exactly as with this off. Off by default: it holds a Safe against the model, so switch it on knowingly."
+                           Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                <TextBlock Text="Guide-star mass still at (% of the previous ten minutes):" Margin="0,8,0,2"/>
+                <TextBox Text="{Binding Options.GuideStarVetoPercent, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                         IsEnabled="{Binding Options.GuideStarVetoEnabled}"
+                         Width="100" HorizontalAlignment="Left"/>
+                <TextBlock Text="At or above this the star vouches for the target; a cloud on the star drops it well below (the default 70% leaves room for seeing and dithering)" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0" TextWrapping="Wrap" MaxWidth="440"/>
 
-                <TextBlock Text="{Binding ModelsStatus}"
-                       Margin="0,4,0,0"
-                       Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-                <TextBlock Text="The list comes from the provider and is cached for an hour. The box is editable: type a model ID the list does not show yet."
-                       Margin="0,2,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
-
-                <!-- Reserve model (#21): the same provider's other model, asked when the first is busy -->
-                <TextBlock Text="Reserve model (optional):" Margin="0,10,0,2"/>
-                <ComboBox ItemsSource="{Binding AvailableModels}"
-                          Text="{Binding FallbackModel, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                          IsEditable="True"
-                          Width="360"
-                          HorizontalAlignment="Left"/>
-                <TextBlock Text="When the model above answers 'busy' (HTTP 429 or 503) or times out, the plugin waits ten seconds and asks it once more; if it is still busy it asks this model, and only then the offline analyzer. Leave empty to skip the reserve."
-                       Margin="0,2,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
-                </StackPanel>
-
-            <!-- One real analysis with the selected provider and model, through the same
-                 request the safety monitor sends at night. A key test proves the key; this
-                 proves the model answers. -->
-            <StackPanel Orientation="Horizontal" Margin="0,12,0,0" HorizontalAlignment="Left">
-                <Button Content="Test analysis with this provider" Padding="10,2" HorizontalAlignment="Left"
-                        Click="TestAnalysis_Click"/>
-            </StackPanel>
-            <TextBlock Text="{Binding ProviderTestStatus}" Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left"/>
-            <TextBlock Text="Sends a small synthetic sky image to the selected model and shows what comes back" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
-            
-
-            <!-- ===== Checks and thresholds ===== -->
-            <TextBlock Text="Checks and thresholds" FontWeight="Bold" FontSize="14" Margin="0,24,0,2"/>
-            <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
-            <!-- Check Interval -->
-            <TextBlock Text="Check Interval (minutes):" Margin="0,0,0,2"/>
-            <TextBox Text="{Binding CheckIntervalMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                     Width="100" HorizontalAlignment="Left"/>
-            
-            <!-- Cloud Coverage Threshold -->
-            <TextBlock Text="Cloud Coverage High Threshold (%):" Margin="0,10,0,2"/>
-            <TextBox Text="{Binding CloudCoverageThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                     Width="100" HorizontalAlignment="Left"/>
-            <TextBlock Text="While Safe: coverage at or above this value turns the status Unsafe" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
-
-            <!-- Cloud Coverage Safe Threshold -->
-            <TextBlock Text="Cloud Coverage Low Threshold (%):" Margin="0,10,0,2"/>
-            <TextBox Text="{Binding CloudCoverageSafeThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                     Width="100" HorizontalAlignment="Left"/>
-            <TextBlock Text="While Unsafe: coverage must drop below this value before Safe returns" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
-            <TextBlock Text="Between the two values the status stays as it is, so a sky at the limit cannot flap" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0"/>
-
-            <!-- Confirm transitions (#21): a change of state wants two frames -->
-            <TextBlock Text="Confirm a change of state with a second frame:" Margin="0,10,0,6"/>
-            <CheckBox IsChecked="{Binding Options.ConfirmTransitions, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                      Width="64"
-                      HorizontalAlignment="Left"
-                      VerticalAlignment="Center"/>
-            <TextBlock Text="When an analysis would turn the state from Safe to Unsafe or back, the plugin takes a second frame about twenty seconds later and analyses it; the second frame decides. A single odd reading - three in one night at one site, each parking the rig - no longer acts alone. Costs one extra analysis per change of state."
-                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
-
-            <!-- Maximum data age: the sky verdict expires instead of being trusted forever -->
-            <TextBlock Text="Fail-safe" Margin="0,10,0,2"/>
-            <TextBlock Text="Maximum data age (minutes, 0 = automatic):" Margin="0,0,0,2"/>
-            <TextBox Text="{Binding Options.MaxDataAgeMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     Width="100" HorizontalAlignment="Left"/>
-            <TextBlock Text="If no sky analysis succeeds within this time — a dead camera, an unreachable stream — the monitor reports Unsafe instead of holding the last known state. Automatic means three check intervals, never less than 10 minutes."
-                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
-
-
-            <!-- ===== What the AI sees ===== -->
-            <TextBlock Text="What the AI sees" FontWeight="Bold" FontSize="14" Margin="0,24,0,2"/>
-            <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
-            <TextBlock Text="Two facts the AI cannot guess from a frame, and a place for everything else about your site." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
-            <!-- Camera view and site darkness: the two facts the prompt cannot guess and used to
-                 assume. A fixed security camera has no fisheye circle to look for, and at a dark
-                 site clouds are black holes in the star field rather than bright milky patches.
-                 Defaults are the previous behaviour. -->
-            <TextBlock Text="Camera view:" Margin="0,0,0,2"/>
-            <ComboBox SelectedIndex="{Binding CameraView, Mode=TwoWay}" Width="360" HorizontalAlignment="Left">
-                <ComboBoxItem Content="All-sky fisheye (the whole sky as a circle)"/>
-                <ComboBoxItem Content="Fixed camera (part of the sky above a horizon, trees or buildings)"/>
-            </ComboBox>
-            <TextBlock Text="Tells the AI which part of the image is sky. Pick the second one for a security camera or any camera that is not a fisheye pointing straight up."
-                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
-
-            <TextBlock Text="Site darkness:" Margin="0,10,0,2"/>
-            <ComboBox SelectedIndex="{Binding SiteDarkness, Mode=TwoWay}" Width="360" HorizontalAlignment="Left">
-                <ComboBoxItem Content="Light-polluted (clouds are lit from below and look bright)"/>
-                <ComboBoxItem Content="Dark site (clouds are darker than the sky; only the stars tell)"/>
-            </ComboBox>
-            <TextBlock Text="At a Bortle 1-4 site with no moon, a cloudy sky is simply black. The dark-site setting makes the AI judge by where the stars are missing instead of by brightness, and treats a frame with no readable sky as unsafe rather than clear. Many Unknown results at night usually mean a dark site."
-                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
-
-            <!-- Site notes: local knowledge appended to the analysis prompt of every provider.
-                 Saved on focus loss rather than per keystroke, so typing does not rewrite the
-                 settings file on every character. -->
-            <TextBlock Text="Site notes (optional):" Margin="0,10,0,2"/>
-            <TextBox Text="{Binding SiteNotes, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                     Width="360"
-                     Height="80"
-                     HorizontalAlignment="Left"
-                     AcceptsReturn="True"
-                     TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto"/>
-            <TextBlock Text="Anything about your site or camera the AI cannot guess, in your own words. Example: &quot;Clouds toward the south are lit orange by the city and can look like overcast&quot; or &quot;In daylight the sun reflects off the dome and creates a hazy halo&quot;. Sent with every analysis, for all providers. Keep it short — a few sentences."
-                       Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="360" HorizontalAlignment="Left"/>
-
-
-            <!-- ===== External safety devices ===== -->
-            <TextBlock Text="External safety devices" FontWeight="Bold" FontSize="14" Margin="0,24,0,2"/>
-            <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
-            <TextBlock Text="ASCOM safety monitors combined with the sky verdict." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
-            <!-- External ASCOM safety monitor, combined with the sky verdict with AND or OR (#19) -->
-                        <TextBlock Text="Combine with an external safety monitor:" Margin="0,0,0,6"/>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
-                <CheckBox IsChecked="{Binding Options.UseAscomSafetyMonitor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                          VerticalAlignment="Center"
+                <TextBlock Text="Second vote from the weather device:" Margin="0,10,0,6"/>
+                <CheckBox IsChecked="{Binding Options.WeatherVoteEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          IsEnabled="{Binding Options.GuideStarVetoEnabled}"
                           Width="64"
-                          Margin="0,0,8,0"/>
-                <TextBox Text="{Binding Options.AscomSafetyMonitorProgId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         IsEnabled="{Binding Options.UseAscomSafetyMonitor}"
-                         Width="360"
-                         VerticalContentAlignment="Center"/>
-                <Button Content="Choose..."
-                        Margin="8,0,0,0"
-                        Padding="10,2"
-                        IsEnabled="{Binding Options.UseAscomSafetyMonitor}"
-                        Click="ChooseAscomSafetyMonitor_Click"/>
-            </StackPanel>
-            <TextBlock Text="Combination:" Margin="0,0,0,2"/>
-            <ComboBox SelectedIndex="{Binding Options.ExternalMonitorMode, Mode=TwoWay}" IsEnabled="{Binding Options.UseAscomSafetyMonitor}" Width="440" HorizontalAlignment="Left" Margin="0,0,0,4">
-                <ComboBoxItem Content="AND — Safe only when both the sky analysis and the device say Safe"/>
-                <ComboBoxItem Content="OR — Unsafe only when both say Unsafe (the device confirms the sky verdict)"/>
-            </ComboBox>
-            <TextBlock Text="AND pairs all-sky cloud/rain/fog detection with an environmental monitor (humidity, dew point, rain sensor): either one stops imaging. OR is for a second cloud sensor that cries cloudy too often, such as a narrow-field IR sensor reacting to clouds far from the target: imaging stops only when both agree."
-                       Margin="0,0,0,4" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
-            <TextBlock Text="A device that cannot be connected or read counts as Unsafe; sky data older than the maximum data age counts as Unsafe. With AND that stops imaging; with OR the other side decides alone, and the panel says so. Rain or fog seen by the sky analysis is Unsafe in both modes — a cloud sensor that says clear does not dry the lens."
-                       Margin="0,0,0,8" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                          HorizontalAlignment="Left"
+                          VerticalAlignment="Center"/>
+                <TextBlock Text="Stricter, never looser: with this on the veto wants the guide star and a reading of the connected weather device both unchanged against their last ten minutes. The reading is compared with its own recent median, so a sky meter that drifts all night with the moon still counts. The device alone can never hold a Safe: a sensor looking at another part of the sky must not override a cloud that is on the target."
+                           Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                <TextBlock Text="Reading:" Margin="0,8,0,2"/>
+                <ComboBox SelectedIndex="{Binding Options.WeatherVotePropertyIndex, Mode=TwoWay}" IsEnabled="{Binding Options.WeatherVoteEnabled}" Width="440" HorizontalAlignment="Left" Margin="0,0,0,4">
+                    <ComboBoxItem Content="SkyQuality (mag/arcsec2, a sky quality meter)"/>
+                    <ComboBoxItem Content="SkyTemperature (C, an IR cloud sensor: sky minus ambient)"/>
+                    <ComboBoxItem Content="CloudCover (%, a cloud sensor that reports a percentage)"/>
+                </ComboBox>
+                <TextBlock Text="Allowed change from the ten-minute median (in the reading's own unit):" Margin="0,4,0,2"/>
+                <TextBox Text="{Binding Options.WeatherVoteLimit, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                         IsEnabled="{Binding Options.WeatherVoteEnabled}"
+                         Width="100" HorizontalAlignment="Left"/>
+                <TextBlock Text="0.2 for a sky quality meter; a few degrees for an IR sensor; 10-20 for a percentage" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,2,0,0" TextWrapping="Wrap" MaxWidth="440"/>
 
-            <!-- Environment monitor: a second device that is always ANDed, so a humidity or
-                 rain limit cannot be overridden by a clear sky in OR mode (#19). -->
-            <TextBlock Text="Environment safety monitor (always AND):" Margin="0,6,0,6"/>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,4" HorizontalAlignment="Left">
-                <CheckBox IsChecked="{Binding Options.UseEnvironmentSafetyMonitor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                          VerticalAlignment="Center"
-                          Width="64"
-                          Margin="0,0,8,0"/>
-                <TextBox Text="{Binding Options.EnvironmentSafetyMonitorProgId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         IsEnabled="{Binding Options.UseEnvironmentSafetyMonitor}"
-                         Width="360"
-                         VerticalContentAlignment="Center"/>
-                <Button Content="Choose..."
-                        Margin="8,0,0,0"
-                        Padding="10,2"
-                        Tag="Environment"
-                        IsEnabled="{Binding Options.UseEnvironmentSafetyMonitor}"
-                        Click="ChooseAscomSafetyMonitor_Click"/>
-            </StackPanel>
-            <TextBlock Text="A second ASCOM safety monitor for what must stop imaging on its own — humidity, dew point, a rain sensor. It is ANDed whatever the combination above: (sky OR cloud sensor) AND environment. Unreadable counts as Unsafe."
-                       Margin="0,0,0,8" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                <!-- Maximum data age: the sky verdict expires instead of being trusted forever -->
+                <TextBlock Text="Fail-safe" Margin="0,10,0,2"/>
+                <TextBlock Text="Maximum data age (minutes, 0 = automatic):" Margin="0,0,0,2"/>
+                <TextBox Text="{Binding Options.MaxDataAgeMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Width="100" HorizontalAlignment="Left"/>
+                <TextBlock Text="If no sky analysis succeeds within this time — a dead camera, an unreachable stream — the monitor reports Unsafe instead of holding the last known state. Automatic means three check intervals, never less than 10 minutes."
+                           Margin="0,4,0,0" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
+                <!-- ===== External safety devices ===== -->
+                <TextBlock Text="External safety devices" FontWeight="Bold" FontSize="14" Margin="0,24,0,2"/>
+                <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
+                <TextBlock Text="ASCOM safety monitors combined with the sky verdict." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                <!-- External ASCOM safety monitor, combined with the sky verdict with AND or OR (#19) -->
+                            <TextBlock Text="Combine with an external safety monitor:" Margin="0,0,0,6"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
+                    <CheckBox IsChecked="{Binding Options.UseAscomSafetyMonitor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              VerticalAlignment="Center"
+                              Width="64"
+                              Margin="0,0,8,0"/>
+                    <TextBox Text="{Binding Options.AscomSafetyMonitorProgId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding Options.UseAscomSafetyMonitor}"
+                             Width="360"
+                             VerticalContentAlignment="Center"/>
+                    <Button Content="Choose..."
+                            Margin="8,0,0,0"
+                            Padding="10,2"
+                            IsEnabled="{Binding Options.UseAscomSafetyMonitor}"
+                            Click="ChooseAscomSafetyMonitor_Click"/>
+                </StackPanel>
+                <TextBlock Text="Combination:" Margin="0,0,0,2"/>
+                <ComboBox SelectedIndex="{Binding Options.ExternalMonitorMode, Mode=TwoWay}" IsEnabled="{Binding Options.UseAscomSafetyMonitor}" Width="440" HorizontalAlignment="Left" Margin="0,0,0,4">
+                    <ComboBoxItem Content="AND — Safe only when both the sky analysis and the device say Safe"/>
+                    <ComboBoxItem Content="OR — Unsafe only when both say Unsafe (the device confirms the sky verdict)"/>
+                </ComboBox>
+                <TextBlock Text="AND pairs all-sky cloud/rain/fog detection with an environmental monitor (humidity, dew point, rain sensor): either one stops imaging. OR is for a second cloud sensor that cries cloudy too often, such as a narrow-field IR sensor reacting to clouds far from the target: imaging stops only when both agree."
+                           Margin="0,0,0,4" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                <TextBlock Text="A device that cannot be connected or read counts as Unsafe; sky data older than the maximum data age counts as Unsafe. With AND that stops imaging; with OR the other side decides alone, and the panel says so. Rain or fog seen by the sky analysis is Unsafe in both modes — a cloud sensor that says clear does not dry the lens."
+                           Margin="0,0,0,8" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
 
+                <!-- Environment monitor: a second device that is always ANDed, so a humidity or
+                     rain limit cannot be overridden by a clear sky in OR mode (#19). -->
+                <TextBlock Text="Environment safety monitor (always AND):" Margin="0,6,0,6"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4" HorizontalAlignment="Left">
+                    <CheckBox IsChecked="{Binding Options.UseEnvironmentSafetyMonitor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              VerticalAlignment="Center"
+                              Width="64"
+                              Margin="0,0,8,0"/>
+                    <TextBox Text="{Binding Options.EnvironmentSafetyMonitorProgId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding Options.UseEnvironmentSafetyMonitor}"
+                             Width="360"
+                             VerticalContentAlignment="Center"/>
+                    <Button Content="Choose..."
+                            Margin="8,0,0,0"
+                            Padding="10,2"
+                            Tag="Environment"
+                            IsEnabled="{Binding Options.UseEnvironmentSafetyMonitor}"
+                            Click="ChooseAscomSafetyMonitor_Click"/>
+                </StackPanel>
+                <TextBlock Text="A second ASCOM safety monitor for what must stop imaging on its own — humidity, dew point, a rain sensor. It is ANDed whatever the combination above: (sky OR cloud sensor) AND environment. Unreadable counts as Unsafe."
+                           Margin="0,0,0,8" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </TabItem>
 
             <!-- ===== Outputs ===== -->
-            <TextBlock Text="Outputs" FontWeight="Bold" FontSize="14" Margin="0,24,0,2"/>
-            <Separator HorizontalAlignment="Left" Width="520" Margin="0,0,0,8"/>
-            <TextBlock Text="What the plugin writes for other software and for you." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
-                    <!-- Generic File SafetyMonitor output file -->
-                    <TextBlock Text="Write Safe/Unsafe status file:" Margin="0,0,0,6"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
-                    <CheckBox IsChecked="{Binding Options.WriteSafetyStatusFile, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                          VerticalAlignment="Center"
-                          Width="64"
-                          Margin="0,0,8,0"/>
-                    <TextBox Text="{Binding Options.SafetyStatusFilePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         IsEnabled="{Binding Options.WriteSafetyStatusFile}"
-                         Width="360"
-                         VerticalContentAlignment="Center"/>
-                    <Button Content="Browse..."
-                        Margin="8,0,0,0"
-                        Padding="10,2"
-                        IsEnabled="{Binding Options.WriteSafetyStatusFile}"
-                        Click="BrowseSafetyStatusFile_Click"/>
-                    </StackPanel>
-                    <TextBlock Text="Writes a single line: Safe or Unsafe" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,4"/>
-                    <TextBlock Text="Point your ASCOM Generic File SafetyMonitor to this file" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,8"/>
+            <TabItem Header="Outputs">
+                <StackPanel Orientation="Vertical" Margin="10">
+                <TextBlock Text="What the plugin writes for other software and for you." Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="520" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                        <!-- Generic File SafetyMonitor output file -->
+                        <TextBlock Text="Write Safe/Unsafe status file:" Margin="0,0,0,6"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10" HorizontalAlignment="Left">
+                        <CheckBox IsChecked="{Binding Options.WriteSafetyStatusFile, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                              VerticalAlignment="Center"
+                              Width="64"
+                              Margin="0,0,8,0"/>
+                        <TextBox Text="{Binding Options.SafetyStatusFilePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding Options.WriteSafetyStatusFile}"
+                             Width="360"
+                             VerticalContentAlignment="Center"/>
+                        <Button Content="Browse..."
+                            Margin="8,0,0,0"
+                            Padding="10,2"
+                            IsEnabled="{Binding Options.WriteSafetyStatusFile}"
+                            Click="BrowseSafetyStatusFile_Click"/>
+                        </StackPanel>
+                        <TextBlock Text="Writes a single line: Safe or Unsafe" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,4"/>
+                        <TextBlock Text="Point your ASCOM Generic File SafetyMonitor to this file" Foreground="{DynamicResource ButtonForegroundDisabledBrush}" Margin="0,0,0,8"/>
 
-                    <!-- Decision archive (#21): the frame behind every change of state, with the decision next to it -->
-                    <TextBlock Text="Keep the frame behind every decision:" Margin="0,6,0,6"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4" HorizontalAlignment="Left">
-                        <CheckBox IsChecked="{Binding Options.KeepDecisionFrames, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                  VerticalAlignment="Center"
-                                  Width="64"
-                                  Margin="0,0,8,0"/>
-                        <TextBlock Text="keep for" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBox Text="{Binding Options.DecisionRetentionDays, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                 IsEnabled="{Binding Options.KeepDecisionFrames}"
-                                 Width="50"
-                                 VerticalContentAlignment="Center"/>
-                        <TextBlock Text="days" VerticalAlignment="Center" Margin="6,0,12,0"/>
-                        <Button Content="Open folder"
-                                Padding="10,2"
-                                Click="OpenDecisionFolder_Click"/>
-                    </StackPanel>
-                    <TextBlock Text="Whenever the combined state changes (Safe to Unsafe, or back), the exact frame that was analysed is saved with a text file next to it: time, provider and model, condition, cloud coverage, confidence, thresholds, what each monitor said, and the reason shown in the panel. Only changes are kept, so an overcast night is one decision, not a hundred copies of it. Use it the morning after an alert to see what the AI saw."
-                               Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                        <!-- Decision archive (#21): the frame behind every change of state, with the decision next to it -->
+                        <TextBlock Text="Keep the frame behind every decision:" Margin="0,6,0,6"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4" HorizontalAlignment="Left">
+                            <CheckBox IsChecked="{Binding Options.KeepDecisionFrames, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      VerticalAlignment="Center"
+                                      Width="64"
+                                      Margin="0,0,8,0"/>
+                            <TextBlock Text="keep for" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBox Text="{Binding Options.DecisionRetentionDays, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                     IsEnabled="{Binding Options.KeepDecisionFrames}"
+                                     Width="50"
+                                     VerticalContentAlignment="Center"/>
+                            <TextBlock Text="days" VerticalAlignment="Center" Margin="6,0,12,0"/>
+                            <Button Content="Open folder"
+                                    Padding="10,2"
+                                    Click="OpenDecisionFolder_Click"/>
+                        </StackPanel>
+                        <TextBlock Text="Whenever the combined state changes (Safe to Unsafe, or back), the exact frame that was analysed is saved with a text file next to it: time, provider and model, condition, cloud coverage, confidence, thresholds, what each monitor said, and the reason shown in the panel. Only changes are kept, so an overcast night is one decision, not a hundred copies of it. Use it the morning after an alert to see what the AI saw."
+                                   Foreground="{DynamicResource ButtonForegroundDisabledBrush}" TextWrapping="Wrap" MaxWidth="440" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                </StackPanel>
+            </TabItem>
 
-            <!-- Description Section -->
-            <TextBlock Text="About AI Weather" FontWeight="Bold" Margin="0,20,0,10"/>
-            <TextBlock Text="AI Weather analyzes all-sky camera images using artificial intelligence to determine real-time weather conditions and protect your equipment during unattended imaging sessions."
-                       Margin="0,0,0,10" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left"/>
+            <!-- ===== About ===== -->
+            <TabItem Header="About">
+                <StackPanel Orientation="Vertical" Margin="10">
+                <TextBlock Text="AI Weather analyzes all-sky camera images using artificial intelligence to determine real-time weather conditions and protect your equipment during unattended imaging sessions."
+                           Margin="0,0,0,10" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left"/>
 
-            <TextBlock Text="How It Works" FontWeight="Bold" Margin="0,5,0,5"/>
-            <TextBlock Text="The plugin periodically captures an image from your all-sky camera, sends it to a vision-capable AI model, and receives a structured weather assessment including cloud coverage percentage, weather condition, and rain/fog detection. Based on configurable thresholds, it reports a Safe or Unsafe status to NINA's safety monitor, which can automatically pause or abort an imaging sequence."
-                       Margin="0,0,0,10" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left"/>
+                <TextBlock Text="How It Works" FontWeight="Bold" Margin="0,5,0,5"/>
+                <TextBlock Text="The plugin periodically captures an image from your all-sky camera, sends it to a vision-capable AI model, and receives a structured weather assessment including cloud coverage percentage, weather condition, and rain/fog detection. Based on configurable thresholds, it reports a Safe or Unsafe status to NINA's safety monitor, which can automatically pause or abort an imaging sequence."
+                           Margin="0,0,0,10" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left"/>
 
-            <TextBlock Text="Capture Modes" FontWeight="Bold" Margin="0,5,0,5"/>
-            <StackPanel Margin="15,0,0,10">
-                <TextBlock Text="○   RTSP Stream - live video from network IP cameras with real-time preview" Margin="0,3"/>
-                <TextBlock Text="○   HTTP Image - periodic download from a URL (indi-allsky, AllSky, web cameras)" Margin="0,3"/>
-                <TextBlock Text="○   Folder Watch - monitors a local folder for the latest image saved by any camera software" Margin="0,3"/>
-            </StackPanel>
+                <TextBlock Text="Capture Modes" FontWeight="Bold" Margin="0,5,0,5"/>
+                <StackPanel Margin="15,0,0,10">
+                    <TextBlock Text="○   RTSP Stream - live video from network IP cameras with real-time preview" Margin="0,3"/>
+                    <TextBlock Text="○   HTTP Image - periodic download from a URL (indi-allsky, AllSky, web cameras)" Margin="0,3"/>
+                    <TextBlock Text="○   Folder Watch - monitors a local folder for the latest image saved by any camera software" Margin="0,3"/>
+                </StackPanel>
 
-            <TextBlock Text="AI Providers" FontWeight="Bold" Margin="0,5,0,5"/>
-            <StackPanel Margin="15,0,0,10">
-                <TextBlock Text="○   Local - offline heuristic analysis using brightness, color, and pattern detection" Margin="0,3"/>
-                <TextBlock Text="○   OpenAI - any vision model the key can list (GPT-4o, GPT-4.1, o-series; fetched live)" Margin="0,3"/>
-                <TextBlock Text="○   Google Gemini - free API tier, Flash/Pro vision models (fetched live)" Margin="0,3"/>
-                <TextBlock Text="○   Anthropic Claude - any Claude model the key can list (Haiku 5.5 is the cheapest; fetched live)" Margin="0,3"/>
-                <TextBlock Text="○   Ollama - local OpenAI-compatible server, no API key (LM Studio, llama.cpp, LocalAI also work)" Margin="0,3"/>
-            </StackPanel>
+                <TextBlock Text="AI Providers" FontWeight="Bold" Margin="0,5,0,5"/>
+                <StackPanel Margin="15,0,0,10">
+                    <TextBlock Text="○   Local - offline heuristic analysis using brightness, color, and pattern detection" Margin="0,3"/>
+                    <TextBlock Text="○   OpenAI - any vision model the key can list (GPT-4o, GPT-4.1, o-series; fetched live)" Margin="0,3"/>
+                    <TextBlock Text="○   Google Gemini - free API tier, Flash/Pro vision models (fetched live)" Margin="0,3"/>
+                    <TextBlock Text="○   Anthropic Claude - any Claude model the key can list (Haiku 5.5 is the cheapest; fetched live)" Margin="0,3"/>
+                    <TextBlock Text="○   Ollama - local OpenAI-compatible server, no API key (LM Studio, llama.cpp, LocalAI also work)" Margin="0,3"/>
+                </StackPanel>
 
-            <TextBlock Text="Safety Features" FontWeight="Bold" Margin="0,5,0,5"/>
-            <StackPanel Margin="15,0,0,10">
-                <TextBlock Text="○   Detects cloud coverage, rain (including lens droplets), and fog" Margin="0,3"/>
-                <TextBlock Text="○   Rain and fog trigger Unsafe regardless of cloud threshold" Margin="0,3"/>
-                <TextBlock Text="○   Automatic fallback to local analysis if the AI provider fails, times out, or sends an unreadable answer" Margin="0,3"/>
-                <TextBlock Text="○   The panel says from the first failed check when the provider is not answering and the offline analyzer is standing in" Margin="0,3"/>
-                <TextBlock Text="○   Optional status file output for ASCOM Generic File SafetyMonitor integration" Margin="0,3"/>
-            </StackPanel>
+                <TextBlock Text="Safety Features" FontWeight="Bold" Margin="0,5,0,5"/>
+                <StackPanel Margin="15,0,0,10">
+                    <TextBlock Text="○   Detects cloud coverage, rain (including lens droplets), and fog" Margin="0,3"/>
+                    <TextBlock Text="○   Rain and fog trigger Unsafe regardless of cloud threshold" Margin="0,3"/>
+                    <TextBlock Text="○   Automatic fallback to local analysis if the AI provider fails, times out, or sends an unreadable answer" Margin="0,3"/>
+                    <TextBlock Text="○   The panel says from the first failed check when the provider is not answering and the offline analyzer is standing in" Margin="0,3"/>
+                    <TextBlock Text="○   Optional status file output for ASCOM Generic File SafetyMonitor integration" Margin="0,3"/>
+                </StackPanel>
 
-            <TextBlock Text="Connect the safety monitor under Equipment > Safety Monitor > All Sky Camera Safety Monitor to start protecting your imaging sessions."
-                       Margin="0,0,0,0" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
-        </StackPanel>
+                <TextBlock Text="Connect the safety monitor under Equipment > Safety Monitor > All Sky Camera Safety Monitor to start protecting your imaging sessions."
+                           Margin="0,0,0,0" TextWrapping="Wrap" Width="500" HorizontalAlignment="Left" Foreground="{DynamicResource ButtonForegroundDisabledBrush}"/>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
     </DataTemplate>
     
 </ResourceDictionary>

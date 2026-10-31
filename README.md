@@ -149,8 +149,9 @@ text size, so they follow the light and dark themes like the rest of the applica
 
 ## Configuration
 
-The options page is laid out in the same order: camera source, AI analysis, checks and
-thresholds, what the AI sees, external safety devices, outputs.
+The options page has five tabs in the same order: **Camera** (section 1), **AI analysis**
+(sections 2, 5 and 6), **Safety** (sections 3, 4 and 7), **Outputs** (sections 8 and 9) and
+**About**.
 
 ### 1. Camera source
 
@@ -223,6 +224,27 @@ it; the second frame decides. One site logged three Safe → Unsafe → Safe cyc
 night, each from a single odd reading on frames that looked the same, each parking the
 rig. Costs one extra analysis per change of state; **Confirm a change of state with a
 second frame** in the options turns it off.
+
+**The guide star gets a say.** Under a full moon a model can read a clear sky as 60–75%
+cloud and park the rig while PHD2's guide star sits at 100% of its clear-sky mass; two
+sites logged six such parks in two nights. With **Let the PHD2 guide star veto a cloud-only
+Unsafe** on, a Safe → Unsafe change that rests on clouds alone is held when the median
+star mass of the last minute is still at or above a percentage (default 70) of the median
+of the ten minutes before; no second frame is spent, the log says `Cloud call vetoed:
+guide-star mass 98% of recent level (threshold 70%)`, the panel says it, and the frame is
+kept in the decision folder with the numbers. A cloud on the target drops the star mass
+within a few frames, so the veto stands down exactly when it should (a scope that tracked
+into trees was one such case). Rain and fog are never vetoed; Unsafe → Safe is never
+vetoed (there is no guide star while parked); without guiding, or with less than ten
+minutes of it, the plugin behaves as with the option off. **Off by default**: it holds a
+Safe against the model, so switch it on knowingly.
+
+An optional **second vote from the weather device** makes the veto stricter, never looser:
+the veto then also wants one reading of the connected ObservingConditions device
+(SkyQuality, SkyTemperature or CloudCover, your choice) to have moved less than a limit
+from its own ten-minute median, so a sky quality meter that drifts all night with the moon
+still counts. The device alone can never hold a Safe: a sensor looking at another part of
+the sky must not override a cloud that is on the target.
 
 **A smeared frame is not a frame.** A stream reconnect can hand back a picture whose lower
 half is the last good row repeated; such a frame used to be analysed and could score

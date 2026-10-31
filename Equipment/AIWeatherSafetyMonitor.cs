@@ -1,4 +1,7 @@
 using NINA.Equipment.Interfaces;
+using NINA.Equipment.Interfaces.Mediator;
+using NINA.Equipment.Equipment.MyGuider.PHD2.PhdEvents;
+using NINA.Core.Interfaces;
 using NINA.Core.Utility;
 using NINA.Profile.Interfaces;
 using NINA.Image.Interfaces;
@@ -32,6 +35,9 @@ namespace AIWeather.Equipment
         private bool _isMonitoring = false;
         private bool _isCurrentlySafe = false;
         private CancellationTokenSource? _cts;
+        private IGuiderMediator? _guiderMediator;
+        private IWeatherDataMediator? _weatherMediator;
+        private bool _guiderSubscribed;
         private readonly SemaphoreSlim _checkGate = new SemaphoreSlim(1, 1);
         private IProfileService? _profileService;
 
@@ -120,6 +126,73 @@ namespace AIWeather.Equipment
 
         /// <summary>The analysis service the next check will use.</summary>
         internal IWeatherAnalysisService AnalysisService => _analysisService;
+
+        /// <summary>Injects NINA's guider mediator, the source of PHD2 guide steps for the guide-star veto (#24).</summary>
+        public void SetGuiderMediator(IGuiderMediator guiderMediator)
+        {
+            _guiderMediator = guiderMediator;
+        }
+
+        /// <summary>Injects NINA's weather data mediator, the optional second vote of the guide-star veto (#24).</summary>
+        public void SetWeatherDataMediator(IWeatherDataMediator weatherDataMediator)
+        {
+            _weatherMediator = weatherDataMediator;
+        }
+
+        /// <summary>The guide star's recent history, kept while connected (#24).</summary>
+        internal GuideStarVeto GuideVeto { get; } = new GuideStarVeto();
+
+        /// <summary>One guide step: PHD2's star mass and, when the second vote is on, the device reading taken with it.</summary>
+        internal void RecordGuideStep(DateTime utc, double starMass, double? weather)
+        {
+            GuideVeto.Record(utc, starMass, weather);
+        }
+
+        private void OnGuideStep(object? sender, IGuideStep step)
+        {
+            // Only PHD2 reports star mass; other guiders simply never feed the veto.
+            if (step is PhdEventGuideStep phd)
+            {
+                RecordGuideStep(UtcNow(), phd.StarMass, WeatherReading());
+            }
+        }
+
+        /// <summary>The weather device's chosen property right now, or null when the vote is off, the device is away or the value is not provided.</summary>
+        private double? WeatherReading()
+        {
+            if (!Properties.Settings.Default.WeatherVoteEnabled || _weatherMediator == null) return null;
+            try
+            {
+                var info = _weatherMediator.GetInfo();
+                if (info == null || !info.Connected) return null;
+                var value = Properties.Settings.Default.WeatherVoteProperty switch
+                {
+                    "SkyTemperature" => info.SkyTemperature,
+                    "CloudCover" => info.CloudCover,
+                    _ => info.SkyQuality,
+                };
+                return double.IsNaN(value) || double.IsInfinity(value) ? null : value;
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Weather device reading for the guide-star veto failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        private void SubscribeGuider()
+        {
+            if (_guiderMediator == null || _guiderSubscribed) return;
+            _guiderMediator.GuideEvent += OnGuideStep;
+            _guiderSubscribed = true;
+        }
+
+        private void UnsubscribeGuider()
+        {
+            if (_guiderMediator == null || !_guiderSubscribed) return;
+            _guiderMediator.GuideEvent -= OnGuideStep;
+            _guiderSubscribed = false;
+        }
 
         /// <summary>
         /// Builds the analysis service the options describe and initialises it; when that fails
@@ -225,6 +298,11 @@ namespace AIWeather.Equipment
 
                 await RefreshAnalysisServiceAsync(token);
 
+                // The guide star starts being listened to now; what it did before this
+                // connection is not evidence about this one (#24).
+                GuideVeto.Clear();
+                SubscribeGuider();
+
                 // A fresh connection starts with no verdict at all: unsafe until the first
                 // analysis succeeds, never inheriting the state of a previous session.
                 _lastAnalysisUtc = DateTime.MinValue;
@@ -270,6 +348,8 @@ namespace AIWeather.Equipment
 
                 StopPeriodicMonitoring();
                 _captureService.Dispose();
+                UnsubscribeGuider();
+                GuideVeto.Clear();
 
                 // Values are no longer being refreshed: blank the sequencer symbols so an
                 // expression cannot keep acting on a stale reading.
@@ -446,6 +526,10 @@ namespace AIWeather.Equipment
                 }
 
                 var coverage = _lastResult?.CloudCoverage ?? 0;
+                if (!string.IsNullOrEmpty(_lastResult?.Veto))
+                {
+                    return $"Sky safe: cloud call {coverage:F0}% vetoed, {_lastResult!.Veto}";
+                }
                 return $"Sky safe: cloud coverage {coverage:F0}% (unsafe at {Properties.Settings.Default.CloudCoverageThreshold:F0}%)";
             }
         }
@@ -606,11 +690,16 @@ namespace AIWeather.Equipment
             }
 
             var combined = IsSafe;
-            if (_lastDecisionSafe == combined)
+            // A vetoed cloud call changes nothing and is kept all the same: the frame the
+            // model read as cloudy next to the guide-star numbers that said otherwise (#24).
+            var vetoed = combined && !string.IsNullOrEmpty(result.Veto);
+            if (_lastDecisionSafe == combined && !vetoed)
             {
                 return;
             }
-            var transition = $"{(_lastDecisionSafe is bool prev ? (prev ? "Safe" : "Unsafe") : "Start")} -> {(combined ? "Safe" : "Unsafe")}";
+            var transition = vetoed && _lastDecisionSafe == combined
+                ? "Safe held (cloud call vetoed)"
+                : $"{(_lastDecisionSafe is bool prev ? (prev ? "Safe" : "Unsafe") : "Start")} -> {(combined ? "Safe" : "Unsafe")}";
             _lastDecisionSafe = combined;
 
             string Device(bool enabled, bool safe, ExternalSafetyDevice device) =>
@@ -643,6 +732,7 @@ namespace AIWeather.Equipment
                 EnvironmentMonitor = Device(Properties.Settings.Default.UseEnvironmentSafetyMonitor, IsEnvironmentMonitorSafe(), _environmentDevice),
                 CombinedSafe = combined,
                 Reason = SafetyStateReason,
+                Veto = result.Veto,
             };
 
             var path = Decisions.Save(_lastImage, record, UtcNow().ToLocalTime());
@@ -659,7 +749,10 @@ namespace AIWeather.Equipment
         internal static bool NextSkyState(bool currentlySafe, WeatherAnalysisResult result, double unsafeThreshold, double safeThreshold)
         {
             if (result == null) return false;
-            if (!result.IsSafeForImaging || result.RainDetected || result.FogDetected) return false;
+            if (result.RainDetected || result.FogDetected) return false;
+            // A cloud call the guide star held back keeps the sky safe (#24); it can only ever hold, never lift.
+            if (currentlySafe && !string.IsNullOrEmpty(result.Veto)) return true;
+            if (!result.IsSafeForImaging) return false;
             return currentlySafe ? result.CloudCoverage < unsafeThreshold : result.CloudCoverage < safeThreshold;
         }
 
@@ -677,17 +770,45 @@ namespace AIWeather.Equipment
         /// </summary>
         internal async Task<WeatherAnalysisResult> ResolveTransitionAsync(WeatherAnalysisResult first, Func<Task<WeatherAnalysisResult?>> secondOpinion)
         {
-            if (!Properties.Settings.Default.ConfirmTransitions) return first;
             if (_lastResult == null) return first;   // the first verdict after connecting: nothing to protect yet
 
             var high = Properties.Settings.Default.CloudCoverageThreshold;
             var low = Properties.Settings.Default.CloudCoverageSafeThreshold;
             var prospectiveSky = NextSkyState(_isCurrentlySafe, first, high, low);
+            var ascom = Properties.Settings.Default.UseAscomSafetyMonitor;
+            var environment = Properties.Settings.Default.UseEnvironmentSafetyMonitor;
             var prospective = SafetyVerdict.Combine(ExternalMode, prospectiveSky, true,
-                first.RainDetected || first.FogDetected,
-                Properties.Settings.Default.UseAscomSafetyMonitor, IsExternalMonitorSafe(),
-                Properties.Settings.Default.UseEnvironmentSafetyMonitor, IsEnvironmentMonitorSafe());
+                first.RainDetected || first.FogDetected, ascom, IsExternalMonitorSafe(), environment, IsEnvironmentMonitorSafe());
             if (prospective == IsSafe) return first;
+
+            // The guide-star veto (#24): a Safe -> Unsafe change that rests on clouds alone is
+            // put to PHD2's guide star first. Rain and fog never come here; neither does a
+            // change the external devices would make anyway. Held, the call needs no second
+            // frame either: the star already looked.
+            if (IsSafe && !prospectiveSky && !first.RainDetected && !first.FogDetected
+                && Properties.Settings.Default.GuideStarVetoEnabled
+                && SafetyVerdict.Combine(ExternalMode, true, true, false, ascom, IsExternalMonitorSafe(), environment, IsEnvironmentMonitorSafe()))
+            {
+                var verdict = GuideVeto.Evaluate(UtcNow(), Properties.Settings.Default.GuideStarVetoPercent,
+                    Properties.Settings.Default.WeatherVoteEnabled, Properties.Settings.Default.WeatherVoteLimit,
+                    Properties.Settings.Default.WeatherVoteProperty);
+                if (verdict == null)
+                {
+                    Logger.Info($"Cloud call ({first.Condition}, {first.CloudCoverage:F0}%): no guide-star history to check it against, no veto");
+                }
+                else if (verdict.Holds)
+                {
+                    Logger.Info($"Cloud call vetoed ({first.Condition}, {first.CloudCoverage:F0}%): {verdict.Describe()}");
+                    first.Veto = verdict.Describe();
+                    return first;
+                }
+                else
+                {
+                    Logger.Info($"Cloud call stands ({first.Condition}, {first.CloudCoverage:F0}%): {verdict.Describe()}");
+                }
+            }
+
+            if (!Properties.Settings.Default.ConfirmTransitions) return first;
 
             Logger.Info($"Analysis proposes {(IsSafe ? "Safe" : "Unsafe")} -> {(prospective ? "Safe" : "Unsafe")} ({first.Condition}, {first.CloudCoverage:F0}%); asking a second frame before acting on it");
             var second = await secondOpinion();

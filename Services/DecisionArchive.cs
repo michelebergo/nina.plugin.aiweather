@@ -29,6 +29,8 @@ namespace AIWeather.Services
         public string EnvironmentMonitor { get; set; } = string.Empty;
         public bool CombinedSafe { get; set; }
         public string Reason { get; set; } = string.Empty;
+        /// <summary>The guide-star veto that held a cloud call, with its numbers (#24); null otherwise.</summary>
+        public string? Veto { get; set; }
     }
 
     /// <summary>
@@ -117,6 +119,10 @@ namespace AIWeather.Services
             sb.AppendLine($"External monitor: {r.ExternalMonitor}");
             sb.AppendLine($"Environment monitor: {r.EnvironmentMonitor}");
             sb.AppendLine($"Combined: {(r.CombinedSafe ? "Safe" : "Unsafe")}");
+            if (!string.IsNullOrWhiteSpace(r.Veto))
+            {
+                sb.AppendLine($"Veto: {r.Veto}");
+            }
             sb.AppendLine($"Reason: {r.Reason}");
             return sb.ToString();
         }

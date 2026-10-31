@@ -1,3 +1,4 @@
+using System;
 using NINA.Core.Utility;
 using NINA.Profile;
 using NINA.Profile.Interfaces;
@@ -284,6 +285,68 @@ namespace AIWeather
             set
             {
                 Properties.Settings.Default.ConfirmTransitions = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>A cloud-only Safe -> Unsafe call is put to PHD2's guide star first (#24).</summary>
+        public bool GuideStarVetoEnabled
+        {
+            get => Properties.Settings.Default.GuideStarVetoEnabled;
+            set
+            {
+                Properties.Settings.Default.GuideStarVetoEnabled = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>Star mass of the last minute, as a percentage of the ten minutes before, at or above which the call is held (#24).</summary>
+        public double GuideStarVetoPercent
+        {
+            get => Properties.Settings.Default.GuideStarVetoPercent;
+            set
+            {
+                Properties.Settings.Default.GuideStarVetoPercent = Math.Max(1, Math.Min(100, value));
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>The weather device's reading must be unchanged too for the veto to hold (#24).</summary>
+        public bool WeatherVoteEnabled
+        {
+            get => Properties.Settings.Default.WeatherVoteEnabled;
+            set
+            {
+                Properties.Settings.Default.WeatherVoteEnabled = value;
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        /// <summary>0 SkyQuality, 1 SkyTemperature, 2 CloudCover: the ObservingConditions property the second vote reads (#24).</summary>
+        public int WeatherVotePropertyIndex
+        {
+            get => Array.IndexOf(WeatherVoteProperties, Properties.Settings.Default.WeatherVoteProperty) is var i && i >= 0 ? i : 0;
+            set
+            {
+                Properties.Settings.Default.WeatherVoteProperty = WeatherVoteProperties[Math.Max(0, Math.Min(WeatherVoteProperties.Length - 1, value))];
+                CoreUtil.SaveSettings(Properties.Settings.Default);
+                RaisePropertyChanged();
+            }
+        }
+
+        public static readonly string[] WeatherVoteProperties = { "SkyQuality", "SkyTemperature", "CloudCover" };
+
+        /// <summary>How far the reading may move from its ten-minute median before it stops vouching for a clear sky (#24).</summary>
+        public double WeatherVoteLimit
+        {
+            get => Properties.Settings.Default.WeatherVoteLimit;
+            set
+            {
+                Properties.Settings.Default.WeatherVoteLimit = Math.Max(0, value);
                 CoreUtil.SaveSettings(Properties.Settings.Default);
                 RaisePropertyChanged();
             }

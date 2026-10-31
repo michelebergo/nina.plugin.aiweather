@@ -37,6 +37,12 @@ namespace AIWeather.Models
 
         /// <summary>The model that answered, when a cloud provider did: the selected one, or the reserve one after a retry.</summary>
         public string? Model { get; set; }
+
+        /// <summary>
+        /// Set when a cloud-only Unsafe call was held back by the guide star (#24): the
+        /// numbers, for the log, the panel and the decision file. Null for every other result.
+        /// </summary>
+        public string? Veto { get; set; }
     }
 
     public enum WeatherCondition

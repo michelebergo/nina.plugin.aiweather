@@ -7,7 +7,7 @@ body:
     attributes:
       label: Versions
       description: Plugin version and N.I.N.A. version (both are in Options > Plugins).
-      placeholder: AI Weather 1.15.17.0, N.I.N.A. 3.2.1
+      placeholder: AI Weather 1.16.0.0, N.I.N.A. 3.2.1
     validations:
       required: true
   - type: input

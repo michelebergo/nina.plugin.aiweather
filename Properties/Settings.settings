@@ -104,5 +104,20 @@
     <Setting Name="SafetyStatusFilePath" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="GuideStarVetoEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="GuideStarVetoPercent" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">70</Value>
+    </Setting>
+    <Setting Name="WeatherVoteEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="WeatherVoteProperty" Type="System.String" Scope="User">
+      <Value Profile="(Default)">SkyQuality</Value>
+    </Setting>
+    <Setting Name="WeatherVoteLimit" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0.2</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

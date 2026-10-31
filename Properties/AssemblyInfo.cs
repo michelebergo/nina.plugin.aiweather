@@ -34,8 +34,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("Repository", "https://github.com/michelebergo/nina.plugin.aiweather")]
 
 // Version information
-[assembly: AssemblyVersion("1.15.17.0")]
-[assembly: AssemblyFileVersion("1.15.17.0")]
+[assembly: AssemblyVersion("1.16.0.0")]
+[assembly: AssemblyFileVersion("1.16.0.0")]
 
 // The license your plugin code is using
 [assembly: AssemblyMetadata("License", "MPL-2.0")]
@@ -88,6 +88,7 @@ using System.Runtime.InteropServices;
 • Busy is not broken: a provider that answers 429/503 or times out is asked once more after ten seconds, then the reserve model you named, and only then does the offline analyzer stand in
 • A change of state wants two frames: when an analysis would flip Safe/Unsafe, a second frame twenty seconds later decides, so one odd reading cannot park the rig
 • A smeared frame is not a frame: a picture a stream reconnect left half repeated is rejected like a failed capture instead of being scored
+• The guide star gets a say: with the option on, a Safe to Unsafe change that rests on clouds alone is held while PHD2's guide-star mass is still at the level of the previous ten minutes - a cloud on the target drops it, moonlight washing out faint stars does not. Optional second vote from the weather device (sky quality, sky temperature or cloud cover, change against its own recent median); rain, fog and Unsafe to Safe are never vetoed, and the veto is written to the decision file with its numbers
 • Automatic Fallback: If the cloud AI provider fails, times out, loses connectivity, or sends back an answer that cannot be read, the plugin falls back to local offline analysis. An unreadable answer is a failed reading, never a placeholder value: the verdict comes from measuring the image that was actually captured, and the panel says from the first failed check that the provider is not answering, so a whole night on the fallback is never a surprise the next morning
 • 60-Second Timeout: All AI providers have a 60-second timeout to prevent indefinite hangs during analysis
 • ASCOM SafetyMonitor Integration: Outputs a status file compatible with the ASCOM Generic File SafetyMonitor for third-party software integration
@@ -122,7 +123,7 @@ using System.Runtime.InteropServices;
 • Detailed Logging: Every analysis result is logged with timestamp, provider, cloud percentage, and safety status
 • Request negotiation: the plugin does not assume which parameters a model accepts. When a model rejects the request it retries with a simpler one and remembers what worked, so a model update on the provider side costs one extra call, not a night
 • Test analysis button: one real analysis with the selected provider and model, through the same request the safety monitor sends at night, so a model that does not answer is found at setup rather than from the log
-• Looks like N.I.N.A.: the panel and the options page use the application's own theme colours and text sizes, light or dark
+• Looks like N.I.N.A.: the panel and the options page (five tabs: Camera, AI analysis, Safety, Outputs, About) use the application's own theme colours and text sizes, light or dark
 • One RTSP session per check: the safety monitor opens the stream, grabs a fresh frame and closes it, so a camera that drops idle sessions cannot starve the analysis and no RTSP slot is held between checks
 • A capture that gets nothing gives up within half a minute (ten seconds to open the stream, twenty to read a frame), so a camera that stalls costs one missed check and never the following ones
 • Seamless NINA Integration: Works directly with NINA's safety monitor system to pause or abort sequences when conditions deteriorate
