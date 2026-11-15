@@ -191,7 +191,7 @@ switched off and has to fit in the budget together with the answer.
 
 ### 3. Checks and thresholds
 
-- **Check Interval** (minutes): How often the plugin captures and analyzes an image. 5-10 minutes is recommended for active monitoring.
+- **Check Interval** (minutes): How often the plugin captures and analyzes an image. 5-10 minutes is recommended for active monitoring. A change made while the monitor is connected applies at once: the next check comes one new interval after the change.
 - **Cloud Coverage High Threshold** (%): while the status is **Safe**, cloud coverage at or above this value turns it **Unsafe**. Default is 70%.
 - **Cloud Coverage Low Threshold** (%): while the status is **Unsafe**, cloud coverage must drop below this value before it returns to **Safe**. Default is 60%.
 

@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using System.Threading;
 using AIWeather.Equipment;
+using AIWeather.Models;
 using AIWeather.Services;
 using FluentAssertions;
 using NUnit.Framework;
@@ -24,23 +26,62 @@ namespace NINA.Plugin.AIWeather.Test
             public void Disconnect() { }
         }
 
-        private (string provider, string key, string model) _before;
+        private (string provider, string key, string model, int interval, int mode, string folder) _before;
         private AIWeatherSafetyMonitor _monitor = null!;
+        private string _emptyFolder = null!;
 
         [SetUp]
         public void SetUp() {
             var s = global::AIWeather.Properties.Settings.Default;
-            _before = (s.AnalysisProvider, s.GeminiKey, s.SelectedModel);
+            _before = (s.AnalysisProvider, s.GeminiKey, s.SelectedModel, s.CheckIntervalMinutes, s.CaptureMode, s.FolderPath);
             s.AnalysisProvider = "Gemini";
             s.GeminiKey = "not-a-real-key";
             s.SelectedModel = "gemini-flash-latest";
+            // A folder with nothing in it: a check that runs finds no image and changes nothing.
+            _emptyFolder = Path.Combine(Path.GetTempPath(), "aiweather-interval-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_emptyFolder);
+            s.CaptureMode = (int)CaptureMode.FolderWatch;
+            s.FolderPath = _emptyFolder;
             _monitor = new AIWeatherSafetyMonitor(new Idle(), new Idle());
         }
 
         [TearDown]
         public void TearDown() {
+            _monitor.StopPeriodicMonitoring();
             var s = global::AIWeather.Properties.Settings.Default;
-            (s.AnalysisProvider, s.GeminiKey, s.SelectedModel) = _before;
+            (s.AnalysisProvider, s.GeminiKey, s.SelectedModel, s.CheckIntervalMinutes, s.CaptureMode, s.FolderPath) = _before;
+            try { Directory.Delete(_emptyFolder, true); } catch { }
+        }
+
+        [Test]
+        public void ACheckIntervalChangedWhileConnectedAppliesAtOnce() {
+            // #25: the interval was changed from 5 to 2 minutes and the checks kept coming every
+            // 5 until a reconnect; the timer was born at connect and nobody told it.
+            global::AIWeather.Properties.Settings.Default.CheckIntervalMinutes = 5;
+            _monitor.StartPeriodicMonitoring();
+            _monitor.CheckInterval.Should().Be(TimeSpan.FromMinutes(5));
+
+            global::AIWeather.Properties.Settings.Default.CheckIntervalMinutes = 2;
+
+            _monitor.CheckInterval.Should().Be(TimeSpan.FromMinutes(2));
+        }
+
+        [Test]
+        public void TheRunningTimerFollowsTheNewInterval() {
+            // Not just the number: the timer itself. Every check on the empty folder fails to
+            // capture and announces IsSafe, so the announcements count the timer's ticks.
+            global::AIWeather.Properties.Settings.Default.CheckIntervalMinutes = 5;
+            var ticks = 0;
+            _monitor.PropertyChanged += (s, e) => { if (e.PropertyName == nameof(AIWeatherSafetyMonitor.IsSafe)) Interlocked.Increment(ref ticks); };
+            _monitor.StartPeriodicMonitoring();
+            Thread.Sleep(500);
+            var afterStart = ticks;
+            afterStart.Should().BeGreaterThan(0, "the first check runs at connect");
+
+            _monitor.ApplyCheckInterval(TimeSpan.FromMilliseconds(150));
+            Thread.Sleep(1200);
+
+            (ticks - afterStart).Should().BeGreaterThan(2, "with the timer reprogrammed the checks come every 150 ms instead of every 5 minutes");
         }
 
         private IWeatherAnalysisService Settled() {

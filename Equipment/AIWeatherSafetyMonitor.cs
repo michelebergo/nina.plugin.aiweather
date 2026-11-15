@@ -1,4 +1,4 @@
-using NINA.Equipment.Interfaces;
+﻿using NINA.Equipment.Interfaces;
 using NINA.Equipment.Interfaces.Mediator;
 using NINA.Equipment.Equipment.MyGuider.PHD2.PhdEvents;
 using NINA.Core.Interfaces;
@@ -102,6 +102,12 @@ namespace AIWeather.Equipment
                     // is only constructed declines every frame and hands the night to the
                     // offline analyzer without the panel saying so (#21).
                     await RefreshAnalysisServiceAsync(CancellationToken.None);
+                }
+                else if (e.PropertyName == nameof(Properties.Settings.Default.CheckIntervalMinutes))
+                {
+                    // The timer is born at connect; an interval changed while running used to
+                    // wait for a reconnect (#25). The next check comes one new interval from now.
+                    ApplyCheckInterval(TimeSpan.FromMinutes(Math.Max(1, Properties.Settings.Default.CheckIntervalMinutes)));
                 }
             };
         }
@@ -414,6 +420,13 @@ namespace AIWeather.Equipment
 
         /// <summary>The decision archive; the tests point it at a temporary folder.</summary>
         internal DecisionArchive Decisions = new DecisionArchive(DefaultDecisionFolder);
+
+        /// <summary>Where this monitor writes its rolling captures; the tests point it at a temporary folder.</summary>
+        internal string CapturesFolder = CaptureFolder;
+
+        /// <summary>The period of the running check timer, null while not monitoring.</summary>
+        internal TimeSpan? CheckInterval => _isMonitoring ? _checkInterval : null;
+        private TimeSpan _checkInterval;
 
         // The combined state the last archived decision reported, so only a change is kept.
         private bool? _lastDecisionSafe;
@@ -885,7 +898,7 @@ namespace AIWeather.Equipment
 
         #endregion
 
-        private void StartPeriodicMonitoring()
+        internal void StartPeriodicMonitoring()
         {
             if (_isMonitoring) return;
 
@@ -894,6 +907,7 @@ namespace AIWeather.Equipment
 
             var intervalMinutes = Properties.Settings.Default.CheckIntervalMinutes;
             var interval = TimeSpan.FromMinutes(intervalMinutes);
+            _checkInterval = interval;
 
             var captureMode = (CaptureMode)Properties.Settings.Default.CaptureMode;
             Logger.Debug($"Starting periodic monitoring every {intervalMinutes} minutes (Mode: {captureMode})");
@@ -901,7 +915,7 @@ namespace AIWeather.Equipment
             _monitoringTimer = new Timer(_ =>
             {
                 var currentMode = (CaptureMode)Properties.Settings.Default.CaptureMode;
-                Logger.Debug($"Timer fired - Interval: {intervalMinutes} min, Mode: {currentMode}");
+                Logger.Debug($"Timer fired - Interval: {_checkInterval.TotalMinutes:F0} min, Mode: {currentMode}");
                 
                 if (_cts?.Token.IsCancellationRequested ?? true)
                 {
@@ -918,7 +932,7 @@ namespace AIWeather.Equipment
                         {
                             Logger.Debug($"Executing periodic weather check (Mode: {currentMode})");
                             await PerformWeatherCheckAsync(_cts.Token);
-                            Logger.Debug($"Weather check complete - next check in {intervalMinutes} min");
+                            Logger.Debug($"Weather check complete - next check in {_checkInterval.TotalMinutes:F0} min");
                         }
                         catch (OperationCanceledException)
                         {
@@ -940,7 +954,15 @@ namespace AIWeather.Equipment
             Logger.Debug($"Timer created and started - first check will run immediately");
         }
 
-        private void StopPeriodicMonitoring()
+        internal void ApplyCheckInterval(TimeSpan interval)
+        {
+            if (!_isMonitoring || _monitoringTimer == null || interval == _checkInterval) return;
+            _checkInterval = interval;
+            _monitoringTimer.Change(interval, interval);
+            Logger.Info($"Check interval changed to {interval.TotalMinutes:F0} minutes; next check in {interval.TotalMinutes:F0} minutes");
+        }
+
+        internal void StopPeriodicMonitoring()
         {
             _isMonitoring = false;
             _cts?.Cancel();
@@ -949,7 +971,7 @@ namespace AIWeather.Equipment
             Logger.Info("Stopped periodic monitoring");
         }
 
-        private async Task PerformWeatherCheckAsync(CancellationToken cancellationToken)
+        internal async Task PerformWeatherCheckAsync(CancellationToken cancellationToken)
         {
             await _checkGate.WaitAsync(cancellationToken);
             try
@@ -1043,19 +1065,18 @@ namespace AIWeather.Equipment
                 _lastImage?.Dispose();
                 _lastImage = new Bitmap(frame);
 
-                ApplyAnalysisResult(result);
-
-                // Save frame for debugging/logging (optional)
-                var captureFolder = CaptureFolder;
+                // The capture goes to disk BEFORE the verdict is announced: the panel reloads
+                // the newest capture when it hears IsSafe change, and used to find the frame
+                // of the previous check, 9 ms ahead of this one being saved (#25).
+                var captureFolder = CapturesFolder;
                 Directory.CreateDirectory(captureFolder);
                 var imagePath = Path.Combine(
                     captureFolder,
                     $"capture_{DateTime.Now:yyyyMMdd_HHmmss}.jpg");
-
-                // Save image (HTTP/Folder modes only, RTSP handled above)
                 await _captureService.SaveImageAsync(frame, imagePath, cancellationToken);
-
                 PruneCaptureFolder(captureFolder);
+
+                ApplyAnalysisResult(result);
 
                 frame.Dispose();
             }

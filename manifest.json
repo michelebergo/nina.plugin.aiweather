@@ -1,7 +1,7 @@
 {
   "Identifier": "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D",
   "Name": "AI Weather",
-  "Version": "1.16.0.0",
+  "Version": "1.16.1.0",
   "MinimumApplicationVersion": "3.0.0.0",
   "Author": "Michele Bergo",
   "Homepage": "https://github.com/michelebergo/nina.plugin.aiweather",
@@ -24,6 +24,14 @@
     }
   },
   "ChangeLog": [
+    {
+      "Version": "1.16.1.0",
+      "Date": "2026-11-15",
+      "Changes": [
+        "FIX: the panel showed the frame of the previous check. The capture is now saved before the verdict is announced, so the panel reloads the frame that was just analysed (#25)",
+        "FIX: a check interval changed while the monitor was connected waited for a reconnect. It now reprograms the running timer; the next check comes one new interval after the change (#25)"
+      ]
+    },
     {
       "Version": "1.16.0.0",
       "Date": "2026-10-31",
